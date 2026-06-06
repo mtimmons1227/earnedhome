@@ -1,13 +1,23 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { slugFromHost } from "@/lib/tenant";
 
-// Resolves the tenant from the request host and exposes it via a request
-// header so server components / route handlers can read it without re-parsing.
-export function middleware(req: NextRequest) {
-  const host = req.headers.get("host");
-  const slug = slugFromHost(host);
+export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
-  res.headers.set("x-tenant-slug", slug);
+  res.headers.set("x-tenant-slug", slugFromHost(req.headers.get("host")));
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll: () => req.cookies.getAll(),
+        setAll: (toSet: { name: string; value: string; options: CookieOptions }[]) =>
+          toSet.forEach(({ name, value, options }) => res.cookies.set(name, value, options)),
+      },
+    },
+  );
+  await supabase.auth.getUser();
   return res;
 }
 
