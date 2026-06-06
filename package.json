@@ -9,7 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "validate:engine": "tsx scripts/validate-engine.ts",
-    "test:graph": "tsx scripts/test-graph.ts"
+    "test:graph": "tsx scripts/test-graph.ts",
+    "graph:find": "tsx scripts/find-workbook.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

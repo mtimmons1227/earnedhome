@@ -16,6 +16,30 @@ If either of the first two isn't done, stop — those are the real blockers (M36
 
 ---
 
+## Tenant vs. account (read this if the logins confuse you)
+
+Microsoft has two separate things, and their names don't have to match:
+- A **tenant** = the organization's whole Microsoft cloud workspace (its directory, SharePoint, all the OneDrives). It has a Tenant ID and a primary domain.
+- A **user account** = a login *inside* a tenant, written like an email (`name@domain.com`).
+
+A tenant can own **several domains**, and a user's login can be on any of them — so **the login domain need not match the tenant name.** (Analogy: the building is "InCryptable HQ"; your name badge happens to read "itbbgroup" — same building.)
+
+**This project's specifics (InCryptable tenant):**
+- **Tenant:** InCRyptable · primary domain `incryptable.com` · **Tenant ID `2bd2eae7-47f3-4117-…`** → `GRAPH_TENANT_ID`
+- **Account to use for everything:** **`marvin@incryptable.com`** — this is a live account in the tenant, and its **"OneDrive - InCRyptable"** (1 TB) is a healthy OneDrive **for Business**. Standardize on this login (it matches the tenant name and the OneDrive label, so no confusion). `marvin@itbbgroup.com` is the same person on a secondary domain of the **same** tenant — either works, but use `@incryptable.com` for clarity.
+- **Entra app:** "EarnedHome Engine" · client ID begins `4c5ab8ee-…` → `GRAPH_CLIENT_ID` · permission `Files.ReadWrite.All` granted · client secret stored separately 🔒
+- **Where the workbook lives:** the **OneDrive of `marvin@incryptable.com`** ("OneDrive - InCRyptable") is fine and Graph-reachable. Sign into office.com / Graph Explorer as **`marvin@incryptable.com`** to create it and read its drive/item IDs. The Graph path is `/users/marvin@incryptable.com/drive`. (A dedicated SharePoint site or service account is the cleaner *production* home, but not required for the pilot.)
+
+**Why Graph can reach it:** the app holds `Files.ReadWrite.All` (application permission), which covers **every** OneDrive/SharePoint in the InCryptable tenant — including `marvin@incryptable.com`'s. The only thing that would block it is the file living in a **different tenant or a personal/consumer OneDrive**.
+
+**One decoy to ignore on this machine:**
+- A **"marvin - Personal"** consumer OneDrive holds the R Parry Financial project files — personal (consumer) accounts are **not** reachable by Graph app-only. Don't use it for the workbook.
+- If a **UKG sign-in** prompt ever pops up, ignore/cancel it — that's a stale credential, not the M365 tenant.
+
+Bottom line: keep the workbook in the **InCryptable tenant** ("OneDrive - InCRyptable"), do everything signed in as **`marvin@incryptable.com`**.
+
+---
+
 ## Step 1 — Put the workbook in M365 (company-controlled)
 
 1. Sign in to **office.com** with the company account.
@@ -50,7 +74,15 @@ If either of the first two isn't done, stop — those are the real blockers (M36
 
 ## Step 3 — Find the workbook's drive ID + item ID  → gives 2 values
 
-Use **Graph Explorer**: https://developer.microsoft.com/en-us/graph/graph-explorer — sign in with the company account, then run these GET requests (paste in the URL bar, click **Run query**). Copy the `id` from each response.
+**Easiest way (recommended) — the `graph:find` helper.** Once `GRAPH_TENANT_ID`/`CLIENT_ID`/`CLIENT_SECRET` are in `.env.local`, just run:
+```
+npm run graph:find                              # defaults to marvin@incryptable.com : earnedhome/eh_graph_test.xlsx
+npm run graph:find <user@domain> <path/to.xlsx> # for any other file
+npm run graph:find -- --list                    # list the OneDrive root if you're unsure of the path
+```
+It uses the app's own credentials (no Graph Explorer / delegated consent) and prints `GRAPH_WORKBOOK_DRIVE_ID` + `GRAPH_WORKBOOK_ITEM_ID` ready to paste. Skip the manual steps below unless you prefer them.
+
+**Manual way — Graph Explorer**: https://developer.microsoft.com/en-us/graph/graph-explorer — sign in with the company account, then run these GET requests (paste in the URL bar, click **Run query**). Copy the `id` from each response.
 
 **If the workbook is in a SharePoint site "EarnedHome Engine":**
 1. `GET https://graph.microsoft.com/v1.0/sites/{yourtenant}.sharepoint.com:/sites/EarnedHomeEngine`
@@ -60,9 +92,9 @@ Use **Graph Explorer**: https://developer.microsoft.com/en-us/graph/graph-explor
 3. `GET https://graph.microsoft.com/v1.0/drives/{drive-id}/root:/RParry_Pricing_Engine.xlsx`
    → copy the file **`id`** → `GRAPH_WORKBOOK_ITEM_ID`. (If it's in a subfolder: `root:/Folder/RParry_Pricing_Engine.xlsx`.)
 
-**If the workbook is in a service-account OneDrive (user = engine@yourco.com):**
-1. `GET https://graph.microsoft.com/v1.0/users/engine@yourco.com/drive` → **`id`** → `GRAPH_WORKBOOK_DRIVE_ID`.
-2. `GET https://graph.microsoft.com/v1.0/users/engine@yourco.com/drive/root:/RParry_Pricing_Engine.xlsx` → **`id`** → `GRAPH_WORKBOOK_ITEM_ID`.
+**If the workbook is in the `marvin@incryptable.com` OneDrive (the pilot setup):**
+1. `GET https://graph.microsoft.com/v1.0/users/marvin@incryptable.com/drive` → **`id`** → `GRAPH_WORKBOOK_DRIVE_ID`.
+2. `GET https://graph.microsoft.com/v1.0/users/marvin@incryptable.com/drive/root:/eh_graph_test.xlsx` → **`id`** → `GRAPH_WORKBOOK_ITEM_ID`. (Swap the filename for the real workbook later; add `root:/Folder/…` if it's in a subfolder.)
 
 (For the **TEST** workbook, repeat step 3's last query against the TEST filename to get its item id — you'll use that one in staging.)
 
