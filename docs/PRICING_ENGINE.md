@@ -73,10 +73,46 @@ GRAPH_WORKBOOK_ITEM_ID=...
 2. **Open a workbook session:** `POST /drives/{drive}/items/{item}/workbook/createSession` `{ "persistChanges": false }` → use the returned id in the `workbook-session-id` header.
 3. **Write inputs:** for each, `PATCH /workbook/names/{eh_in_x}/range` `{ "values": [[value]] }`.
 4. **Recalc:** `POST /workbook/application/calculate` `{ "calculationType": "Full" }`.
-5. **Read outputs:** `GET /workbook/names/{eh_out_x}/range` → `values`.
+5. **Read outputs:** preferably one call to the output contract tab — `GET /workbook/names/eh_out_block/range` → `values` (see §5a). (Fallback: a per-field `GET /workbook/names/{eh_out_x}/range`, but that's 14+ round-trips per product.)
 6. Map to `PricingQuote`, close the session.
 
 Wrapped with: **input-hash cache** (identical inputs → cached quote, invalidated on the daily rate update), a **per-workbook lock/queue** (serialize writes — see below), **429 retry/backoff**, and timeout/no-qualify handling. If 4 products run per quote, that's 4 passes (see Field_Mapping_v3 Q-A).
+
+---
+
+## 5a. Output contract tab — read all outputs in ONE Graph call (latency)
+
+**Why:** step 5 above, done naïvely, is one `GET /workbook/names/{eh_out_x}/range` **per field** — 14+ network round-trips per product. Instead, collect every output on a **single dedicated tab** and read the whole block in **one** call. Fewer round-trips = lower latency and far less Graph throttling. It also **decouples the app from Richard's layout**: if he rearranges his worksheet, he fixes the references on this tab only — the app, the API, and the named ranges never change. This tab becomes the literal contract and, later, the exact spec for the `code`-engine rewrite.
+
+**How Richard builds it (one-time, ~15 min):**
+1. Add a worksheet named **`EH_Outputs`**.
+2. In a **contiguous block**, put one row per output field, each cell a **reference** to the engine cell — never retyped numbers. For the current-scenario layout:
+   ```
+        A (label)                 B (value)
+   1    rate                      ='RParry Pricing Worksheet'!H21
+   2    apr                       ='RParry Pricing Worksheet'!N21
+   3    principalAndInterest      ='RParry Pricing Worksheet'!M23
+   4    mortgageInsurance         ='RParry Pricing Worksheet'!M24
+   5    taxes                     ='RParry Pricing Worksheet'!M25
+   6    insurance                 ='RParry Pricing Worksheet'!M26
+   7    totalPayment              ='RParry Pricing Worksheet'!K28
+   8    cashToClose               ='RParry Pricing Worksheet'!P35
+   9    ratesAsOf                 ='RParry Pricing Worksheet'!Z4
+   ```
+3. Select the **value column block** (`B1:B9`) and name it **`eh_out_block`** (Name Box → type it → Enter). That single named range is what the app reads.
+4. (Optional) also name each value cell `eh_out_rate`, `eh_out_apr`, … if you prefer per-field names too; the block read is what matters for speed.
+
+**How the app reads it:** one call —
+```
+GET /workbook/names/eh_out_block/range?$select=values
+```
+returns the whole column of values in a single response; the adapter maps them by row order to `PricingQuote`.
+
+**Per-product model (with the "show max 2" rule).** Because the engine computes **one product at a time** (toggle `C109` + `X8`), `EH_Outputs` reflects whichever product is currently selected. So each product pass = set switches → recalc → **one** `eh_out_block` read. With the latency rule that's: pass 1 (30-yr Fixed) → read; pass 2 (30-yr FHA) → read; 15-yr only on demand. Two small reads instead of ~28 named-range GETs.
+
+> If Richard instead builds **four product columns** on `EH_Outputs` (each column referencing a fully-replicated calc), the app can read all four products in a single pass — 1 recalc, 1 read. More setup for him; best latency. Either way the app still **shows** only 2 at a time per the §0a rule.
+
+**Caveats:** the tab recalculates automatically (same workbook). Guard against `#N/A` propagation — if the engine goes out-of-grid, those cells error, so the adapter must detect a non-numeric value in the block and treat the product as "not available" rather than displaying an error.
 
 ---
 
