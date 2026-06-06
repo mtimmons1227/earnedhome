@@ -18,6 +18,22 @@ Swapping engines is a config flip (`PRICING_ADAPTER`) + a new adapter file. **Th
 
 ---
 
+## 0a. Latency is a first-class design constraint (Phase 1A goes live on Graph)
+
+**Phase 1A launches in production on the `graph` adapter** — real buyers, driving Richard's real workbook. That is the intended pilot. It is appropriate for pilot volume (3 builders / ~100 customers) but it is also the **slower** of the engine options: every product = token → workbook session → write inputs → recalc → read outputs, and concurrent buyers are **serialized** by a lock on the single workbook. So latency must be designed against at every step, not treated as an afterthought.
+
+**Hard rules to keep round-trips down (decided with Marvin, June 6):**
+- **Never compute or show more than 2 products at a time.** Default view = **30-yr Fixed + 30-yr FHA** (`X8=1`; `C109=1` and `C109=3`) → **2 recalcs**. The 15-yr pair is computed **only if the buyer toggles to it** (`X8=2`) → 2 more recalcs, on demand. Four-at-once is forbidden.
+- **Cache aggressively**, keyed on `(inputs + product + rate_version)`. Toggling 30↔15 after the first compute must be instant (cache hit, no Graph call).
+- **Pin the rate version** captured on the first quote and reuse it for any later 15-yr pass, so a mid-session rate tick can't show two different "rates as of."
+- **Read outputs in one shot** from a dedicated output/contract tab (one range GET), not 20+ individual named-range reads.
+- **One recalc beats four:** if/when Richard builds an all-products-at-once layout, prefer it — but the 2-products-max display rule still stands for the buyer view.
+- Treat the per-quote **round-trip budget** as a tracked number. If it creeps up under real load (Graph `429`s, lock waits), that is the signal to begin the `code` engine migration — not to add more workbook calls.
+
+**Bottom line:** ship 1A on Graph, but every engine decision is made to minimize Graph round-trips, and the `code`-engine swap (zero front-end change) stays ready for when volume outgrows a single workbook.
+
+---
+
 ## 1. Phase 1A — store the workbook (Microsoft 365)
 
 Graph's Excel API only drives workbooks in **Microsoft 365 (work/school)** — SharePoint or OneDrive for Business. Not a local file, not personal/consumer OneDrive, not Google Drive.
