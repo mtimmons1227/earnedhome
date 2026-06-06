@@ -35,28 +35,36 @@ export default async function DashboardPage() {
   const { data: tenant } = await supabase
     .from("tenants").select("name").eq("id", appUser.tenant_id).maybeSingle();
 
-  // RLS scopes both of these to the signed-in user's tenant automatically.
+  // RLS scopes leads + the embedded quote to the signed-in user's tenant.
   const { data: leads } = await supabase
     .from("leads")
-    .select("id, full_name, email, phone, status, consent_tcpa, created_at, routed_to, quote_id")
+    .select(
+      "id, full_name, email, phone, status, consent_tcpa, consent_text, consent_at, source, notes, created_at, quotes ( inputs, outputs, rates_as_of )",
+    )
     .order("created_at", { ascending: false });
 
   const { count: quotesRun } = await supabase
     .from("events").select("*", { count: "exact", head: true }).eq("type", "quote_created");
 
-  const rows = (leads ?? []) as LeadRow[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows: LeadRow[] = ((leads ?? []) as any[]).map((l) => ({
+    id: l.id, full_name: l.full_name, email: l.email, phone: l.phone,
+    status: l.status, consent_tcpa: l.consent_tcpa, consent_text: l.consent_text,
+    consent_at: l.consent_at, source: l.source, notes: l.notes, created_at: l.created_at,
+    quote: Array.isArray(l.quotes) ? (l.quotes[0] ?? null) : (l.quotes ?? null),
+  }));
+
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const leadsThisWeek = rows.filter((l) => new Date(l.created_at).getTime() >= weekAgo).length;
   const newLeads = rows.filter((l) => l.status === "new").length;
+  const conversion = (quotesRun ?? 0) > 0 ? Math.round((rows.length / (quotesRun ?? 1)) * 100) : 0;
 
   return (
     <div>
       <header className="eh-header" style={{ justifyContent: "space-between" }}>
         <div>
           <div className="eh-brand">{tenant?.name ?? "EarnedHome"} — Leads</div>
-          <div className="eh-tag">
-            {appUser.full_name ?? user.email} · {appUser.role}
-          </div>
+          <div className="eh-tag">{appUser.full_name ?? user.email} · {appUser.role}</div>
         </div>
         <form action="/auth/signout" method="post">
           <button type="submit" style={{ background: "transparent", color: "#fff",
@@ -66,12 +74,13 @@ export default async function DashboardPage() {
       </header>
 
       <main>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
           gap: 12, marginBottom: 16 }}>
-          <Metric label="Total leads" value={rows.length} />
-          <Metric label="New (unworked)" value={newLeads} />
-          <Metric label="Leads this week" value={leadsThisWeek} />
-          <Metric label="Quotes run" value={quotesRun ?? 0} />
+          <Metric label="Total leads" value={String(rows.length)} />
+          <Metric label="New (unworked)" value={String(newLeads)} />
+          <Metric label="Leads this week" value={String(leadsThisWeek)} />
+          <Metric label="Quotes run" value={String(quotesRun ?? 0)} />
+          <Metric label="Quote → lead" value={`${conversion}%`} />
         </div>
         <LeadsTable initialLeads={rows} />
       </main>
@@ -79,7 +88,7 @@ export default async function DashboardPage() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ background: "var(--card)", border: "1px solid var(--line)",
       borderRadius: 10, padding: "12px 14px" }}>

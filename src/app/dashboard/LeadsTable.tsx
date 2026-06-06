@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
+import type { PricingQuote } from "@/lib/pricing/types";
 
 export type LeadStatus = "new" | "contacted" | "working" | "closed" | "lost";
 export interface LeadRow {
@@ -10,75 +11,162 @@ export interface LeadRow {
   phone: string | null;
   status: LeadStatus;
   consent_tcpa: boolean;
+  consent_text: string | null;
+  consent_at: string | null;
+  source: string | null;
+  notes: string | null;
   created_at: string;
-  routed_to: string | null;
-  quote_id: string | null;
+  quote: { inputs: Record<string, unknown> | null; outputs: PricingQuote | null; rates_as_of: string | null } | null;
 }
 
 const STATUSES: LeadStatus[] = ["new", "contacted", "working", "closed", "lost"];
+const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 
 export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
   const [leads, setLeads] = useState<LeadRow[]>(initialLeads);
+  const [openId, setOpenId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
+  const [noteMsg, setNoteMsg] = useState<Record<string, string>>({});
 
-  async function changeStatus(id: string, status: LeadStatus) {
-    const prev = leads;
-    setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, status } : l)));
+  async function patch(id: string, body: Record<string, unknown>): Promise<boolean> {
     setSavingId(id);
     try {
-      const res = await fetch("/api/lead/status", {
+      const res = await fetch("/api/lead/update", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ leadId: id, status }),
+        body: JSON.stringify({ leadId: id, ...body }),
       });
-      if (!res.ok) throw new Error();
+      return res.ok;
     } catch {
-      setLeads(prev); // revert on failure
+      return false;
     } finally {
       setSavingId(null);
     }
   }
 
-  if (leads.length === 0) {
-    return (
-      <div className="panel"><div className="empty">No leads yet. They&apos;ll appear here as buyers connect.</div></div>
-    );
+  async function changeStatus(id: string, status: LeadStatus) {
+    const prev = leads;
+    setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, status } : l)));
+    if (!(await patch(id, { status }))) setLeads(prev);
   }
+
+  async function saveNote(id: string) {
+    const notes = noteDraft[id] ?? "";
+    const ok = await patch(id, { notes });
+    if (ok) {
+      setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, notes } : l)));
+      setNoteMsg((m) => ({ ...m, [id]: "Saved" }));
+    } else {
+      setNoteMsg((m) => ({ ...m, [id]: "Couldn't save" }));
+    }
+    setTimeout(() => setNoteMsg((m) => ({ ...m, [id]: "" })), 2500);
+  }
+
+  if (leads.length === 0) {
+    return <div className="panel"><div className="empty">No leads yet. They&apos;ll appear here as buyers connect.</div></div>;
+  }
+
+  const th = { padding: "8px 10px" } as const;
 
   return (
     <div className="panel" style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
         <thead>
           <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
-            <th style={{ padding: "8px 10px" }}>Date</th>
-            <th style={{ padding: "8px 10px" }}>Name</th>
-            <th style={{ padding: "8px 10px" }}>Email</th>
-            <th style={{ padding: "8px 10px" }}>Phone</th>
-            <th style={{ padding: "8px 10px" }}>Consent</th>
-            <th style={{ padding: "8px 10px" }}>Status</th>
+            <th style={{ ...th, width: 24 }}></th>
+            <th style={th}>Date</th><th style={th}>Name</th><th style={th}>Email</th>
+            <th style={th}>Phone</th><th style={th}>Consent</th><th style={th}>Status</th>
           </tr>
         </thead>
         <tbody>
-          {leads.map((l) => (
-            <tr key={l.id} style={{ borderTop: "1px solid var(--line)" }}>
-              <td style={{ padding: "8px 10px", whiteSpace: "nowrap", color: "var(--muted)" }}>
-                {new Date(l.created_at).toLocaleDateString()}
-              </td>
-              <td style={{ padding: "8px 10px", fontWeight: 600 }}>{l.full_name ?? "—"}</td>
-              <td style={{ padding: "8px 10px" }}>{l.email ?? "—"}</td>
-              <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>{l.phone ?? "—"}</td>
-              <td style={{ padding: "8px 10px" }}>{l.consent_tcpa ? "✓" : "—"}</td>
-              <td style={{ padding: "8px 10px" }}>
-                <select value={l.status} disabled={savingId === l.id}
-                  onChange={(e) => changeStatus(l.id, e.target.value as LeadStatus)}
-                  style={{ padding: "6px 8px", fontSize: 13 }}>
-                  {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </td>
-            </tr>
-          ))}
+          {leads.map((l) => {
+            const isOpen = openId === l.id;
+            const q = l.quote?.outputs ?? null;
+            const inp = l.quote?.inputs ?? null;
+            return (
+              <Fragment key={l.id}>
+                <tr style={{ borderTop: "1px solid var(--line)", cursor: "pointer" }}
+                  onClick={() => setOpenId(isOpen ? null : l.id)}>
+                  <td style={{ ...th, color: "var(--muted)" }}>{isOpen ? "▾" : "▸"}</td>
+                  <td style={{ ...th, whiteSpace: "nowrap", color: "var(--muted)" }}>{new Date(l.created_at).toLocaleDateString()}</td>
+                  <td style={{ ...th, fontWeight: 600 }}>{l.full_name ?? "—"}{l.notes ? " 📝" : ""}</td>
+                  <td style={th}>{l.email ?? "—"}</td>
+                  <td style={{ ...th, whiteSpace: "nowrap" }}>{l.phone ?? "—"}</td>
+                  <td style={th}>{l.consent_tcpa ? "✓" : "—"}</td>
+                  <td style={th} onClick={(e) => e.stopPropagation()}>
+                    <select value={l.status} disabled={savingId === l.id}
+                      onChange={(e) => changeStatus(l.id, e.target.value as LeadStatus)}
+                      style={{ padding: "6px 8px", fontSize: 13 }}>
+                      {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </td>
+                </tr>
+                {isOpen && (
+                  <tr>
+                    <td colSpan={7} style={{ padding: 0 }}>
+                      <div style={{ background: "#f7f9fc", border: "1px solid var(--line)", borderRadius: 10, margin: "0 10px 12px", padding: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                        <div>
+                          <div style={{ fontWeight: 700, color: "var(--primary)", marginBottom: 6 }}>Buyer & consent</div>
+                          <Field k="Name" v={l.full_name} /><Field k="Email" v={l.email} /><Field k="Phone" v={l.phone} />
+                          <Field k="Source" v={l.source} />
+                          <Field k="Consent" v={l.consent_tcpa ? "Yes" : "No"} />
+                          {l.consent_at && <Field k="Consent at" v={new Date(l.consent_at).toLocaleString()} />}
+                          {l.consent_text && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6, fontStyle: "italic" }}>&ldquo;{l.consent_text}&rdquo;</div>}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, color: "var(--primary)", marginBottom: 6 }}>Quote the buyer saw</div>
+                          {q ? (
+                            <>
+                              {inp && <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                                Home {money(Number(inp.homePrice ?? 0))} · down {money(Number(inp.downAmount ?? 0))} · {String(inp.creditBand ?? "")} · {String(inp.occupancy ?? "")}
+                              </div>}
+                              {q.products.map((p) => (
+                                <div key={p.product} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "3px 0" }}>
+                                  <span>{p.product} <span style={{ color: "var(--muted)" }}>· {p.rate.toFixed(3)}%</span></span>
+                                  <span style={{ fontWeight: 600 }}>{money(p.totalPayment)}/mo</span>
+                                </div>
+                              ))}
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "6px 0 0", borderTop: "1px dashed var(--line)", marginTop: 4 }}>
+                                <span style={{ color: "var(--muted)" }}>Cash to close</span>
+                                <span style={{ fontWeight: 700, color: "var(--primary)" }}>{money(q.cashToClose)}</span>
+                              </div>
+                              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>Rates as of {l.quote?.rates_as_of ?? q.ratesAsOf}</div>
+                            </>
+                          ) : <div style={{ fontSize: 13, color: "var(--muted)" }}>No quote linked.</div>}
+                        </div>
+                        <div style={{ gridColumn: "1 / -1" }}>
+                          <div style={{ fontWeight: 700, color: "var(--primary)", marginBottom: 6 }}>Notes</div>
+                          <textarea
+                            defaultValue={l.notes ?? ""}
+                            onChange={(e) => setNoteDraft((d) => ({ ...d, [l.id]: e.target.value }))}
+                            placeholder="Add a note about this lead…"
+                            style={{ width: "100%", minHeight: 60, padding: 10, border: "1px solid var(--line)", borderRadius: 8, fontFamily: "inherit", fontSize: 13 }} />
+                          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10 }}>
+                            <button onClick={() => saveNote(l.id)} disabled={savingId === l.id}
+                              style={{ background: "var(--accent)", color: "#fff", border: 0, padding: "8px 14px", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                              {savingId === l.id ? "Saving…" : "Save note"}
+                            </button>
+                            {noteMsg[l.id] && <span style={{ fontSize: 12, color: "var(--muted)" }}>{noteMsg[l.id]}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function Field({ k, v }: { k: string; v: string | null }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "2px 0" }}>
+      <span style={{ color: "var(--muted)" }}>{k}</span><span>{v ?? "—"}</span>
     </div>
   );
 }
