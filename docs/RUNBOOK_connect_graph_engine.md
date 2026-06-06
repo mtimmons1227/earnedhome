@@ -68,6 +68,30 @@ Use **Graph Explorer**: https://developer.microsoft.com/en-us/graph/graph-explor
 
 ---
 
+## Step 3.5 — Infrastructure smoke test (do this BEFORE the full mapping)
+
+This proves the send → recalc → receive pipe works with *any* value, independent of Richard's real cell mapping. Catch wiring problems early.
+
+1. In the TEST workbook, add two named ranges (Name Box → type name → Enter):
+   - `eh_test_in` → any empty cell.
+   - `eh_test_out` → a cell containing the formula `=eh_test_in*2`.
+2. In your local `.env.local`, set the six `GRAPH_*` values (with `GRAPH_WORKBOOK_ITEM_ID` = the TEST workbook).
+3. Run:
+   ```
+   npm run test:graph
+   ```
+   It writes a random number to `eh_test_in`, recalculates, and reads `eh_test_out`. Expected:
+   ```
+   ✓ got app-only token
+   ✓ opened workbook session
+   ✓ wrote 437 to eh_test_in
+   ✓ recalculated
+   ✓ read eh_test_in back = 437   (write+read works)
+   ✓ read eh_test_out = 874
+   ✅ ROUND-TRIP OK ...
+   ```
+   If that passes, the infrastructure is correct — you and Richard then map the real `eh_in_*`/`eh_out_*` names to his cells (Field_Mapping_v3) with confidence. If it fails, see Troubleshooting — fix the pipe before mapping.
+
 ## Step 4 — Put the six values in Netlify (start with TEST)
 
 1. **app.netlify.com** → project **earnedhome** → **Project configuration → Environment variables**.
