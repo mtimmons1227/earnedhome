@@ -1,0 +1,113 @@
+# EarnedHome — Pricing Engine: storage, Graph connection, and scaling
+
+_How the app talks to Richard's pricing workbook today (Phase 1A via Microsoft Graph), and the permanent plan for hundreds of builders / thousands of agents. Last updated June 6, 2026._
+
+---
+
+## 0. The key design decision (read this first)
+
+The app **never** calls Excel or Graph directly. It calls one interface — `PricingAdapter` (`src/lib/pricing/types.ts`) — with a fixed contract of `eh_in_*` inputs and `eh_out_*` outputs:
+
+```
+stub   (now)        illustrative math, instant, local
+graph  (Phase 1A)   drives Richard's live workbook via Microsoft Graph
+code   (at scale)   Richard's math ported to a stateless service
+```
+
+Swapping engines is a config flip (`PRICING_ADAPTER`) + a new adapter file. **The front end, the API, the database, and the buyer/LO experience never change.** This is the whole point: the Graph-workbook approach is a *temporary bridge* for the pilot, and the migration to a scalable engine is built in, not a re-platform.
+
+---
+
+## 1. Phase 1A — store the workbook (Microsoft 365)
+
+Graph's Excel API only drives workbooks in **Microsoft 365 (work/school)** — SharePoint or OneDrive for Business. Not a local file, not personal/consumer OneDrive, not Google Drive.
+
+1. In the **company** M365 tenant (a service account, e.g. `engine@earnedhome.com` — never Richard's personal account), create a SharePoint site, e.g. **"EarnedHome Engine."**
+2. Upload the workbook (with the `eh_in_*` / `eh_out_*` named ranges already created) to its document library, e.g. `/Engine/RParry_Pricing_Engine.xlsx`.
+3. Upload a second **TEST copy** (`RParry_Pricing_Engine_TEST.xlsx`) so staging never touches the live rate sheet.
+4. Add version history / change-control so a bad daily edit can be rolled back.
+
+## 2. Phase 1A — register the Entra (Azure AD) app
+
+1. Entra admin center → **App registrations → New registration** ("EarnedHome Engine"). Record the **Directory (tenant) ID** and **Application (client) ID**.
+2. **Certificates & secrets → New client secret** → copy the value (store server-side only).
+3. **API permissions → Microsoft Graph → Application permissions** → `Files.ReadWrite.All` (or tighter: `Sites.Selected`, then grant the app access to just the Engine site). → **Grant admin consent.**
+
+## 3. Phase 1A — find the drive ID + item ID (one time)
+
+Using Graph Explorer or a script (app token):
+- Site id: `GET /sites/{host}:/sites/EarnedHomeEngine`
+- Drive id: `GET /sites/{site-id}/drives` → the doc library's `id`
+- Item id: `GET /drives/{drive-id}/root:/Engine/RParry_Pricing_Engine.xlsx`
+
+## 4. Phase 1A — server env vars
+
+```
+PRICING_ADAPTER=graph
+GRAPH_TENANT_ID=...
+GRAPH_CLIENT_ID=...
+GRAPH_CLIENT_SECRET=...        # secret — server only, never NEXT_PUBLIC_
+GRAPH_WORKBOOK_DRIVE_ID=...
+GRAPH_WORKBOOK_ITEM_ID=...
+```
+
+## 5. Phase 1A — connection flow (what `graphAdapter` does per quote)
+
+1. Acquire an **app-only token** (client-credentials, scope `https://graph.microsoft.com/.default`); cache until expiry.
+2. **Open a workbook session:** `POST /drives/{drive}/items/{item}/workbook/createSession` `{ "persistChanges": false }` → use the returned id in the `workbook-session-id` header.
+3. **Write inputs:** for each, `PATCH /workbook/names/{eh_in_x}/range` `{ "values": [[value]] }`.
+4. **Recalc:** `POST /workbook/application/calculate` `{ "calculationType": "Full" }`.
+5. **Read outputs:** `GET /workbook/names/{eh_out_x}/range` → `values`.
+6. Map to `PricingQuote`, close the session.
+
+Wrapped with: **input-hash cache** (identical inputs → cached quote, invalidated on the daily rate update), a **per-workbook lock/queue** (serialize writes — see below), **429 retry/backoff**, and timeout/no-qualify handling. If 4 products run per quote, that's 4 passes (see Field_Mapping_v3 Q-A).
+
+---
+
+## 6. Why this does NOT scale — and the capacity ceiling
+
+The Graph-workbook approach is correct for the **pilot** (R Parry + a few builders, low concurrency). It will **not** serve hundreds of builders and thousands of agents with good latency. The hard limits:
+
+- **One shared workbook is single-threaded.** Two buyers can't write `eh_in_homePrice` at the same time without clobbering each other's calc. So every quote must take a **lock and run one at a time.**
+- **Each quote is slow.** Open session + PATCH inputs + full recalc + GET outputs = several network round-trips to Microsoft ≈ **1–5 seconds**, ×4 if computing four products. Serialized, that caps real throughput at roughly **tens of quotes per minute** — fine for a pilot, nowhere near thousands of concurrent users.
+- **Graph throttling.** Microsoft enforces per-app/per-tenant request limits; high volume returns **429s**.
+- **Single point of failure.** One locked/edited/corrupted workbook stalls everyone.
+
+This was called out as the **#1 engine risk** in the implementation plan from the start. The mitigations (cache + lock) buy headroom for the pilot; they do not change the ceiling.
+
+---
+
+## 7. The permanent solution (scale to 100s of builders / 1000s of agents)
+
+**Port Richard's math into a stateless code pricing service**, behind the *same* `PricingAdapter` interface.
+
+- **Stateless + pure:** given inputs, compute outputs in-process in **milliseconds**, no shared resource, no lock. Every serverless/edge instance computes independently → **horizontal scale to effectively unlimited concurrency.**
+- **Rates stay Richard's job.** He keeps maintaining the workbook (LLPAs, FHA/VA/Jumbo grids, rate ladder, fee stack). A **rate sync job** extracts those tables into a database (Postgres/Redis). The code engine reads the synced numbers — so the source of truth is still his Excel, but buyers are served by fast code, not by hitting the workbook live.
+
+#### Intraday rate updates (rates reprice more than once a day)
+
+"Daily" is just a floor — mortgage rates reprice during the day, so the sync is **event-driven, not time-based**:
+- **Trigger on change:** a Microsoft Graph change-notification (webhook) on the workbook fires the moment Richard saves; or a lightweight poll (every few minutes) checks a "rates-as-of" cell and re-syncs only when it changed; plus a manual **"Publish rates"** action for Richard after a reprice.
+- **Versioned store:** each sync writes a new **rate version** (timestamped) into the rate data store.
+- **Cache keyed on `inputs + rate_version`:** publishing a new version instantly invalidates every old cached quote — no stale numbers, no manual cache clearing.
+- **Audit:** every quote and lead is stamped with `rates_as_of`, so there's always a record of exactly which rate sheet a buyer saw (compliance).
+
+Note: in the **Graph pilot** this is moot — the `graph` adapter reads the live workbook on every quote, so reprices are always reflected immediately (the pilot trades scale for always-fresh). The sync/versioning above applies to the **code engine** phase, where serving is decoupled from Excel.
+- **Correctness guarantee:** the calc-validation harness (WBS #26) runs the code engine against known-good workbook outputs so the port matches Richard's numbers to the penny before it goes live.
+
+### Latency / throughput strategy at scale
+
+- **Compute:** code engine in-process (or at the edge) → ms-level, no lock, scales with traffic.
+- **Cache:** input-hash cache (Redis) keyed on `inputs + rate_version` so repeat/near-identical quotes are instant; invalidated automatically whenever a new rate version publishes (each reprice).
+- **Data:** per-tenant rate/LLPA tables in Postgres (indexed) or Redis; daily refresh job.
+- **App tier:** stateless serverless functions scale horizontally; SSR + CDN caching for listing pages; Supabase connection pooling (pgBouncer) and read replicas for dashboard reads as agent count grows.
+- **Multi-tenant isolation** (RLS + `tenant_id`) already supports this volume — adding builders/agents is data, not infrastructure (see ARCHITECTURE.md).
+
+### Migration path (no re-platform, zero front-end change)
+
+```
+Phase 1A  : PRICING_ADAPTER=stub   ──►  =graph (live workbook, pilot volume)
+Phase 1B/2: PRICING_ADAPTER=code   ──►  ported engine + daily rate sync (scale)
+```
+
+Because everything sits behind `PricingAdapter`, going from the pilot engine to the scale engine is implementing one new adapter file and flipping an env var. The graph adapter is the bridge that lets you launch revenue now without waiting on the code port.

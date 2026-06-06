@@ -1,28 +1,188 @@
-import type { PricingAdapter, PricingInput, PricingQuote } from "./types";
+import type {
+  PricingAdapter, PricingInput, PricingProduct, PricingQuote, ProductName,
+} from "./types";
 
 /**
- * Phase 1A.2 — Microsoft Graph (Excel) adapter.
+ * Phase 1A.2 — Microsoft Graph (Excel) pricing adapter.
  *
- * Implementation plan (WBS #21–27):
- *   1. Acquire app-only token (Entra client-credentials: GRAPH_* env vars).
- *   2. Open a workbook session on the COMPANY-controlled workbook
- *      (GRAPH_WORKBOOK_DRIVE_ID / GRAPH_WORKBOOK_ITEM_ID) — never Richard's
- *      personal OneDrive.
- *   3. Acquire the per-workbook lock (serialize writes — single calc surface).
- *   4. PATCH the eh_in_* named ranges with this input set.
- *   5. Trigger recalc; read the eh_out_* named ranges.
- *   6. Close the session, release the lock, map cells -> PricingQuote.
- *   Cache by input hash; invalidate on the daily rate update.
+ * Drives Richard's workbook (hosted in company M365 SharePoint/OneDrive) by the
+ * eh_in_* / eh_out_* NAMED RANGES from Field_Mapping_v3 — never by cell address.
+ * Activated by PRICING_ADAPTER=graph + the GRAPH_* env vars; otherwise the app
+ * uses the stub. See docs/PRICING_ENGINE.md.
  *
- * Blocked until: workbook moved to controlled SharePoint/OneDrive (WBS #20),
- * named-range cell map delivered by Richard (WBS #22), Entra app registered (#4).
+ * ASSUMPTION (Field_Mapping_v3 Q-A): the workbook exposes all four product output
+ * blocks at once (eh_out_fixed30_*, eh_out_fha30_*, eh_out_fixed15_*, eh_out_fha15_*),
+ * so one recalc yields every card. If Richard instead computes one product at a time,
+ * switch readProducts() to four passes (set a product/term selector, recalc, read 7).
  */
+
+const GRAPH = "https://graph.microsoft.com/v1.0";
+const LOGIN = "https://login.microsoftonline.com";
+
+function env(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing required env var: ${name}`);
+  return v;
+}
+function workbookBase(): string {
+  return `${GRAPH}/drives/${env("GRAPH_WORKBOOK_DRIVE_ID")}/items/${env("GRAPH_WORKBOOK_ITEM_ID")}/workbook`;
+}
+
+// ---- app-only token (client credentials), cached until ~1 min before expiry ----
+let tokenCache: { token: string; exp: number } | null = null;
+async function getToken(): Promise<string> {
+  if (tokenCache && Date.now() < tokenCache.exp - 60_000) return tokenCache.token;
+  const body = new URLSearchParams({
+    client_id: env("GRAPH_CLIENT_ID"),
+    client_secret: env("GRAPH_CLIENT_SECRET"),
+    scope: "https://graph.microsoft.com/.default",
+    grant_type: "client_credentials",
+  });
+  const res = await fetch(`${LOGIN}/${env("GRAPH_TENANT_ID")}/oauth2/v2.0/token`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  if (!res.ok) throw new Error(`Graph token request failed: ${res.status}`);
+  const j = (await res.json()) as { access_token: string; expires_in: number };
+  tokenCache = { token: j.access_token, exp: Date.now() + j.expires_in * 1000 };
+  return j.access_token;
+}
+
+// ---- Graph fetch with session header + 429/503 backoff ----
+async function gfetch(url: string, init: RequestInit, session?: string): Promise<Response> {
+  const token = await getToken();
+  const headers: Record<string, string> = {
+    authorization: `Bearer ${token}`,
+    "content-type": "application/json",
+    ...((init.headers as Record<string, string>) ?? {}),
+  };
+  if (session) headers["workbook-session-id"] = session;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(url, { ...init, headers });
+    if (res.status !== 429 && res.status !== 503) return res;
+    const wait = Number(res.headers.get("retry-after") ?? attempt + 1) * 1000;
+    await new Promise((r) => setTimeout(r, wait));
+  }
+  return fetch(url, { ...init, headers });
+}
+
+async function createSession(): Promise<string> {
+  const res = await gfetch(`${workbookBase()}/createSession`, {
+    method: "POST",
+    body: JSON.stringify({ persistChanges: false }),
+  });
+  if (!res.ok) throw new Error(`createSession failed: ${res.status}`);
+  return ((await res.json()) as { id: string }).id;
+}
+async function closeSession(session: string): Promise<void> {
+  try {
+    await gfetch(`${workbookBase()}/closeSession`, { method: "POST" }, session);
+  } catch {
+    /* best-effort */
+  }
+}
+async function setRange(name: string, value: string | number | boolean, session: string): Promise<void> {
+  const res = await gfetch(`${workbookBase()}/names/${name}/range`, {
+    method: "PATCH",
+    body: JSON.stringify({ values: [[value]] }),
+  }, session);
+  if (!res.ok) throw new Error(`write ${name} failed: ${res.status}`);
+}
+async function recalc(session: string): Promise<void> {
+  const res = await gfetch(`${workbookBase()}/application/calculate`, {
+    method: "POST",
+    body: JSON.stringify({ calculationType: "Full" }),
+  }, session);
+  if (!res.ok) throw new Error(`recalc failed: ${res.status}`);
+}
+async function getRange(name: string, session: string): Promise<unknown> {
+  const res = await gfetch(`${workbookBase()}/names/${name}/range?$select=values`, { method: "GET" }, session);
+  if (!res.ok) throw new Error(`read ${name} failed: ${res.status}`);
+  const j = (await res.json()) as { values?: unknown[][] };
+  return j.values?.[0]?.[0];
+}
+const num = (v: unknown): number =>
+  typeof v === "number" ? v : Number(String(v ?? "").replace(/[^0-9.\-]/g, "")) || 0;
+
+// ---- serialize access to the single shared workbook (concurrency lock) ----
+let lockChain: Promise<unknown> = Promise.resolve();
+function withLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = lockChain.then(fn, fn);
+  lockChain = run.then(() => undefined, () => undefined);
+  return run;
+}
+
+// ---- short input-hash cache (TTL) — replace with Redis keyed on inputs+rateVersion at scale ----
+const cache = new Map<string, { q: PricingQuote; exp: number }>();
+const TTL_MS = 5 * 60 * 1000;
+
+const PRODUCTS: { name: ProductName; term: 15 | 30; fha: boolean; prefix: string }[] = [
+  { name: "30-yr Fixed", term: 30, fha: false, prefix: "fixed30" },
+  { name: "30-yr FHA", term: 30, fha: true, prefix: "fha30" },
+  { name: "15-yr Fixed", term: 15, fha: false, prefix: "fixed15" },
+  { name: "15-yr FHA", term: 15, fha: true, prefix: "fha15" },
+];
+
 export const graphAdapter: PricingAdapter = {
   name: "graph",
-  async quote(_input: PricingInput): Promise<PricingQuote> {
-    throw new Error(
-      "Graph pricing adapter not yet implemented (Phase 1A.2). " +
-        "Set PRICING_ADAPTER=stub until the live workbook is wired.",
-    );
+  async quote(input: PricingInput): Promise<PricingQuote> {
+    const cacheKey = JSON.stringify(input);
+    const hit = cache.get(cacheKey);
+    if (hit && Date.now() < hit.exp) return hit.q;
+
+    const quote = await withLock<PricingQuote>(async () => {
+      const session = await createSession();
+      try {
+        // Write the 9 inputs (eh_in_* — Field_Mapping_v3 Input Mapping).
+        await setRange("eh_in_homePrice", input.homePrice, session);
+        await setRange("eh_in_downAmt", input.downAmount, session);
+        await setRange("eh_in_downPct", input.downPct, session);
+        await setRange("eh_in_creditBand", input.creditBand, session);
+        await setRange("eh_in_occupancy", input.occupancy, session);
+        await setRange("eh_in_sellerCredit", input.sellerCredit, session);
+        await setRange("eh_in_buydown", input.buydown, session);
+        await setRange("eh_in_veteran", input.veteran, session);
+        await setRange("eh_in_firstTime", input.firstTime, session);
+        await recalc(session);
+
+        // Read all four product blocks (eh_out_<prefix>_*).
+        const products: PricingProduct[] = [];
+        for (const p of PRODUCTS) {
+          products.push({
+            product: p.name,
+            termYears: p.term,
+            isFha: p.fha,
+            rate: num(await getRange(`eh_out_${p.prefix}_rate`, session)),
+            apr: num(await getRange(`eh_out_${p.prefix}_apr`, session)),
+            principalAndInterest: Math.round(num(await getRange(`eh_out_${p.prefix}_pi`, session))),
+            taxes: Math.round(num(await getRange(`eh_out_${p.prefix}_taxes`, session))),
+            insurance: Math.round(num(await getRange(`eh_out_${p.prefix}_ins`, session))),
+            mortgageInsurance: Math.round(num(await getRange(`eh_out_${p.prefix}_mi`, session))),
+            totalPayment: Math.round(num(await getRange(`eh_out_${p.prefix}_total`, session))),
+          });
+        }
+
+        const cashToClose = Math.round(num(await getRange("eh_out_cashToClose", session)));
+        const ratesAsOfRaw = await getRange("eh_out_ratesAsOf", session);
+        const ratesAsOf = ratesAsOfRaw ? String(ratesAsOfRaw) : new Date().toISOString().slice(0, 10);
+
+        return {
+          engine: "graph",
+          ratesAsOf,
+          cashToClose,
+          products,
+          disclosures: [
+            "Rates and APR shown are estimates for comparison only and are not a Loan Estimate, commitment, or offer to lend.",
+            "Payments include estimated taxes and insurance; mortgage insurance shown when applicable. Subject to credit approval.",
+          ],
+        } satisfies PricingQuote;
+      } finally {
+        await closeSession(session);
+      }
+    });
+
+    cache.set(cacheKey, { q: quote, exp: Date.now() + TTL_MS });
+    return quote;
   },
 };
