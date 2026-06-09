@@ -1,6 +1,7 @@
 import type {
   PricingAdapter, PricingInput, PricingProduct, PricingQuote, ProductName,
 } from "./types";
+import { RPARRY_DISCLOSURES } from "./disclosures";
 
 /**
  * Phase 1A.2 — Microsoft Graph (Excel) pricing adapter.
@@ -172,10 +173,7 @@ export const graphAdapter: PricingAdapter = {
           ratesAsOf,
           cashToClose,
           products,
-          disclosures: [
-            "Rates and APR shown are estimates for comparison only and are not a Loan Estimate, commitment, or offer to lend.",
-            "Payments include estimated taxes and insurance; mortgage insurance shown when applicable. Subject to credit approval.",
-          ],
+          disclosures: [...RPARRY_DISCLOSURES],
         } satisfies PricingQuote;
       } finally {
         await closeSession(session);

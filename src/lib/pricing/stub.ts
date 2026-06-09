@@ -1,6 +1,7 @@
 import type {
   PricingAdapter, PricingInput, PricingProduct, PricingQuote, ProductName,
 } from "./types";
+import { RPARRY_DISCLOSURES } from "./disclosures";
 
 const CREDIT_ADJ: Record<string, number> = {
   "780+": -0.25, "740–759": 0, "720–739": 0.125, "700–719": 0.25,
@@ -68,10 +69,9 @@ export const stubAdapter: PricingAdapter = {
         build("15-yr FHA", 5.625, 15, true),
       ],
       disclosures: [
-        "Rates and APR shown are illustrative estimates for comparison only and are not a Loan Estimate, commitment, or offer to lend.",
-        "APR assumes financed closing costs; actual APR depends on final fees. Seller credit of " +
-          money(inp.sellerCredit) + " is applied to cash to close.",
-        "Payments include estimated taxes and insurance; mortgage insurance shown when down payment is under 20% or for FHA. Subject to credit approval.",
+        ...RPARRY_DISCLOSURES,
+        "For this estimate, a seller credit of " + money(inp.sellerCredit) +
+          " is applied to cash to close.",
       ],
     };
   },
