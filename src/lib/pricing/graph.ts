@@ -1,5 +1,6 @@
 import type {
   PricingAdapter, PricingInput, PricingProduct, PricingQuote, ProductName,
+  CreditBand, Occupancy,
 } from "./types";
 import { RPARRY_DISCLOSURES } from "./disclosures";
 
@@ -118,12 +119,24 @@ function withLock<T>(fn: () => Promise<T>): Promise<T> {
 const cache = new Map<string, { q: PricingQuote; exp: number }>();
 const TTL_MS = 5 * 60 * 1000;
 
-const PRODUCTS: { name: ProductName; term: 15 | 30; fha: boolean; prefix: string }[] = [
-  { name: "30-yr Fixed", term: 30, fha: false, prefix: "fixed30" },
-  { name: "30-yr FHA", term: 30, fha: true, prefix: "fha30" },
-  { name: "15-yr Fixed", term: 15, fha: false, prefix: "fixed15" },
-  { name: "15-yr FHA", term: 15, fha: true, prefix: "fha15" },
+const PRODUCTS: { name: ProductName; term: 15 | 30; fha: boolean; va: boolean; prefix: string }[] = [
+  { name: "30-yr Fixed", term: 30, fha: false, va: false, prefix: "fixed30" },
+  { name: "30-yr FHA", term: 30, fha: true, va: false, prefix: "fha30" },
+  { name: "15-yr Fixed", term: 15, fha: false, va: false, prefix: "fixed15" },
+  { name: "15-yr FHA", term: 15, fha: true, va: false, prefix: "fha15" },
+  { name: "30-yr VA", term: 30, fha: false, va: true, prefix: "va30" },
+  { name: "15-yr VA", term: 15, fha: false, va: true, prefix: "va15" },
 ];
+
+// RateStream drives credit & occupancy by INDEX via Form-Control linked cells on the
+// Engine sheet (eh_in_creditBand=Engine!H22, eh_in_occupancy=Engine!F16).
+const CREDIT_INDEX: Record<CreditBand, number> = {
+  "620–639": 1, "640–659": 2, "660–679": 3, "680–699": 4,
+  "700–719": 5, "720–739": 6, "740–759": 7, "760–779": 8, "780+": 9,
+};
+const OCCUPANCY_INDEX: Record<Occupancy, number> = {
+  "Primary": 1, "Second Home": 2, "Investment": 3,
+};
 
 export const graphAdapter: PricingAdapter = {
   name: "graph",
@@ -135,16 +148,20 @@ export const graphAdapter: PricingAdapter = {
     const quote = await withLock<PricingQuote>(async () => {
       const session = await createSession();
       try {
-        // Write the 9 inputs (eh_in_* — Field_Mapping_v3 Input Mapping).
+        // Write the 7 inputs (eh_in_*). Plain Front cells: price, down %, seller credit.
+        // Engine-sheet Form-Control linked cells: credit & occupancy as INDEX, veteran/
+        // firstTime as TRUE/FALSE. Down Payment is computed in-sheet from Down %, so we
+        // drive Down % only. Buydown is fixed (None) in 1A and not sent.
         await setRange("eh_in_homePrice", input.homePrice, session);
-        await setRange("eh_in_downAmt", input.downAmount, session);
         await setRange("eh_in_downPct", input.downPct, session);
-        await setRange("eh_in_creditBand", input.creditBand, session);
-        await setRange("eh_in_occupancy", input.occupancy, session);
         await setRange("eh_in_sellerCredit", input.sellerCredit, session);
-        await setRange("eh_in_buydown", input.buydown, session);
+        await setRange("eh_in_creditBand", CREDIT_INDEX[input.creditBand], session);
+        await setRange("eh_in_occupancy", OCCUPANCY_INDEX[input.occupancy], session);
         await setRange("eh_in_veteran", input.veteran, session);
         await setRange("eh_in_firstTime", input.firstTime, session);
+        await setRange("eh_in_vaPriorLoan", input.vaPriorLoan, session);
+        await setRange("eh_in_vaDisability", input.vaDisability, session);
+        await setRange("eh_in_vaFundingFee", input.vaFundingFee, session);
         await recalc(session);
 
         // Read all four product blocks (eh_out_<prefix>_*).
@@ -154,12 +171,14 @@ export const graphAdapter: PricingAdapter = {
             product: p.name,
             termYears: p.term,
             isFha: p.fha,
-            rate: num(await getRange(`eh_out_${p.prefix}_rate`, session)),
-            apr: num(await getRange(`eh_out_${p.prefix}_apr`, session)),
+            isVa: p.va,
+            // RateStream stores rate/APR as decimals (0.0625); the UI shows percent.
+            rate: num(await getRange(`eh_out_${p.prefix}_rate`, session)) * 100,
+            apr: num(await getRange(`eh_out_${p.prefix}_apr`, session)) * 100,
             principalAndInterest: Math.round(num(await getRange(`eh_out_${p.prefix}_pi`, session))),
             taxes: Math.round(num(await getRange(`eh_out_${p.prefix}_taxes`, session))),
             insurance: Math.round(num(await getRange(`eh_out_${p.prefix}_ins`, session))),
-            mortgageInsurance: Math.round(num(await getRange(`eh_out_${p.prefix}_mi`, session))),
+            mortgageInsurance: p.va ? 0 : Math.round(num(await getRange(`eh_out_${p.prefix}_mi`, session))),
             totalPayment: Math.round(num(await getRange(`eh_out_${p.prefix}_total`, session))),
           });
         }

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type {
   CreditBand, Occupancy, Buydown, PricingInput, PricingQuote, PricingProduct,
 } from "@/lib/pricing/types";
+import { evaluateEligibility } from "@/lib/eligibility";
 
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const parseNum = (s: string) => +String(s).replace(/[^0-9.]/g, "") || 0;
@@ -13,7 +14,8 @@ const groupInt = (s: string) => {
 };
 
 const CREDIT_BANDS: CreditBand[] = [
-  "780+", "740–759", "720–739", "700–719", "680–699", "660–679", "640–659",
+  "780+", "760–779", "740–759", "720–739", "700–719",
+  "680–699", "660–679", "640–659", "620–639",
 ];
 const OCCUPANCIES: Occupancy[] = ["Primary", "Second Home", "Investment"];
 const BUYDOWNS: Buydown[] = ["None", "1-0", "2-1", "3-2-1"];
@@ -35,6 +37,10 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
   const [buydown, setBuydown] = useState<Buydown>("None");
   const [veteran, setVeteran] = useState(false);
   const [firstTime, setFirstTime] = useState(true);
+  // VA-specific inputs — only relevant (and shown) when Military / Veteran is checked.
+  const [vaPriorLoan, setVaPriorLoan] = useState(false);
+  const [vaDisability, setVaDisability] = useState(false);
+  const [vaFundingFee, setVaFundingFee] = useState(true);
 
   // results state
   const [term, setTerm] = useState<15 | 30>(30);
@@ -81,8 +87,10 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
       creditBand, occupancy,
       sellerCredit: parseNum(sellerCredit),
       buydown, veteran, firstTime,
+      vaPriorLoan, vaDisability, vaFundingFee,
     }),
-    [homePrice, downAmt, downPct, creditBand, occupancy, sellerCredit, buydown, veteran, firstTime],
+    [homePrice, downAmt, downPct, creditBand, occupancy, sellerCredit, buydown,
+     veteran, firstTime, vaPriorLoan, vaDisability, vaFundingFee],
   );
 
   function validate(): string[] {
@@ -174,6 +182,15 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
   }
 
   const shown = quote?.products.filter((p) => p.termYears === term) ?? [];
+  // Edit checks: which products qualify (loan limits, min down/LTV, min credit) vs route to LO.
+  const elig = quote ? evaluateEligibility(input) : null;
+  const eligibleShown = shown.filter((p) =>
+    (p.isVa ? elig?.va.eligible : p.isFha ? elig?.fha.eligible : elig?.conventional.eligible) ?? true);
+  // VA only appears as a family when the buyer checked Veteran; otherwise it's not "ineligible", just N/A.
+  const ineligible = elig
+    ? [elig.conventional, elig.fha, ...(veteran ? [elig.va] : [])].filter((f) => !f.eligible)
+    : [];
+  const familyLabel = (f: string) => (f === "fha" ? "FHA" : f === "va" ? "VA" : "Conventional");
 
   return (
     <main>
@@ -232,6 +249,17 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
             <label><input type="checkbox" checked={firstTime}
               onChange={(e) => setFirstTime(e.target.checked)} /> First-Time Buyer</label>
           </div>
+          {veteran && (
+            <div className="checks" style={{ marginTop: 10 }}>
+              <div className="hint" style={{ marginBottom: 4 }}>VA loan details</div>
+              <label><input type="checkbox" checked={vaPriorLoan}
+                onChange={(e) => setVaPriorLoan(e.target.checked)} /> Previous VA loan</label>
+              <label><input type="checkbox" checked={vaDisability}
+                onChange={(e) => setVaDisability(e.target.checked)} /> Receiving VA disability</label>
+              <label><input type="checkbox" checked={vaFundingFee}
+                onChange={(e) => setVaFundingFee(e.target.checked)} /> Finance the VA funding fee</label>
+            </div>
+          )}
         </div>
 
         <div id="results">
@@ -260,7 +288,18 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
                 <button className={term === 30 ? "active" : ""} onClick={() => setTerm(30)}>30-Year</button>
                 <button className={term === 15 ? "active" : ""} onClick={() => setTerm(15)}>15-Year</button>
               </div>
-              <div className="cards">{shown.map((p) => <Card key={p.product} p={p} />)}</div>
+              {elig?.routeMessage ? (
+                <div className="flag" style={{ marginBottom: 0 }}>{elig.routeMessage}</div>
+              ) : (
+                <>
+                  <div className="cards">{eligibleShown.map((p) => <Card key={p.product} p={p} />)}</div>
+                  {ineligible.map((f) => (
+                    <div className="hint" key={f.family} style={{ marginTop: 8 }}>
+                      {familyLabel(f.family)} — {f.reason}
+                    </div>
+                  ))}
+                </>
+              )}
               <div className="ctc">
                 <span className="l">Estimated Cash to Close</span>
                 <span className="n">{money(quote.cashToClose)}</span>

@@ -4,8 +4,8 @@ import type {
 import { RPARRY_DISCLOSURES } from "./disclosures";
 
 const CREDIT_ADJ: Record<string, number> = {
-  "780+": -0.25, "740–759": 0, "720–739": 0.125, "700–719": 0.25,
-  "680–699": 0.45, "660–679": 0.65, "640–659": 0.95,
+  "780+": -0.25, "760–779": -0.125, "740–759": 0, "720–739": 0.125, "700–719": 0.25,
+  "680–699": 0.45, "660–679": 0.65, "640–659": 0.95, "620–639": 1.25,
 };
 const OCC_ADJ: Record<string, number> = {
   "Primary": 0, "Second Home": 0.25, "Investment": 0.625,
@@ -32,7 +32,7 @@ export const stubAdapter: PricingAdapter = {
     const insurance = Math.max(95, (inp.homePrice * 0.0035) / 12);
 
     const build = (
-      product: ProductName, baseRate: number, termYears: 15 | 30, isFha: boolean,
+      product: ProductName, baseRate: number, termYears: 15 | 30, isFha: boolean, isVa = false,
     ): PricingProduct => {
       const rate = +(baseRate + ca).toFixed(3);
       const loan = inp.homePrice - inp.downAmount;
@@ -41,10 +41,12 @@ export const stubAdapter: PricingAdapter = {
       const pi = loan * mr / (1 - Math.pow(1 + mr, -n));
       const ltv = loan / inp.homePrice;
       let mi = 0;
-      if (isFha) mi = (loan * 0.0055) / 12;
-      else if (ltv > 0.8) mi = (loan * 0.0052) / 12;
+      if (!isVa) {
+        if (isFha) mi = (loan * 0.0055) / 12;
+        else if (ltv > 0.8) mi = (loan * 0.0052) / 12;
+      }
       return {
-        product, termYears, isFha,
+        product, termYears, isFha, isVa,
         rate,
         apr: +(rate + (isFha ? 0.92 : 0.18)).toFixed(3),
         principalAndInterest: Math.round(pi),
@@ -67,6 +69,8 @@ export const stubAdapter: PricingAdapter = {
         build("30-yr FHA", 6.25, 30, true),
         build("15-yr Fixed", 5.875, 15, false),
         build("15-yr FHA", 5.625, 15, true),
+        build("30-yr VA", 6.125, 30, false, true),
+        build("15-yr VA", 5.5, 15, false, true),
       ],
       disclosures: [
         ...RPARRY_DISCLOSURES,

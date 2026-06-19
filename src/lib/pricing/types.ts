@@ -4,8 +4,8 @@
 // Field names mirror the workbook's named ranges (eh_in_* / eh_out_*).
 
 export type CreditBand =
-  | "780+" | "740–759" | "720–739" | "700–719"
-  | "680–699" | "660–679" | "640–659";
+  | "780+" | "760–779" | "740–759" | "720–739" | "700–719"
+  | "680–699" | "660–679" | "640–659" | "620–639";
 
 export type Occupancy = "Primary" | "Second Home" | "Investment";
 export type Buydown = "None" | "1-0" | "2-1" | "3-2-1";
@@ -21,16 +21,21 @@ export interface PricingInput {
   buydown: Buydown;       // eh_in_buydown
   veteran: boolean;       // eh_in_veteran
   firstTime: boolean;     // eh_in_first_time
+  vaPriorLoan: boolean;     // eh_in_vaPriorLoan
+  vaDisability: boolean;    // eh_in_vaDisability
+  vaFundingFee: boolean;    // eh_in_vaFundingFee
 }
 
 export type ProductName =
-  | "30-yr Fixed" | "30-yr FHA" | "15-yr Fixed" | "15-yr FHA";
+  | "30-yr Fixed" | "30-yr FHA" | "15-yr Fixed" | "15-yr FHA"
+  | "30-yr VA" | "15-yr VA";
 
 // eh_out_* (per product)
 export interface PricingProduct {
   product: ProductName;
   termYears: 15 | 30;
   isFha: boolean;
+  isVa: boolean;
   rate: number;
   apr: number;
   principalAndInterest: number;
