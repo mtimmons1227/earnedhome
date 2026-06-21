@@ -12,9 +12,13 @@
     "test:graph": "tsx scripts/test-graph.ts",
     "test:inputs": "tsx scripts/test-inputs.ts",
     "test:fixed30": "tsx scripts/test-fixed30.ts",
+    "test:va": "tsx scripts/test-va.ts",
+    "test:tags": "tsx scripts/test-tags.ts",
     "create:names": "tsx scripts/create-output-names.ts",
     "create:va-names": "tsx scripts/create-va-names.ts",
-    "graph:find": "tsx scripts/find-workbook.ts"
+    "create:ctc-names": "tsx scripts/create-cashtoclose-names.ts",
+    "graph:find": "tsx scripts/find-workbook.ts",
+    "find:sp": "tsx scripts/find-sharepoint-file.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

@@ -32,7 +32,8 @@ export type ProductName =
 
 // eh_out_* (per product)
 export interface PricingProduct {
-  product: ProductName;
+  product: ProductName;       // internal key (slot identity)
+  displayName: string;        // eh_out_<prefix>_name — heading from the sheet ("Jumbo 30 Year Fixed", etc.)
   termYears: 15 | 30;
   isFha: boolean;
   isVa: boolean;
@@ -43,6 +44,12 @@ export interface PricingProduct {
   insurance: number;
   mortgageInsurance: number;
   totalPayment: number;
+  // Estimated Funds breakdown (eh_out_<prefix>_*); these sum to cashToClose.
+  loanFees: number;
+  prepaids: number;
+  downPayment: number;
+  lessSeller: number;
+  cashToClose: number;     // eh_out_<prefix>_cashToClose = "Estimated Total"
 }
 
 export interface PricingQuote {

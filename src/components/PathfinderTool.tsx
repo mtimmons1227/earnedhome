@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import type {
   CreditBand, Occupancy, Buydown, PricingInput, PricingQuote, PricingProduct,
 } from "@/lib/pricing/types";
-import { evaluateEligibility } from "@/lib/eligibility";
 
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const parseNum = (s: string) => +String(s).replace(/[^0-9.]/g, "") || 0;
@@ -51,6 +50,9 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
   const [errors, setErrors] = useState<string[]>([]);
 
   // lead state
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [openTip, setOpenTip] = useState<string | null>(null);
   const [leadName, setLeadName] = useState("");
   const [leadEmail, setLeadEmail] = useState("");
   const [leadPhone, setLeadPhone] = useState("");
@@ -157,6 +159,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
       });
       if (!res.ok) throw new Error();
       setLeadDone(true);
+      setShowLeadModal(false);
       setLeadMsg(`Thanks — you're connected with ${loName}.`);
     } catch {
       setLeadMsg("Something went wrong submitting your info. Please try again.");
@@ -171,6 +174,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
     setQuoteId(null);
     setRequestKey(null);
     setErrors([]);
+    setShowLeadModal(false);
     setLeadDone(false);
     setLeadSubmitting(false);
     setLeadMsg(null);
@@ -182,26 +186,27 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
   }
 
   const shown = quote?.products.filter((p) => p.termYears === term) ?? [];
-  // Edit checks: which products qualify (loan limits, min down/LTV, min credit) vs route to LO.
-  const elig = quote ? evaluateEligibility(input) : null;
-  const eligibleShown = shown.filter((p) =>
-    (p.isVa ? elig?.va.eligible : p.isFha ? elig?.fha.eligible : elig?.conventional.eligible) ?? true);
-  // VA only appears as a family when the buyer checked Veteran; otherwise it's not "ineligible", just N/A.
-  const ineligible = elig
-    ? [elig.conventional, elig.fha, ...(veteran ? [elig.va] : [])].filter((f) => !f.eligible)
-    : [];
-  const familyLabel = (f: string) => (f === "fha" ? "FHA" : f === "va" ? "VA" : "Conventional");
+  // Display whatever the workbook returns. Richard's sheet now computes every loan
+  // size (including Jumbo), so the app no longer applies its own loan-limit edit
+  // checks. VA shows only when Veteran is checked; a card needs a real payment to appear.
+  const eligibleShown = shown.filter((p) => (p.isVa ? veteran : true) && p.totalPayment > 0);
+  const routeMsg =
+    quote && eligibleShown.length === 0
+      ? "Let’s talk through your options to find the right program for you. Use “Connect me with a loan officer” below."
+      : undefined;
 
   return (
     <main>
-      <div className="flag">
-        Demo data — illustrative numbers from a stub engine. In Phase 1A.2 the
-        same fields connect to Richard&apos;s live workbook via Microsoft Graph;
-        nothing on this screen changes.
-      </div>
       <div className="grid">
         <div className="panel">
-          <h2>Your numbers</h2>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <h2 style={{ margin: 0 }}>Let&apos;s run your numbers</h2>
+            {quote && (
+              <span style={{ fontSize: 11.5, color: "var(--muted)", fontStyle: "italic" }}>
+                Rates as of {quote.ratesAsOf}
+              </span>
+            )}
+          </div>
           <label>Home Price</label>
           <div className="inwrap">
             <span className="pre">$</span>
@@ -227,27 +232,71 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
           <select value={creditBand} onChange={(e) => setCreditBand(e.target.value as CreditBand)}>
             {CREDIT_BANDS.map((b) => <option key={b}>{b}</option>)}
           </select>
-          <label>Occupancy</label>
+          <label>How you&apos;ll use the home</label>
           <select value={occupancy} onChange={(e) => setOccupancy(e.target.value as Occupancy)}>
             {OCCUPANCIES.map((o) => <option key={o}>{o}</option>)}
           </select>
-          <label>Seller Credit ($)</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <label style={{ margin: 0 }}>Seller Credit ($)</label>
+            <button type="button" aria-label="What's this?"
+              onClick={() => setOpenTip(openTip === "seller" ? null : "seller")}
+              style={{ background: "none", border: 0, cursor: "pointer", color: "var(--primary)", fontSize: 14, padding: 0, lineHeight: 1 }}>ⓘ</button>
+          </div>
           <div className="inwrap">
             <span className="pre">$</span>
             <input className="money" inputMode="numeric" value={sellerCredit}
               onChange={(e) => setSellerCredit(groupInt(e.target.value))} />
           </div>
-          <label>Temporary Buydown</label>
+          {openTip === "seller" && (
+            <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, margin: "6px 0 0" }}>
+              Money the seller agrees to put toward your closing costs, which lowers the cash you need at closing. Limits apply by loan type — your loan officer can tell you what&apos;s possible.
+            </div>
+          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <label style={{ margin: 0 }}>Temporary Buydown</label>
+            <button type="button" aria-label="What's this?"
+              onClick={() => setOpenTip(openTip === "buydown" ? null : "buydown")}
+              style={{ background: "none", border: 0, cursor: "pointer", color: "var(--primary)", fontSize: 14, padding: 0, lineHeight: 1 }}>ⓘ</button>
+          </div>
           <select value={buydown} onChange={(e) => setBuydown(e.target.value as Buydown)}>
             {BUYDOWNS.map((b) => <option key={b}>{b}</option>)}
           </select>
+          {openTip === "buydown" && (
+            <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, margin: "6px 0 0" }}>
+              A temporary buydown lowers your interest rate for the first year or two of the loan, easing you into the full payment. (A &ldquo;2-1&rdquo; means 2% lower in year one, 1% lower in year two.) It&apos;s usually paid for by the seller or builder — your loan officer can explain the options.
+            </div>
+          )}
           <label className="grouphd">Eligibility</label>
           <div className="hint">Check any that apply — you can select both.</div>
           <div className="checks">
-            <label><input type="checkbox" checked={veteran}
-              onChange={(e) => setVeteran(e.target.checked)} /> Military / Veteran</label>
-            <label><input type="checkbox" checked={firstTime}
-              onChange={(e) => setFirstTime(e.target.checked)} /> First-Time Buyer</label>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <label style={{ margin: 0 }}><input type="checkbox" checked={veteran}
+                  onChange={(e) => setVeteran(e.target.checked)} /> Military / Veteran</label>
+                <button type="button" aria-label="What's this?"
+                  onClick={() => setOpenTip(openTip === "vet" ? null : "vet")}
+                  style={{ background: "none", border: 0, cursor: "pointer", color: "var(--primary)", fontSize: 15, padding: 0, lineHeight: 1 }}>ⓘ</button>
+              </div>
+              {openTip === "vet" && (
+                <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, margin: "4px 0 0 32px" }}>
+                  Check this if you&apos;re an active-duty service member, veteran, or eligible surviving spouse. It unlocks VA loan options — often 0% down and no monthly mortgage insurance.
+                </div>
+              )}
+            </div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <label style={{ margin: 0 }}><input type="checkbox" checked={firstTime}
+                  onChange={(e) => setFirstTime(e.target.checked)} /> First-Time Buyer</label>
+                <button type="button" aria-label="What's this?"
+                  onClick={() => setOpenTip(openTip === "ftb" ? null : "ftb")}
+                  style={{ background: "none", border: 0, cursor: "pointer", color: "var(--primary)", fontSize: 15, padding: 0, lineHeight: 1 }}>ⓘ</button>
+              </div>
+              {openTip === "ftb" && (
+                <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, margin: "4px 0 0 32px" }}>
+                  Generally, you haven&apos;t owned a home in the past 3 years. It can qualify you for lower-down-payment options — as little as 3% down on conventional loans.
+                </div>
+              )}
+            </div>
           </div>
           {veteran && (
             <div className="checks" style={{ marginTop: 10 }}>
@@ -288,49 +337,24 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
                 <button className={term === 30 ? "active" : ""} onClick={() => setTerm(30)}>30-Year</button>
                 <button className={term === 15 ? "active" : ""} onClick={() => setTerm(15)}>15-Year</button>
               </div>
-              {elig?.routeMessage ? (
-                <div className="flag" style={{ marginBottom: 0 }}>{elig.routeMessage}</div>
+              <div style={{ textAlign: "right", margin: "0 0 10px" }}>
+                <button onClick={() => setShowInfoModal(true)}
+                  style={{ background: "none", border: 0, color: "var(--primary)", fontSize: 12.5,
+                    cursor: "pointer", padding: 0, textDecoration: "underline", fontWeight: 500 }}>
+                  ⓘ Understanding your estimate
+                </button>
+              </div>
+              {routeMsg ? (
+                <div className="flag" style={{ marginBottom: 0 }}>{routeMsg}</div>
               ) : (
-                <>
-                  <div className="cards">{eligibleShown.map((p) => <Card key={p.product} p={p} />)}</div>
-                  {ineligible.map((f) => (
-                    <div className="hint" key={f.family} style={{ marginTop: 8 }}>
-                      {familyLabel(f.family)} — {f.reason}
-                    </div>
-                  ))}
-                </>
+                <div className="cards">{eligibleShown.map((p) => <Card key={p.product} p={p} />)}</div>
               )}
-              <div className="ctc">
-                <span className="l">Estimated Cash to Close</span>
-                <span className="n">{money(quote.cashToClose)}</span>
-              </div>
-              <div className="disctop">
-                Estimates only — not a Loan Estimate or commitment to lend. APR
-                assumes financed closing costs; payments include estimated taxes,
-                insurance, and any mortgage insurance. Subject to credit approval.
-              </div>
               <div className="route">Your loan officer: {loName}</div>
               {!leadDone ? (
-                <>
-                  <input placeholder="Full name" value={leadName}
-                    onChange={(e) => setLeadName(e.target.value)} />
-                  <div className="spacer" />
-                  <input placeholder="Email" type="email" inputMode="email" value={leadEmail}
-                    onChange={(e) => setLeadEmail(e.target.value)} />
-                  <div className="spacer" />
-                  <input placeholder="Phone" type="tel" inputMode="tel" value={leadPhone}
-                    onChange={(e) => setLeadPhone(e.target.value)} />
-                  <label className="consent">
-                    <input type="checkbox" checked={tcpa} onChange={(e) => setTcpa(e.target.checked)} />
-                    I agree to be contacted by phone, text, or email about my inquiry.
-                    Consent is not a condition of purchase.
-                  </label>
-                  <button className="leadbtn" onClick={submitLead} disabled={leadSubmitting}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {leadSubmitting ? "Connecting…" : <><StepBadge label="2" />Connect me with a loan officer</>}
-                  </button>
-                  {leadMsg && <div className="hint" style={{ marginTop: 8 }}>{leadMsg}</div>}
-                </>
+                <button className="leadbtn" onClick={() => setShowLeadModal(true)}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <StepBadge label="2" />Connect me with a loan officer
+                </button>
               ) : (
                 <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: 16,
                   background: "#eef7f0", border: "1px solid #bfe3c9", borderRadius: 10 }}>
@@ -354,6 +378,11 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
                   </div>
                 </div>
               )}
+              <div className="disctop">
+                Estimates only — not a Loan Estimate or commitment to lend. APR
+                assumes financed closing costs; payments include estimated taxes,
+                insurance, and any mortgage insurance. Subject to credit approval.
+              </div>
               <details className="disc">
                 <summary>Disclosures &amp; assumptions</summary>
                 {quote.disclosures.map((d, i) => <p key={i}>{d}</p>)}
@@ -366,7 +395,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
           )}
           {quote && (
             <footer>
-              Rates as of {quote.ratesAsOf} · {quote.engine === "stub" ? "Demo / stub engine" : "Live engine"} · EarnedHome Pathfinder 1A
+              {quote.engine === "stub" ? "Demo / stub engine" : "Live engine"} · EarnedHome Pathfinder 1A
             </footer>
           )}
         </div>
@@ -392,7 +421,86 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
           </>
         )}
       </div>
+
+      {showLeadModal && quote && (
+        <div onClick={() => setShowLeadModal(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 1000,
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: 16, maxWidth: 440, width: "100%",
+              padding: "24px 24px 20px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", position: "relative" }}>
+            <button onClick={() => setShowLeadModal(false)} aria-label="Close"
+              style={{ position: "absolute", top: 12, right: 16, background: "none", border: 0,
+                fontSize: 26, lineHeight: 1, color: "var(--muted)", cursor: "pointer" }}>×</button>
+            <div style={{ fontWeight: 700, fontSize: 18, color: "var(--primary)", marginBottom: 4 }}>
+              Connect with {loName}
+            </div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
+              No pressure — share your info and your loan officer will reach out about your options.
+            </div>
+            <input placeholder="Full name" value={leadName} onChange={(e) => setLeadName(e.target.value)} />
+            <div className="spacer" />
+            <input placeholder="Email" type="email" inputMode="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} />
+            <div className="spacer" />
+            <input placeholder="Phone" type="tel" inputMode="tel" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} />
+            <label className="consent">
+              <input type="checkbox" checked={tcpa} onChange={(e) => setTcpa(e.target.checked)} />
+              I agree to be contacted by phone, text, or email about my inquiry. Consent is not a condition of purchase.
+            </label>
+            <button className="leadbtn" onClick={submitLead} disabled={leadSubmitting}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
+              {leadSubmitting ? "Connecting…" : "Connect me with a loan officer"}
+            </button>
+            {leadMsg && <div className="hint" style={{ marginTop: 8 }}>{leadMsg}</div>}
+          </div>
+        </div>
+      )}
+
+      {showInfoModal && (
+        <div onClick={() => setShowInfoModal(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 1000,
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: 16, maxWidth: 460, width: "100%", maxHeight: "85vh",
+              overflowY: "auto", padding: "24px 24px 20px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", position: "relative" }}>
+            <button onClick={() => setShowInfoModal(false)} aria-label="Close"
+              style={{ position: "absolute", top: 12, right: 16, background: "none", border: 0,
+                fontSize: 26, lineHeight: 1, color: "var(--muted)", cursor: "pointer" }}>×</button>
+            <div style={{ fontWeight: 700, fontSize: 18, color: "var(--primary)", marginBottom: 4 }}>
+              Understanding your estimate
+            </div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, lineHeight: 1.5 }}>
+              Plain-language definitions of the numbers on each card. These are estimates — your loan officer can
+              walk through the specifics for your situation.
+            </div>
+            <InfoTerm t="Principal & Interest" d="The core of your monthly payment — principal pays down what you owe; interest is the cost of borrowing." />
+            <InfoTerm t="Property Taxes" d="The estimated monthly share of your property taxes, collected and paid through escrow." />
+            <InfoTerm t="Homeowner's Insurance" d="The estimated monthly share of your homeowner's insurance, collected through escrow." />
+            <InfoTerm t="Mortgage Insurance" d="An extra monthly cost on some loans (typically when you put less than 20% down, or on FHA). VA loans don't have it, and it can fall off over time on conventional loans." />
+            <InfoTerm t="Total Monthly Payment" d="Your estimated total monthly payment — principal, interest, taxes, insurance, and any mortgage insurance." />
+            <div style={{ fontWeight: 700, color: "#0f6e56", fontSize: 14, margin: "14px 0 10px" }}>Estimated Funds (cash to close)</div>
+            <InfoTerm t="Loan Fees" d="The costs to set up your loan — origination, underwriting, processing, and similar. Your loan officer can walk through which apply to you." />
+            <InfoTerm t="Prepaids" d="Amounts collected upfront to start your escrow account and cover the first stretch of property taxes, homeowner's insurance, and prepaid interest." />
+            <InfoTerm t="Down Payment" d="The part of the purchase price you pay out of pocket; the rest is covered by the loan." />
+            <InfoTerm t="Less Seller Contribution" d="Money the seller agrees to put toward your closing costs, which lowers the cash you bring. Limits apply by loan type." />
+            <InfoTerm t="Estimated Total" d="The estimated cash you'd bring to closing — down payment plus loan fees and prepaids, minus any seller contribution." />
+            <div style={{ marginTop: 14, padding: "12px 14px", background: "#eef7f0", border: "1px solid #bfe3c9",
+              borderRadius: 10, fontSize: 13, color: "var(--primary)", lineHeight: 1.5 }}>
+              Wondering if your payment could be lower? Your loan officer can talk through options for your situation —
+              no pressure.
+            </div>
+          </div>
+        </div>
+      )}
     </main>
+  );
+}
+function InfoTerm({ t, d }: { t: string; d: string }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--primary)" }}>{t}</div>
+      <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5, marginTop: 2 }}>{d}</div>
+    </div>
   );
 }
 
@@ -400,22 +508,41 @@ function Card({ p }: { p: PricingProduct }) {
   return (
     <div className="card">
       <div className="top">
-        <div className="nm">{p.product}</div>
+        <div className="nm">{p.displayName}</div>
         <div className="rt">Rate {p.rate.toFixed(3)}% · APR {p.apr.toFixed(3)}%</div>
       </div>
       <div className="rows">
         <Row l="Principal & Interest" v={money(p.principalAndInterest)} />
-        <Row l="Taxes" v={money(p.taxes)} />
-        <Row l="Insurance" v={money(p.insurance)} />
+        <Row l="Property Taxes" v={money(p.taxes)} />
+        <Row l="Homeowner's Insurance" v={money(p.insurance)} />
         <Row l="Mortgage Insurance" v={p.mortgageInsurance ? money(p.mortgageInsurance) : "—"} />
-        <div className="rw total"><span>Total Payment</span>
+        <div className="rw total"><span>Total Monthly Payment</span>
           <span className="v">{money(p.totalPayment)}/mo</span></div>
+        <div style={{ marginTop: 8, paddingTop: 10, borderTop: "1px solid var(--line)" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#0f6e56", marginBottom: 4 }}>Estimated Funds</div>
+          <EfRow l="Loan Fees" v={money(p.loanFees)} />
+          <EfRow l="Prepaids" v={money(p.prepaids)} />
+          <EfRow l="Down Payment" v={money(p.downPayment)} />
+          <EfRow l="Less Seller Contribution" v={money(p.lessSeller)} />
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700,
+            color: "#0f6e56", paddingTop: 6, marginTop: 4, borderTop: "1px dashed var(--line)" }}>
+            <span>Estimated Total</span><span>{money(p.cashToClose)}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 function Row({ l, v }: { l: string; v: string }) {
   return <div className="rw"><span>{l}</span><span className="v">{v}</span></div>;
+}
+// Estimated Funds line — teal, to mirror the spreadsheet's breakdown section.
+function EfRow({ l, v }: { l: string; v: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#1d9e75", padding: "2px 0" }}>
+      <span>{l}</span><span style={{ fontWeight: 500 }}>{v}</span>
+    </div>
+  );
 }
 
 // Green circular step number, shown on the two action buttons so the buyer

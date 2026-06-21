@@ -104,6 +104,22 @@ async function getRange(name: string, session: string): Promise<unknown> {
   const j = (await res.json()) as { values?: unknown[][] };
   return j.values?.[0]?.[0];
 }
+// Tolerant read: returns undefined (not an error) when a name doesn't exist yet,
+// so optional outputs (e.g. per-product cashToClose, before their names are
+// created in RateStream) never break the whole quote.
+async function getRangeOpt(name: string, session: string): Promise<unknown> {
+  const res = await gfetch(`${workbookBase()}/names/${name}/range?$select=values`, { method: "GET" }, session);
+  if (!res.ok) return undefined;
+  const j = (await res.json()) as { values?: unknown[][] };
+  return j.values?.[0]?.[0];
+}
+// Reads the cell's DISPLAYED text (e.g. a date shows as "June 20, 2026" not the serial number).
+async function getRangeText(name: string, session: string): Promise<string | undefined> {
+  const res = await gfetch(`${workbookBase()}/names/${name}/range?$select=text`, { method: "GET" }, session);
+  if (!res.ok) return undefined;
+  const t = ((await res.json()) as { text?: string[][] }).text?.[0]?.[0];
+  return t ? String(t).trim() : undefined;
+}
 const num = (v: unknown): number =>
   typeof v === "number" ? v : Number(String(v ?? "").replace(/[^0-9.\-]/g, "")) || 0;
 
@@ -153,7 +169,8 @@ export const graphAdapter: PricingAdapter = {
         // firstTime as TRUE/FALSE. Down Payment is computed in-sheet from Down %, so we
         // drive Down % only. Buydown is fixed (None) in 1A and not sent.
         await setRange("eh_in_homePrice", input.homePrice, session);
-        await setRange("eh_in_downPct", input.downPct, session);
+        // UI sends whole percent (10 = 10%); the workbook's Down% cell stores a decimal (0.10).
+        await setRange("eh_in_downPct", input.downPct / 100, session);
         await setRange("eh_in_sellerCredit", input.sellerCredit, session);
         await setRange("eh_in_creditBand", CREDIT_INDEX[input.creditBand], session);
         await setRange("eh_in_occupancy", OCCUPANCY_INDEX[input.occupancy], session);
@@ -169,6 +186,8 @@ export const graphAdapter: PricingAdapter = {
         for (const p of PRODUCTS) {
           products.push({
             product: p.name,
+            // Heading text straight from the sheet (e.g. "Jumbo 30 Year Fixed"); fall back to the internal name.
+            displayName: String((await getRangeOpt(`eh_out_${p.prefix}_name`, session)) ?? p.name),
             termYears: p.term,
             isFha: p.fha,
             isVa: p.va,
@@ -180,12 +199,19 @@ export const graphAdapter: PricingAdapter = {
             insurance: Math.round(num(await getRange(`eh_out_${p.prefix}_ins`, session))),
             mortgageInsurance: p.va ? 0 : Math.round(num(await getRange(`eh_out_${p.prefix}_mi`, session))),
             totalPayment: Math.round(num(await getRange(`eh_out_${p.prefix}_total`, session))),
+            loanFees: Math.round(num(await getRangeOpt(`eh_out_${p.prefix}_loanFees`, session))),
+            prepaids: Math.round(num(await getRangeOpt(`eh_out_${p.prefix}_prepaids`, session))),
+            downPayment: Math.round(num(await getRangeOpt(`eh_out_${p.prefix}_downPayment`, session))),
+            lessSeller: Math.round(num(await getRangeOpt(`eh_out_${p.prefix}_lessSeller`, session))),
+            cashToClose: Math.round(num(await getRangeOpt(`eh_out_${p.prefix}_cashToClose`, session))),
           });
         }
 
-        const cashToClose = Math.round(num(await getRange("eh_out_cashToClose", session)));
-        const ratesAsOfRaw = await getRange("eh_out_ratesAsOf", session);
-        const ratesAsOf = ratesAsOfRaw ? String(ratesAsOfRaw) : new Date().toISOString().slice(0, 10);
+        // Top-level cash-to-close = the 30-yr Fixed card's (each product also carries its own).
+        // Tolerant: the new workbook has per-product cashToClose, not a single shared tag.
+        const cashToClose = products[0]?.cashToClose ?? Math.round(num(await getRangeOpt("eh_out_cashToClose", session)));
+        // Read the DISPLAYED text so a date cell shows "June 20, 2026", not its serial number.
+        const ratesAsOf = (await getRangeText("eh_out_ratesAsOf", session)) ?? new Date().toISOString().slice(0, 10);
 
         return {
           engine: "graph",

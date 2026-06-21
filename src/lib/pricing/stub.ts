@@ -45,8 +45,14 @@ export const stubAdapter: PricingAdapter = {
         if (isFha) mi = (loan * 0.0055) / 12;
         else if (ltv > 0.8) mi = (loan * 0.0052) / 12;
       }
+      const loanFees = Math.round(loan * 0.02);
+      const prepaids = Math.round(inp.homePrice * 0.005);
+      const downPayment = Math.round(inp.downAmount);
+      const lessSeller = Math.round(inp.sellerCredit);
       return {
-        product, termYears, isFha, isVa,
+        product, displayName: product, termYears, isFha, isVa,
+        loanFees, prepaids, downPayment, lessSeller,
+        cashToClose: Math.max(0, loanFees + prepaids + downPayment - lessSeller),
         rate,
         apr: +(rate + (isFha ? 0.92 : 0.18)).toFixed(3),
         principalAndInterest: Math.round(pi),

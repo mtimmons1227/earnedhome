@@ -50,6 +50,8 @@ input.money{padding-left:26px}
 .rw .v{font-weight:600}
 .rw.total{font-size:16px;color:var(--primary);padding-top:10px}
 .rw.total .v{font-size:18px}
+.rw.cashrow{font-size:13px;color:var(--muted);padding-top:8px;border-bottom:0}
+.rw.cashrow .v{font-weight:700;color:var(--primary);font-size:15px}
 .ctc{margin:14px 0;padding:14px;background:#eef3fb;border:1px solid #d4e1f2;border-radius:10px;display:flex;justify-content:space-between;align-items:center}
 .ctc .l{font-size:13px;color:var(--muted);font-weight:600}
 .ctc .n{font-size:22px;font-weight:800;color:var(--primary)}
