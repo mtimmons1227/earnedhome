@@ -53,6 +53,8 @@ Test other tenants locally via the Host header:
 curl -H "Host: acme.earnedhome.com" http://localhost:3000
 ```
 
+**Development & deployment workflow** (local → GitHub → Netlify) is documented in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ## Environment
 
 | Var | Purpose |
