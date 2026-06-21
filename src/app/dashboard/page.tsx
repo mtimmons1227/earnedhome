@@ -64,13 +64,23 @@ export default async function DashboardPage() {
       <header className="eh-header" style={{ justifyContent: "space-between" }}>
         <div>
           <div className="eh-brand">{tenant?.name ?? "EarnedHome"} — Leads</div>
-          <div className="eh-tag">{appUser.full_name ?? user.email} · {appUser.role}</div>
+          <div className="eh-tag">{appUser.full_name ?? user.email} · {roleLabel(appUser.role)}</div>
         </div>
-        <form action="/auth/signout" method="post">
-          <button type="submit" style={{ background: "transparent", color: "#fff",
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <a href="/" target="_blank" rel="noreferrer" style={{ color: "#fff",
             border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
-            cursor: "pointer", fontWeight: 600 }}>Sign out</button>
-        </form>
+            fontWeight: 600, textDecoration: "none" }}>View EarnedHome</a>
+          {appUser.role === "admin" && (
+            <a href="/dashboard/workbook" style={{ color: "#fff",
+              border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
+              fontWeight: 600, textDecoration: "none" }}>Update rates</a>
+          )}
+          <form action="/auth/signout" method="post">
+            <button type="submit" style={{ background: "transparent", color: "#fff",
+              border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
+              cursor: "pointer", fontWeight: 600 }}>Sign out</button>
+          </form>
+        </div>
       </header>
 
       <main>
@@ -86,6 +96,11 @@ export default async function DashboardPage() {
       </main>
     </div>
   );
+}
+
+// "lo" -> "LO"; other roles title-cased (Admin, Staff).
+function roleLabel(role: string): string {
+  return role === "lo" ? "LO" : role.charAt(0).toUpperCase() + role.slice(1);
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

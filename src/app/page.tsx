@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { getTenantForHost, slugFromHost } from "@/lib/tenant";
+import { createSupabaseServer } from "@/lib/supabase/server";
 import { BrandHeader } from "@/components/BrandHeader";
 import { PathfinderTool } from "@/components/PathfinderTool";
 
@@ -30,8 +31,35 @@ export default async function Page() {
     ["--bg" as string]: b.bg,
   } as React.CSSProperties;
 
+  // Show a discreet "back to dashboard" link only to signed-in staff (never buyers).
+  const supabase = createSupabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let isStaff = false;
+  if (user) {
+    const { data: appUser } = await supabase
+      .from("app_users")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+    isStaff = !!appUser;
+  }
+
   return (
     <div style={themeVars}>
+      {isStaff && (
+        <div style={{ background: "var(--primary)", textAlign: "right", padding: "6px 14px",
+          borderBottom: "1px solid rgba(255,255,255,.18)" }}>
+          <a
+            href="/dashboard"
+            style={{ color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none",
+              opacity: 0.9 }}
+          >
+            ← Back to dashboard
+          </a>
+        </div>
+      )}
       <BrandHeader tenant={tenant} />
       <PathfinderTool
         tenantId={tenant.id}
