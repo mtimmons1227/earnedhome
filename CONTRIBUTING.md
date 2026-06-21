@@ -73,8 +73,8 @@ One-time setup so the `dev` branch gets its own stable URL:
 2. **Scope environment variables per context.** Netlify → *Site configuration → Environment variables*. For each variable you can set a **different value per deploy context** (Production vs Branch deploys vs Deploy Previews). Example: production `PRICING_ADAPTER=graph`; the `dev`/branch-deploy context can use its own value and its own `GRAPH_*` / Supabase keys.
 3. **Verify** by pushing to `dev` and opening the `dev--…` URL; run `npm run test:tags` against whatever workbook that context points at.
 
-### ⚠ Data separation (plan for this)
-Code and env vars separate cleanly by branch/context, but data does **not** unless you make it so. If QA and production share the **same Supabase project** and the **same pricing workbook**, then QA test leads and edits land in **production data**. For real isolation, give the QA (`dev`) context its **own Supabase project** (or schema) and its **own workbook copy**, and set those URLs/keys on the branch-deploy context. For the Phase 1A pilot, shared data may be acceptable short-term — just know that test submissions hit live data until the environments are split.
+### ⚠ Data separation (current EarnedHome status)
+Code and env vars separate cleanly by branch/context, but data does **not** unless you make it so. **EarnedHome currently shares ONE Supabase database between QA and Production** (the Supabase free plan allows 2 active projects and the org already uses 2). So QA test leads/notes land in the same tables Production reads, and a login works on both. Interim mitigation: test with a recognizable marker (`QA TEST`) and run the cleanup query afterward. At launch, give QA its **own Supabase project** and point the `dev` branch-deploy at it. The **workbook** (rates) is one read-only-for-pricing file, so sharing it is fine. Full detail: [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md).
 
 ## Secrets
 Secrets live only in `.env.local` (local) and the Netlify environment store — **never committed**. `.env*.local` is git-ignored.

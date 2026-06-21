@@ -189,8 +189,8 @@ Add a new section whenever you adopt a new capability so the next project inheri
 | **GitHub** | `github.com/mtimmons1227/earnedhome` (private); branches `main` (prod), `dev` (QA); `main` protected |
 | **Netlify** | site `earnedhome`; **Production** `earnedhome.netlify.app` (← `main`); **QA** `dev--earnedhome.netlify.app` (← `dev`) |
 | **Stack** | Next.js 14 + Supabase + Microsoft Graph (Excel pricing engine) |
-| **Config switch** | `PRICING_ADAPTER` = `stub` (demo) or `graph` (live engine) — flipped via Netlify env per context |
-| **Data note** | QA currently mirrors production (shared Supabase + stub engine); separate QA backend deferred |
+| **Config switch** | `PRICING_ADAPTER` = `stub` (demo) or `graph` (live) — set **per context**: `graph` on Branch deploys (QA), `stub` on Production. `GRAPH_WORKBOOK_*` (which file) is separate from `PRICING_ADAPTER` (whether the buyer page reads it). |
+| **Data note** | QA + Production **share one Supabase database** (free-tier 2-project limit; "Option B"). Data isolated by tenant/RLS but not by environment; test with a `QA TEST` marker + cleanup query. Separate QA Supabase project deferred to launch. See [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md). |
 
 ---
 *Related docs: [`CONTRIBUTING.md`](../CONTRIBUTING.md) (workflow detail) · [`HOW_TO_DEPLOY.md`](HOW_TO_DEPLOY.md) (the deploy recipe) · [`docs/sdlc/`](sdlc/README.md) (the full lifecycle).*

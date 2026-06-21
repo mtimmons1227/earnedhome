@@ -53,7 +53,7 @@ Test other tenants locally via the Host header:
 curl -H "Host: acme.earnedhome.com" http://localhost:3000
 ```
 
-**Development & deployment workflow** (local → GitHub → Netlify) is documented in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+**Development & deployment workflow** (local → GitHub → Netlify) is documented in [`CONTRIBUTING.md`](CONTRIBUTING.md). The as-built infrastructure (environments, database, pricing-engine config) is in [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md).
 
 ## Environment
 
