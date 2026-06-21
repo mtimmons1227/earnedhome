@@ -21,15 +21,22 @@ export interface LeadRow {
 
 const STATUSES: LeadStatus[] = ["new", "contacted", "working", "closed", "lost"];
 const ACTIVE_STATUSES: LeadStatus[] = ["new", "contacted", "working"];
+type FilterValue = "active" | "all" | LeadStatus;
+// Display labels — the stored value stays `contacted`, but it shows as "Initial contact".
+const STATUS_LABELS: Record<LeadStatus, string> = {
+  new: "New", contacted: "Initial contact", working: "Working", closed: "Closed", lost: "Lost",
+};
+export interface LeadNote { authorName: string; body: string; created_at: string; }
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 
-export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
+export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadRow[]; initialNotes: Record<string, LeadNote[]> }) {
   const [leads, setLeads] = useState<LeadRow[]>(initialLeads);
+  const [notesByLead, setNotesByLead] = useState<Record<string, LeadNote[]>>(initialNotes);
   const [openId, setOpenId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [noteMsg, setNoteMsg] = useState<Record<string, string>>({});
-  const [showAll, setShowAll] = useState(false);
+  const [filter, setFilter] = useState<FilterValue>("active");
 
   async function patch(id: string, body: Record<string, unknown>): Promise<boolean> {
     setSavingId(id);
@@ -53,16 +60,31 @@ export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
     if (!(await patch(id, { status }))) setLeads(prev);
   }
 
-  async function saveNote(id: string) {
-    const notes = noteDraft[id] ?? "";
-    const ok = await patch(id, { notes });
-    if (ok) {
-      setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, notes } : l)));
-      setNoteMsg((m) => ({ ...m, [id]: "Saved" }));
-    } else {
+  async function addNote(id: string) {
+    const text = (noteDraft[id] ?? "").trim();
+    if (!text) return;
+    setSavingId(id);
+    try {
+      const res = await fetch("/api/lead/note", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ leadId: id, body: text }),
+      });
+      const data = (await res.json()) as { ok?: boolean; note?: LeadNote; error?: string };
+      if (res.ok && data.ok && data.note) {
+        const note = data.note;
+        setNotesByLead((m) => ({ ...m, [id]: [...(m[id] ?? []), note] }));
+        setNoteDraft((d) => ({ ...d, [id]: "" }));
+      } else {
+        setNoteMsg((m) => ({ ...m, [id]: data.error ?? "Couldn't save" }));
+        setTimeout(() => setNoteMsg((m) => ({ ...m, [id]: "" })), 2500);
+      }
+    } catch {
       setNoteMsg((m) => ({ ...m, [id]: "Couldn't save" }));
+      setTimeout(() => setNoteMsg((m) => ({ ...m, [id]: "" })), 2500);
+    } finally {
+      setSavingId(null);
     }
-    setTimeout(() => setNoteMsg((m) => ({ ...m, [id]: "" })), 2500);
   }
 
   if (leads.length === 0) {
@@ -71,22 +93,31 @@ export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
 
   const th = { padding: "8px 10px" } as const;
 
-  const visible = showAll ? leads : leads.filter((l) => ACTIVE_STATUSES.includes(l.status));
-  const hiddenCount = leads.length - visible.length;
+  const visible =
+    filter === "all"
+      ? leads
+      : filter === "active"
+        ? leads.filter((l) => ACTIVE_STATUSES.includes(l.status))
+        : leads.filter((l) => l.status === filter);
 
   return (
     <div className="panel" style={{ overflowX: "auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
         gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
         <div style={{ fontSize: 13, color: "var(--muted)" }}>
-          {showAll ? `Showing all ${leads.length} leads` : `Showing ${visible.length} active`}
-          {!showAll && hiddenCount > 0 ? ` · ${hiddenCount} closed/lost hidden` : ""}
+          Showing {visible.length} of {leads.length}
         </div>
-        <button onClick={() => setShowAll((s) => !s)}
-          style={{ background: "transparent", border: "1px solid var(--line)", borderRadius: 8,
-            padding: "6px 12px", fontWeight: 600, fontSize: 13, cursor: "pointer", color: "var(--primary)" }}>
-          {showAll ? "Show active only" : "Show all"}
-        </button>
+        <label style={{ fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+          View:
+          <select value={filter} onChange={(e) => setFilter(e.target.value as FilterValue)}
+            style={{ padding: "6px 8px", fontSize: 13 }}>
+            <option value="active">Active</option>
+            <option value="all">All</option>
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+            ))}
+          </select>
+        </label>
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
         <thead>
@@ -100,8 +131,8 @@ export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
           {visible.length === 0 && (
             <tr>
               <td colSpan={7} style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
-                No active leads.{" "}
-                <button onClick={() => setShowAll(true)}
+                No leads in this view.{" "}
+                <button onClick={() => setFilter("all")}
                   style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: 600,
                     cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>
                   Show all
@@ -119,7 +150,7 @@ export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
                   onClick={() => setOpenId(isOpen ? null : l.id)}>
                   <td style={{ ...th, color: "var(--muted)" }}>{isOpen ? "▾" : "▸"}</td>
                   <td style={{ ...th, whiteSpace: "nowrap", color: "var(--muted)" }}>{new Date(l.created_at).toLocaleDateString()}</td>
-                  <td style={{ ...th, fontWeight: 600 }}>{l.full_name ?? "—"}{l.notes ? " 📝" : ""}</td>
+                  <td style={{ ...th, fontWeight: 600 }}>{l.full_name ?? "—"}{(notesByLead[l.id]?.length ?? 0) > 0 ? " 📝" : ""}</td>
                   <td style={th}>{l.email ?? "—"}</td>
                   <td style={{ ...th, whiteSpace: "nowrap" }}>{l.phone ?? "—"}</td>
                   <td style={th}>{l.consent_tcpa ? "✓" : "—"}</td>
@@ -127,7 +158,7 @@ export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
                     <select value={l.status} disabled={savingId === l.id}
                       onChange={(e) => changeStatus(l.id, e.target.value as LeadStatus)}
                       style={{ padding: "6px 8px", fontSize: 13 }}>
-                      {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                     </select>
                   </td>
                 </tr>
@@ -166,15 +197,27 @@ export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
                         </div>
                         <div style={{ gridColumn: "1 / -1" }}>
                           <div style={{ fontWeight: 700, color: "var(--primary)", marginBottom: 6 }}>Notes</div>
+                          {(notesByLead[l.id] ?? []).slice().reverse().map((n, i) => (
+                            <div key={i} style={{ borderLeft: "3px solid var(--line)", padding: "2px 10px", marginBottom: 8 }}>
+                              <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>
+                                {n.authorName} · {new Date(n.created_at).toLocaleString()}
+                              </div>
+                              <div style={{ fontSize: 13, whiteSpace: "pre-wrap" }}>{n.body}</div>
+                            </div>
+                          ))}
+                          {(notesByLead[l.id]?.length ?? 0) === 0 && (
+                            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>No notes yet.</div>
+                          )}
                           <textarea
-                            defaultValue={l.notes ?? ""}
+                            value={noteDraft[l.id] ?? ""}
                             onChange={(e) => setNoteDraft((d) => ({ ...d, [l.id]: e.target.value }))}
-                            placeholder="Add a note about this lead…"
+                            placeholder="Add a note…"
                             style={{ width: "100%", minHeight: 60, padding: 10, border: "1px solid var(--line)", borderRadius: 8, fontFamily: "inherit", fontSize: 13 }} />
                           <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10 }}>
-                            <button onClick={() => saveNote(l.id)} disabled={savingId === l.id}
-                              style={{ background: "var(--accent)", color: "#fff", border: 0, padding: "8px 14px", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                              {savingId === l.id ? "Saving…" : "Save note"}
+                            <button onClick={() => addNote(l.id)} disabled={savingId === l.id || !(noteDraft[l.id] ?? "").trim()}
+                              style={{ background: "var(--accent)", color: "#fff", border: 0, padding: "8px 14px", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
+                                opacity: savingId === l.id || !(noteDraft[l.id] ?? "").trim() ? 0.6 : 1 }}>
+                              {savingId === l.id ? "Adding…" : "Add note"}
                             </button>
                             {noteMsg[l.id] && <span style={{ fontSize: 12, color: "var(--muted)" }}>{noteMsg[l.id]}</span>}
                           </div>

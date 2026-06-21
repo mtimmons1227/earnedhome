@@ -46,6 +46,26 @@ export default async function DashboardPage() {
   const { count: quotesRun } = await supabase
     .from("events").select("*", { count: "exact", head: true }).eq("type", "quote_created");
 
+  // Lead notes are append-only `lead_note` events. Group them by lead for the table.
+  const { data: noteEvents } = await supabase
+    .from("events")
+    .select("payload, created_at")
+    .eq("type", "lead_note")
+    .order("created_at", { ascending: true });
+
+  const notesByLead: Record<string, { authorName: string; body: string; created_at: string }[]> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const e of (noteEvents ?? []) as any[]) {
+    const p = e.payload ?? {};
+    const lid = p.leadId as string | undefined;
+    if (!lid) continue;
+    (notesByLead[lid] ??= []).push({
+      authorName: p.authorName ?? "Unknown",
+      body: p.body ?? "",
+      created_at: e.created_at,
+    });
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: LeadRow[] = ((leads ?? []) as any[]).map((l) => ({
     id: l.id, full_name: l.full_name, email: l.email, phone: l.phone,
@@ -92,7 +112,7 @@ export default async function DashboardPage() {
           <Metric label="Quotes run" value={String(quotesRun ?? 0)} />
           <Metric label="Quote → lead" value={`${conversion}%`} />
         </div>
-        <LeadsTable initialLeads={rows} />
+        <LeadsTable initialLeads={rows} initialNotes={notesByLead} />
       </main>
     </div>
   );
