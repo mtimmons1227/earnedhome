@@ -20,6 +20,7 @@ export interface LeadRow {
 }
 
 const STATUSES: LeadStatus[] = ["new", "contacted", "working", "closed", "lost"];
+const ACTIVE_STATUSES: LeadStatus[] = ["new", "contacted", "working"];
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 
 export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
@@ -28,6 +29,7 @@ export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [noteMsg, setNoteMsg] = useState<Record<string, string>>({});
+  const [showAll, setShowAll] = useState(false);
 
   async function patch(id: string, body: Record<string, unknown>): Promise<boolean> {
     setSavingId(id);
@@ -69,8 +71,23 @@ export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
 
   const th = { padding: "8px 10px" } as const;
 
+  const visible = showAll ? leads : leads.filter((l) => ACTIVE_STATUSES.includes(l.status));
+  const hiddenCount = leads.length - visible.length;
+
   return (
     <div className="panel" style={{ overflowX: "auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+        gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+        <div style={{ fontSize: 13, color: "var(--muted)" }}>
+          {showAll ? `Showing all ${leads.length} leads` : `Showing ${visible.length} active`}
+          {!showAll && hiddenCount > 0 ? ` · ${hiddenCount} closed/lost hidden` : ""}
+        </div>
+        <button onClick={() => setShowAll((s) => !s)}
+          style={{ background: "transparent", border: "1px solid var(--line)", borderRadius: 8,
+            padding: "6px 12px", fontWeight: 600, fontSize: 13, cursor: "pointer", color: "var(--primary)" }}>
+          {showAll ? "Show active only" : "Show all"}
+        </button>
+      </div>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
         <thead>
           <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
@@ -80,7 +97,19 @@ export function LeadsTable({ initialLeads }: { initialLeads: LeadRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {leads.map((l) => {
+          {visible.length === 0 && (
+            <tr>
+              <td colSpan={7} style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+                No active leads.{" "}
+                <button onClick={() => setShowAll(true)}
+                  style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: 600,
+                    cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>
+                  Show all
+                </button>
+              </td>
+            </tr>
+          )}
+          {visible.map((l) => {
             const isOpen = openId === l.id;
             const q = l.quote?.outputs ?? null;
             const inp = l.quote?.inputs ?? null;
