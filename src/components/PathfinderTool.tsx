@@ -200,9 +200,10 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
       <div className="grid">
         <div className="panel">
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-            <h2 style={{ margin: 0 }}>Let&apos;s run your numbers</h2>
+            <h2 style={{ margin: 0 }}>Your path to home — let&apos;s run the numbers</h2>
             {quote && (
-              <span style={{ fontSize: 11.5, color: "var(--muted)", fontStyle: "italic" }}>
+              <span style={{ fontSize: 11.5, color: "var(--muted)", fontStyle: "italic",
+                marginLeft: "auto", textAlign: "right", whiteSpace: "nowrap" }}>
                 Rates as of {quote.ratesAsOf}
               </span>
             )}
