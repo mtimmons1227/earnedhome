@@ -37,7 +37,7 @@ export default function LoginPage() {
     setBusy(true);
     const supabase = createSupabaseBrowser();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     });
     setBusy(false);
     if (error) {
@@ -69,8 +69,10 @@ export default function LoginPage() {
                 {busy ? "Signing in…" : "Sign in"}
               </button>
             </form>
-            <button type="button" onClick={() => { setMode("reset"); setError(null); setInfo(null); }}
-              style={linkBtn}>Forgot password?</button>
+            {process.env.NEXT_PUBLIC_ENABLE_PASSWORD_RESET === "true" && (
+              <button type="button" onClick={() => { setMode("reset"); setError(null); setInfo(null); }}
+                style={linkBtn}>Forgot password?</button>
+            )}
           </>
         ) : (
           <>
