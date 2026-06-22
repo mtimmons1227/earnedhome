@@ -2,6 +2,8 @@
 
 _How the app talks to Richard's pricing workbook today (Phase 1A via Microsoft Graph), and the permanent plan for hundreds of builders / thousands of agents. Last updated June 6, 2026._
 
+> **⚠ Current-state note (June 21, 2026):** the adapter pattern (§0) and the scale plan (§6–7) remain the strategy. But some Phase-1A specifics below are **superseded**: (1) the "**never show more than 2 products**" rule (§0a) — the live tool now shows **all 6 products** (30/15 Fixed, FHA, VA + their Jumbo variants), read in one pass via per-product named ranges; (2) the **`EH_Outputs` single-block** read (§5a) was **not** the approach built — the adapter reads per-product `eh_out_<prefix>_*` ranges per the **v4 map** (91 ranges); (3) there is currently **one shared workbook**, not separate prod/TEST copies. As-built reference: **[`INFRASTRUCTURE.md`](INFRASTRUCTURE.md)**.
+
 ---
 
 ## 0. The key design decision (read this first)

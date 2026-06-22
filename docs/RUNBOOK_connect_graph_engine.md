@@ -4,6 +4,8 @@ _Step-by-step to flip EarnedHome from the stub to Richard's real workbook. Follo
 
 > The app code is already done (`src/lib/pricing/graph.ts`). This runbook only supplies it with a workbook + six values. Nothing here touches app code.
 
+> **✅ COMPLETED (June 21, 2026):** the engine **is connected and running live on QA**. The `GRAPH_*` env vars are set in Netlify; `PRICING_ADAPTER` is `graph` on Branch deploys (QA) and `stub` on Production. This runbook is now kept as the reference for **how it was wired** and for **secret rotation / reconnection**. Note vs. the steps below: the live workbook is **`RateStreamWorkBook.xlsx`** (SharePoint EarnedHome library / InCRyptable tenant), the map is **v4** (91 ranges), and there is currently **one shared workbook** (no separate TEST copy yet). Current as-built setup: **[`INFRASTRUCTURE.md`](INFRASTRUCTURE.md)**.
+
 ---
 
 ## Prerequisites (must be true before you start)

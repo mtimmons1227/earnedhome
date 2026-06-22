@@ -2,6 +2,8 @@
 
 _Source of truth for two things people keep asking about: how tenants work (and how to add a builder), and where R Parry's pricing workbook must live. Last updated June 6, 2026._
 
+> **⚠ Current-state note (June 21, 2026):** §1 (multi-tenancy) is still accurate. §2 (pricing-engine hosting) is **partly superseded** — the engine is now **connected and live on QA**. Differences from §2 below: there is currently **one shared workbook** (not separate test/prod copies); `PRICING_ADAPTER` is set **per Netlify context** (`graph` on QA, `stub` on Production); the field map is now **v4** (91 named ranges), not v3; and the "prerequisites before connect" are **done**. For the authoritative as-built setup see **[`INFRASTRUCTURE.md`](INFRASTRUCTURE.md)**.
+
 ---
 
 ## 1. Multi-tenancy model
