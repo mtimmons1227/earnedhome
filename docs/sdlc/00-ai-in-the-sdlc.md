@@ -56,17 +56,22 @@ Honest framing for reviewers: this project demonstrates **effective human-in-the
 
 ---
 
-## Crosswalk — 7-phase model → these docs
+## Crosswalk — our 8 phases → the docs
 
-| Traditional phase | AI-era name | Covered in |
-|---|---|---|
-| 1. Planning & Feasibility | Feasibility & Approach Analysis | [01-requirements.md](01-requirements.md) (planning/scope) + [02-analysis.md](02-analysis.md) (feasibility) |
-| 2. Requirements & Analysis | Problem Framing & Data Requirements | [01-requirements.md](01-requirements.md) |
-| 3. Design | Solution Architecture & Pipeline Design | [03-design.md](03-design.md) |
-| 4. Implementation | Build & Integration | [04-development.md](04-development.md) |
-| 5. Testing | Evaluation & Validation (Evals + UAT) | [05-testing.md](05-testing.md) |
-| 6. Deployment | Deployment & Operations (LLMOps/MLOps) | [06-implementation.md](06-implementation.md) |
-| 7. Maintenance | Continuous Operations & Assurance | [07-maintenance.md](07-maintenance.md) |
+This project uses an **8-phase standard**: Planning, Analysis, Design, Implementation, Testing, Deployment, Maintenance, and Future Releases. Each is paired below with its AI-era nomenclature for context.
+
+| # | Phase (our standard) | Also known as (AI-era) | Doc |
+|---|---|---|---|
+| 1 | Planning | Problem Framing & Scope Definition | [01-planning.md](01-planning.md) |
+| 2 | Analysis | Requirements & Feasibility Analysis | [02-analysis.md](02-analysis.md) |
+| 3 | Design | Solution Architecture & Pipeline Design | [03-design.md](03-design.md) |
+| 4 | Implementation | Build & Integration | [04-implementation.md](04-implementation.md) |
+| 5 | Testing | Evaluation & Validation (Evals + UAT) | [05-testing.md](05-testing.md) · [QA plan](05a-qa-test-plan.md) |
+| 6 | Deployment | Deployment & Operations (LLMOps/MLOps) | [06-deployment.md](06-deployment.md) |
+| 7 | Maintenance | Continuous Operations & Assurance | [07-maintenance.md](07-maintenance.md) |
+| 8 | Future Releases | Roadmap & Honesty Ledger | [08-future-releases.md](08-future-releases.md) |
+
+> **Note on labels.** "Implementation" here means **writing and integrating the code** (Phase 4). "Deployment" means **releasing to users** (Phase 6). These are the standard's definitions, applied identically across every repo.
 
 Each phase doc closes with an **"AI's role in this phase"** section recording what AI actually did on EarnedHome and at what maturity level.
 

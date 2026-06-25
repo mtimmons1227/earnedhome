@@ -1,5 +1,5 @@
 # Phase 3 — Design
-**AI-era name: Solution Architecture & Pipeline Design**
+**Also known as (AI-era): Solution Architecture & Pipeline Design**
 **Status: ✅ Complete**
 
 ## Purpose
@@ -60,7 +60,8 @@ The workbook lives in a SharePoint document library configured with **versioning
 
 ### Cross-cutting
 - **Security:** secrets only in env vars (never committed); Supabase RLS isolates tenant data.
-- **Multi-tenant:** tenant resolved by host for white-label branding.
+- **Multi-tenant / white-label:** tenant resolved by host (`slugFromHost`) for branding; the full model, isolation spectrum, and scaling issues are in **[../WHITE_LABEL_ARCHITECTURE.md](../WHITE_LABEL_ARCHITECTURE.md)**.
+- **Eligibility edit checks:** loan-program limits (conforming / jumbo tiers / FHA / VA) gate which products show, judged client-side instantly and server-side authoritatively. Design + the per-loan-officer config direction in **[specs/eligibility-edit-checks.md](specs/eligibility-edit-checks.md)**.
 - **Compliance:** disclosures travel with every quote; lead form carries consent.
 
 ## AI's role in this phase
@@ -72,4 +73,4 @@ The workbook lives in a SharePoint document library configured with **versioning
 - **Architecture / stack:** `EarnedHome_Data_Architecture`, `EarnedHome_Brand_and_Product_Architecture`, `Platform_Stack_Roadmap_1A_to_4`, `Pathfinder_1A_WhiteLabel_and_Tenancy_Design`, `White_Label_and_URL_Model_Design_Note.md`.
 - The SharePoint source-of-record configuration.
 - UI design decisions realized in `src/components/PathfinderTool.tsx`.
-- See [08-references.md](08-references.md) for the full artifact index.
+- See [artifact index](../artifacts/README.md) for the full artifact index.

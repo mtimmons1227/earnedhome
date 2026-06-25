@@ -59,9 +59,12 @@ export default function ResetPasswordPage() {
       );
       return;
     }
+    // Forgot-password flow: update the password, then end the temporary recovery
+    // session and send them back to sign in with the NEW password (don't auto-login).
     setDone(true);
+    await supabase.auth.signOut();
     setTimeout(() => {
-      router.push("/dashboard");
+      router.push("/login?reset=success");
       router.refresh();
     }, 1200);
   }
@@ -74,7 +77,7 @@ export default function ResetPasswordPage() {
           <p className="hint">Verifying your reset link…</p>
         ) : done ? (
           <p style={{ color: "#0f6e56", fontWeight: 600 }}>
-            Password updated. Taking you to your dashboard…
+            Password updated. Taking you to sign in…
           </p>
         ) : (
           <>

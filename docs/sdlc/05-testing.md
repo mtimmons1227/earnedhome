@@ -1,5 +1,5 @@
 # Phase 5 — Testing
-**AI-era name: Evaluation & Validation (Evals + UAT)**
+**Also known as (AI-era): Evaluation & Validation (Evals + UAT)**
 **Status: ✅ QA complete** — functional, integration, and golden-value testing done (app reconciled to the source workbook to the dollar). Remaining: the loan officer's RESPA/UAT review of the educational copy.
 
 > 📋 **The concrete test cases, the test harness, and the local → GitHub → Netlify promotion flow live in [05a-qa-test-plan.md](05a-qa-test-plan.md).**

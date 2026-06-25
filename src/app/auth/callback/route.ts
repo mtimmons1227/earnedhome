@@ -1,17 +1,27 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import type { EmailOtpType } from "@supabase/supabase-js";
 
-// Auth callback — exchanges the one-time `code` from an email link (password
-// reset / magic link) for a session server-side, sets the session cookies, then
-// forwards to `next` (e.g. /reset-password). More reliable than client-side
-// session detection in the App Router.
+// Auth callback for email links (password reset / magic link). Establishes the
+// session SERVER-SIDE (more reliable than client-side detection in the App
+// Router), sets the cookies, then forwards to `next` (e.g. /reset-password).
+//
+// Handles BOTH email-link styles so it works regardless of the Supabase email
+// template / flow:
+//   • PKCE:      ?code=...                 -> exchangeCodeForSession
+//   • token_hash: ?token_hash=...&type=... -> verifyOtp (works cross-browser)
+// On a missing/expired/used link, Supabase appends error_* params (or no token);
+// we send those to /login?reset=expired so the UI can prompt for a fresh link.
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get("code");
+  const tokenHash = searchParams.get("token_hash");
+  const type = (searchParams.get("type") as EmailOtpType | null) ?? "recovery";
   const next = searchParams.get("next") ?? "/dashboard";
+  const errorDescription = searchParams.get("error_description");
 
-  if (!code) {
-    return NextResponse.redirect(`${origin}/login`);
+  if (errorDescription || (!code && !tokenHash)) {
+    return NextResponse.redirect(`${origin}/login?reset=expired`);
   }
 
   const res = NextResponse.redirect(`${origin}${next}`);
@@ -27,9 +37,12 @@ export async function GET(req: NextRequest) {
     },
   );
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { error } = code
+    ? await supabase.auth.exchangeCodeForSession(code)
+    : await supabase.auth.verifyOtp({ type, token_hash: tokenHash! });
+
   if (error) {
-    return NextResponse.redirect(`${origin}/login`);
+    return NextResponse.redirect(`${origin}/login?reset=expired`);
   }
   return res;
 }

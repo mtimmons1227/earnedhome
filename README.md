@@ -80,6 +80,8 @@ The full lifecycle is documented for review in **[`docs/sdlc/`](docs/sdlc/README
 6. [Deployment — Deployment & Operations (LLMOps/MLOps)](docs/sdlc/06-implementation.md)
 7. [Maintenance — Continuous Operations & Assurance](docs/sdlc/07-maintenance.md)
 
+**What's built vs. planned:** [`docs/ROADMAP_PHASE_2_3.md`](docs/ROADMAP_PHASE_2_3.md) is the honest ledger — Phase 1A is shipped; AI/LLM features, the 60-day readiness-plan generator, lead-handoff automation, and performance instrumentation are **planned (Phase II/III), not yet in the code.**
+
 ## Compliance
 
 TCPA consent is captured with exact text + timestamp and is **required** to store or route a lead. Reg Z disclosures render with every quote. RESPA is treated as the legal gate before charging customers; fee structure is reviewed with counsel. Displayed figures are estimates; final terms come from the loan officer.

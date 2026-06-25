@@ -1,7 +1,7 @@
 # EarnedHome — Infrastructure & Architecture (current state)
 **The actual, as-built setup: environments, database, pricing engine, and configuration. Updated June 21, 2026.**
 
-> This is the EarnedHome-specific, current-state reference. For the *reusable* blueprint see [`ENVIRONMENT_ARCHITECTURE.md`](ENVIRONMENT_ARCHITECTURE.md); for the deploy recipe see [`HOW_TO_DEPLOY.md`](HOW_TO_DEPLOY.md); for the lifecycle see [`sdlc/`](sdlc/README.md).
+> This is the EarnedHome-specific, current-state reference. For the *reusable* blueprint see [`ENVIRONMENT_ARCHITECTURE.md`](ENVIRONMENT_ARCHITECTURE.md); for the deploy recipe see [`HOW_TO_DEPLOY.md`](HOW_TO_DEPLOY.md); for the lifecycle see [`sdlc/`](sdlc/README.md); for what's **planned but not yet built** (AI/LLM, readiness generator, lead-handoff automation), see [`ROADMAP_PHASE_2_3.md`](ROADMAP_PHASE_2_3.md).
 
 ---
 

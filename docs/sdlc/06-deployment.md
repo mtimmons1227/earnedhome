@@ -1,5 +1,5 @@
-# Phase 6 — Implementation
-**AI-era name: Deployment & Operations (LLMOps / MLOps)**
+# Phase 6 — Deployment
+**Also known as (AI-era): Deployment & Operations (LLMOps / MLOps)**
 **Status: 🔄 In progress** — app is deployed on Netlify running the stub; go-live = setting `PRICING_ADAPTER=graph` + `GRAPH_*` env vars in Netlify, then `test:tags` against the deployed config.
 
 ## Purpose

@@ -71,6 +71,16 @@ Inputs use the buyer-facing fields. "Expected" is what QA verified. **Result** r
 | QA-10 | Veteran **checked** | VA cards appear; 3 VA checkboxes show (Prior VA loan / VA disability / Finance funding fee) | ✅ Pass |
 | QA-11 | Inputs that return no positive-payment product | Routing message instead of blank/zeroed cards | ✅ Pass |
 
+> **Eligibility tiers (June 24).** Ineligible products are shown **greyed-out with a reason** (decided UX), not hidden; eligibility is judged against the input snapshot that produced the quote. Rules in `src/lib/eligibility.ts` per `docs/specs/eligibility-edit-checks.md`.
+
+| ID | Scenario | Expected | Result |
+|---|---|---|---|
+| QA-21 | Home $1,200,000 · 10% down · credit **660–679** (Jumbo Tier 1 needs 680) | Conventional/Jumbo card **greyed**: "This jumbo tier needs a credit score of 680+." | ⏳ Verify on QA |
+| QA-22 | Home $4,500,000 · $500,000 down (loan > $3.5M) | Conventional card **greyed**: "Above our jumbo limit ($3,500,000)…" | ⏳ Verify on QA |
+| QA-23 | Home $650,000 · $30,000 down · First-Time **unchecked** (loan > $573,361) | FHA card **greyed**: "FHA isn't available above $573,361…" | ⏳ Verify on QA |
+| QA-24 | Veteran ✓ · Home $2,600,000 (loan > $2.5M) | VA card **greyed**: "Above the VA jumbo limit ($2,500,000)…" | ⏳ Verify on QA |
+| QA-25 | Eligible jumbo (Home $1,200,000 · 15% down · 720–739) | Cards show **normally** (no greying) | ⏳ Verify on QA |
+
 ### D. Display & formatting
 | ID | Scenario | Expected | Result |
 |---|---|---|---|
@@ -115,6 +125,14 @@ Inputs use the buyer-facing fields. "Expected" is what QA verified. **Result** r
 | Date showed **`46193.39`** | Excel date serial number read via `values` | Read `$select=text` (`getRangeText`) | QA-12 |
 | Only VA showed / **Jumbo missing** | App's loan-limit hiding suppressed Jumbo Conventional/FHA | Removed the hiding; show what the sheet returns with its dynamic Jumbo headings | QA-02 |
 | App read the **old** workbook after the SharePoint move | Stale `GRAPH_WORKBOOK_ITEM_ID` | `find:sp` → new IDs → `test:tags` reconfirmed | QA-19 |
+
+### 6.1 Open defects (not yet fixed)
+| Defect | Where | Root cause | Owner / fix |
+|---|---|---|---|
+| **VA 15-yr card** shows **APR 0.000%, Down Payment $0, Estimated Total $0** (found June 24) | **Engine (workbook)** | The VA 15-yr output named ranges (`eh_out_va15_apr`, `eh_out_va15_downPayment`, `eh_out_va15_cashToClose`) return blank; the app displays blank as 0. The VA **30-yr** block is correct, so it's a VA-15-only mapping gap. | **Richard** — point the VA-15 APR / down-payment / cash-to-close cells at the right formulas (mirror the VA-30 block). App needs no change. Raise at 6/25. |
+
+### 6.2 Performance (June 24)
+- Quote latency on the live engine cut from **~6–9s → ~2s** by batching Graph calls (`/$batch`, ~90 round-trips → ~6). Telemetry via `quote.meta.tookMs` / `graphCalls`. Path to ~1s ("block reads") is a workbook layout change for Richard — see `docs/specs/graph-block-reads.md`.
 
 ## 7. Sign-off
 - **QA (functional, integration, golden-value):** ✅ complete on `dev`.

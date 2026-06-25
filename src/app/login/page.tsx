@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 
@@ -14,6 +14,20 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // If the auth callback bounced us back with an expired/used reset link, open
+  // the reset form and explain. Read from window (no useSearchParams → no
+  // Suspense boundary needed for this client page).
+  useEffect(() => {
+    const reset = new URLSearchParams(window.location.search).get("reset");
+    if (reset === "expired") {
+      setMode("reset");
+      setError("That reset link was invalid or expired. Request a new one below.");
+    } else if (reset === "success") {
+      setMode("signin");
+      setInfo("Your password was updated. Please sign in with your new password.");
+    }
+  }, []);
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
@@ -65,6 +79,10 @@ export default function LoginPage() {
               <input type="password" value={password} autoComplete="current-password"
                 onChange={(e) => setPassword(e.target.value)} required />
               {error && <div className="errbox" style={{ marginTop: 12 }}>{error}</div>}
+              {info && (
+                <div style={{ marginTop: 12, fontSize: 13, color: "#0f6e56",
+                  background: "#e7f7f0", padding: "10px 12px", borderRadius: 8 }}>{info}</div>
+              )}
               <button className="leadbtn" type="submit" disabled={busy} style={{ marginTop: 16 }}>
                 {busy ? "Signing in…" : "Sign in"}
               </button>

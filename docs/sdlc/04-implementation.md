@@ -1,5 +1,5 @@
-# Phase 4 — Development
-**AI-era name: Build & Integration**
+# Phase 4 — Implementation
+**Also known as (AI-era): Build & Integration**
 **Status: ✅ Complete** — app built, live Graph engine integrated, committed and pushed to `dev`.
 
 ## Purpose
@@ -34,6 +34,12 @@ Scripts (`scripts/`, wired into `package.json`): `test:tags`, `find:sp`, `create
 - **Type safety** end to end (TypeScript, `satisfies PricingQuote`).
 - **No secrets in code** — all Graph/Supabase credentials in `.env.local` (git-ignored).
 - **Small commits on `dev`** with descriptive messages; e.g. the milestone commit "Live Graph engine end-to-end: SharePoint repoint, 6 products + Jumbo dynamic names, Estimated Funds breakdown, lead modal, info panels, buyer-friendly labels."
+
+### Phase 1A increments (June 24–25)
+- **Loan eligibility tiers + greyed-out cards** — `src/lib/eligibility.ts` expanded to the full lending matrix (conforming; **Jumbo Tier 1/2** with credit + LTV gates; FHA cap; **VA + VA-Jumbo** tiers); `PathfinderTool.tsx` renders ineligible products **greyed with the reason** (judged against the input snapshot that produced the quote). Spec: `docs/specs/eligibility-edit-checks.md`.
+- **Property Type added; Temporary Buydown removed** — new `PropertyType` (Single Family / 2-4 Unit / Condo / Manufactured) wired to the existing `eh_in_propertyType` named range (Engine!F21, index 1-4) in the graph adapter. New `create:input-names` script documents/recreates the base input tags.
+- **Latency — Graph `$batch`** — adapter rewritten to collapse ~90 sequential Graph calls per quote into ~6 (`/$batch`), with `quote.meta` (`tookMs` / `graphCalls`) telemetry. Measured **~7s → ~2s** on QA. The ~1s path ("block reads") is a workbook layout change — `docs/specs/graph-block-reads.md`.
+- **Forgot-password (loan-officer only, flag-gated)** — `/login` reset mode, `/reset-password`, and a hardened `/auth/callback` (handles both PKCE `code` and `token_hash`; expired-link → `/login?reset=expired`). After a successful reset the recovery session is ended and the user is returned to sign in (`/login?reset=success`). Hidden behind `NEXT_PUBLIC_ENABLE_PASSWORD_RESET` (off on QA/prod). Buyers have no accounts and never see it.
 
 ## AI's role in this phase
 **Maturity: AI-Assisted (LLM copilot).** This is where AI contributed most directly: it generated the graph adapter, the stub, the `PathfinderTool` UI, and the tagging/test scripts, and suggested the fixes that mattered (the `downPct / 100` unit conversion, `$select=text` for dates, tolerant reads). Crucially, the *pricing logic itself was not AI-generated* — it stays in the partner's auditable workbook. Every AI edit was human-reviewed and verified (a rule reinforced after an editing tool once truncated files).

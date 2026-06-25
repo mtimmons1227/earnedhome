@@ -1,5 +1,5 @@
 # Phase 7 — Maintenance
-**AI-era name: Continuous Operations & Assurance**
+**Also known as (AI-era): Continuous Operations & Assurance**
 **Status: ⏳ Begins at go-live** — the daily rate-update workflow is defined and proven; continuous operations start when the live engine is in production.
 
 ## Purpose
