@@ -69,9 +69,56 @@ Live Graph pricing engine (6 products incl. Jumbo/VA), buyer Pathfinder tool, le
 
 ---
 
-## Suggested phasing
-- **Phase II:** #4 lead fan-out (closes the LO-notification gap), **#6 LO copilot (internal — start here)**, #2 readiness plan (rules-based), #3 scenario explanations (templated/reviewed), #5 instrument + benchmark (batching already measured ~7s→~2s).
-- **Phase III:** #1 Azure OpenAI layer (the shared `AIAdapter` seam), #7 predictive lead scoring (with fair-lending care), #8 qualification score, #9 re-engagement timing, **#10 constrained education assistant**, LLM-enhanced readiness plan — the agentic layer, under human-approved guardrails.
+## Process enhancements (later releases) — *added June 25*
+
+### 11. Compliance / QA agent (internal) — *Phase II, elevated* — **NOT built**
+- **What it is:** an internal AI reviewer that checks every customer-facing change — disclosures, info-panel/tooltip copy, email text, button labels, the readiness plan — against a codified checklist (RESPA §8, Reg Z/TILA, TCPA, UDAAP, ECOA/fair-lending) **plus** EarnedHome's own rules (estimates-only, no advice, not-a-commitment, NMLS + Equal Housing present, consent captured).
+- **Output:** pass/fail with the **specific flagged lines**, the rule each trips, and a suggested **compliant rewrite** (catches advice language like "best loan for you," rate commitments, steering, missing disclosures, unsubstantiated superlatives).
+- **How:** server-side LLM grounded (RAG) on the approved disclosure language + a reg checklist; a pre-merge check or dashboard tool, behind a flag, **internal only**.
+- **Why elevate:** compliance gates *every* customer-facing change and is today a manual Richard/counsel bottleneck. A pre-screen catches issues early, standardizes review, and creates an **audit trail**. It does **not** replace counsel — first-pass filter + drafting aid. Internal → no consumer sees it → low regulatory risk itself.
+
+### 12. Reverse affordability ("what can I afford?") — *Phase II* — **NOT built**
+Flip the engine: buyer enters budget/income → price range they fit. Mostly deterministic; high buyer pull; natural extension of the existing engine. Educational, not an approval.
+
+### 13. LO pipeline analytics + speed-to-lead SLA — *Phase II* — **NOT built**
+Funnel, source attribution, time-to-contact metrics, and an escalation if a lead isn't contacted within N minutes. Turns lead data into management insight; protects deals where speed wins.
+
+### 14. Builder / partner portal + analytics — *Phase III* — **NOT built**
+A branded dashboard giving each builder their own lead funnel + analytics. White-label expansion + a sales point (builder ownership). New surface; see [`WHITE_LABEL_ARCHITECTURE.md`](WHITE_LABEL_ARCHITECTURE.md).
+
+### 15. Community / inventory data integration (ATTOM / MLS) — *Phase III* — **NOT built**
+Auto-pull county tax rate, HOA, and available homes per community. Removes manual onboarding setup; enables accurate per-community pricing. Foundation for builder white-label (pairs with the community-onboarding agent in the Agentic doc).
+
+### 16. Buyer rate-watch / readiness alerts (opt-in) — *Phase III* — **NOT built**
+Notify a buyer when rates move or they cross a readiness milestone — turns one-time visitors into a nurtured pipeline; the delivery vehicle for the predictive re-engagement score (#9). Needs notification infra + opt-in consent.
+
+### 17. Multilingual education (Spanish first) — *Phase III* — **NOT built**
+Generative translation of the educational content — broadens the buyer base in many builder markets; low-risk for *educational* copy with review.
+
+---
+
+## Master phased plan (1A / II / III)
+
+**Phase 1A — built / finishing.** Live Graph engine (6 products incl. Jumbo/VA), **batched ~7s→~2s**; buyer tool with **eligibility edit checks** (jumbo/VA tiers, greyed cards) + **Property Type**; lead capture + TCPA; LO dashboard (leads, status, notes, filter); admin Rate Workbook tool; **forgot-password (LO-only, flag-gated)**; multi-tenant + RLS; two-env deploy. *Finishing:* Richard's engine validation + VA-15 fix, RESPA copy sign-off, flip prod to live engine, domain + first builder, **Resend SMTP before forgot-password ships**.
+
+**Phase II — near-term (value, lower risk; internal-first AI).**
+- #4 Lead fan-out (LO email/SMS notification — speed-to-lead)
+- #6 **LO copilot** (internal generative — *start here*)
+- #11 **Compliance/QA agent** (internal — de-risks everything)
+- #2 Readiness plan (rules-based) · #3 scenario explanations (templated/reviewed)
+- #5 Default-LO routing (multi-LO 2a)
+- #12 Reverse affordability · #13 LO analytics + speed-to-lead SLA
+- Buyer estimate email + resume link ([`specs/buyer-email-resume-link.md`](specs/buyer-email-resume-link.md))
+- White-label foundation: **per-tenant workbook ids** + onboarding flow ([`WHITE_LABEL_ARCHITECTURE.md`](WHITE_LABEL_ARCHITECTURE.md))
+
+**Phase III — later (AI layer, buyer-facing, scale; counsel-gated).**
+- #1 Azure OpenAI / `AIAdapter` layer (foundation) → LLM-enhanced #2/#3
+- #7 Predictive lead scoring (fair-lending: outreach only) · #8 qualification score · #9 re-engagement timing
+- #10 Constrained buyer education assistant (RAG, guardrailed) → conversational concierge (last)
+- #14 Builder portal · #15 community/inventory data · #16 rate-watch alerts · #17 multilingual
+- White-label scaling: custom-domain automation, SSO, billing
+
+> **Guardrail rail (all phases):** AI stays educational or internal, human-in-the-loop, pricing in the workbook; predictive scoring is **outreach prioritization only — not credit/pricing** (ECOA); buyer-facing AI needs **counsel sign-off**. Internal agents before buyer-facing ones.
 
 ## Honesty rule
 When describing EarnedHome (resume, pitch, demo): claim only what's in **"What IS built today"** above. Everything in the gap list is **roadmap** — describe it as planned, not delivered, until it ships and (for #5) is measured.
