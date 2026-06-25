@@ -1,6 +1,6 @@
 import type {
   PricingAdapter, PricingInput, PricingProduct, PricingQuote, ProductName,
-  CreditBand, Occupancy,
+  CreditBand, Occupancy, PropertyType,
 } from "./types";
 import { RPARRY_DISCLOSURES } from "./disclosures";
 
@@ -185,6 +185,10 @@ const CREDIT_INDEX: Record<CreditBand, number> = {
 const OCCUPANCY_INDEX: Record<Occupancy, number> = {
   "Primary": 1, "Second Home": 2, "Investment": 3,
 };
+// eh_in_propertyType = Engine!F21 (Form-Control linked cell), index 1-4.
+const PROPERTY_TYPE_INDEX: Record<PropertyType, number> = {
+  "Single Family": 1, "2-4 Unit": 2, "Condo": 3, "Manufactured": 4,
+};
 
 export const graphAdapter: PricingAdapter = {
   name: "graph",
@@ -202,8 +206,8 @@ export const graphAdapter: PricingAdapter = {
       try {
         // --- 1) Write the 10 inputs + recalc, as one serially-chained batch. ---
         // Plain Front cells: price, down %, seller credit. Engine-sheet Form-Control
-        // linked cells: credit & occupancy as INDEX; veteran/firstTime/VA flags as
-        // TRUE/FALSE. Down Payment is computed in-sheet from Down %. Buydown fixed (None).
+        // linked cells: credit, occupancy & property type as INDEX; veteran/firstTime/VA
+        // flags as TRUE/FALSE. Down Payment is computed in-sheet from Down %.
         const writes: Sub[] = [];
         const w = (name: string, value: string | number | boolean) => {
           const id = `w${writes.length}`;
@@ -221,6 +225,7 @@ export const graphAdapter: PricingAdapter = {
         w("eh_in_sellerCredit", input.sellerCredit);
         w("eh_in_creditBand", CREDIT_INDEX[input.creditBand]);
         w("eh_in_occupancy", OCCUPANCY_INDEX[input.occupancy]);
+        w("eh_in_propertyType", PROPERTY_TYPE_INDEX[input.propertyType]);
         w("eh_in_veteran", input.veteran);
         w("eh_in_firstTime", input.firstTime);
         w("eh_in_vaPriorLoan", input.vaPriorLoan);

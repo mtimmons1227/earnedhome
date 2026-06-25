@@ -8,7 +8,7 @@ export type CreditBand =
   | "680–699" | "660–679" | "640–659" | "620–639";
 
 export type Occupancy = "Primary" | "Second Home" | "Investment";
-export type Buydown = "None" | "1-0" | "2-1" | "3-2-1";
+export type PropertyType = "Single Family" | "2-4 Unit" | "Condo" | "Manufactured";
 
 // eh_in_*
 export interface PricingInput {
@@ -18,7 +18,7 @@ export interface PricingInput {
   creditBand: CreditBand; // eh_in_credit_band
   occupancy: Occupancy;   // eh_in_occupancy
   sellerCredit: number;   // eh_in_seller_credit
-  buydown: Buydown;       // eh_in_buydown
+  propertyType: PropertyType; // eh_in_propertyType (1=Single Family, 2=2-4 Unit, 3=Condo, 4=Manufactured)
   veteran: boolean;       // eh_in_veteran
   firstTime: boolean;     // eh_in_first_time
   vaPriorLoan: boolean;     // eh_in_vaPriorLoan

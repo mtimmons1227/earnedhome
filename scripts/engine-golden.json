@@ -4,7 +4,7 @@
   "scenarios": [
     {
       "name": "Baseline — 450k / 10% down / 740-759 / primary",
-      "input": { "homePrice": 450000, "downAmount": 45000, "downPct": 10, "creditBand": "740–759", "occupancy": "Primary", "sellerCredit": 5000, "buydown": "None", "veteran": false, "firstTime": true },
+      "input": { "homePrice": 450000, "downAmount": 45000, "downPct": 10, "creditBand": "740–759", "occupancy": "Primary", "sellerCredit": 5000, "propertyType": "Single Family", "veteran": false, "firstTime": true },
       "expected": { "cashToClose": null, "products": {
         "30-yr Fixed": { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },
         "30-yr FHA":   { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },
@@ -14,7 +14,7 @@
     },
     {
       "name": "Low down — 350k / 3.5% / 680-699 / primary / first-time",
-      "input": { "homePrice": 350000, "downAmount": 12250, "downPct": 3.5, "creditBand": "680–699", "occupancy": "Primary", "sellerCredit": 0, "buydown": "None", "veteran": false, "firstTime": true },
+      "input": { "homePrice": 350000, "downAmount": 12250, "downPct": 3.5, "creditBand": "680–699", "occupancy": "Primary", "sellerCredit": 0, "propertyType": "Single Family", "veteran": false, "firstTime": true },
       "expected": { "cashToClose": null, "products": {
         "30-yr Fixed": { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },
         "30-yr FHA":   { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },
@@ -24,7 +24,7 @@
     },
     {
       "name": "High credit / low LTV — 600k / 25% / 780+ / primary",
-      "input": { "homePrice": 600000, "downAmount": 150000, "downPct": 25, "creditBand": "780+", "occupancy": "Primary", "sellerCredit": 0, "buydown": "None", "veteran": false, "firstTime": false },
+      "input": { "homePrice": 600000, "downAmount": 150000, "downPct": 25, "creditBand": "780+", "occupancy": "Primary", "sellerCredit": 0, "propertyType": "Single Family", "veteran": false, "firstTime": false },
       "expected": { "cashToClose": null, "products": {
         "30-yr Fixed": { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },
         "30-yr FHA":   { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },
@@ -34,7 +34,7 @@
     },
     {
       "name": "Investment — 400k / 25% / 720-739 / investment",
-      "input": { "homePrice": 400000, "downAmount": 100000, "downPct": 25, "creditBand": "720–739", "occupancy": "Investment", "sellerCredit": 0, "buydown": "None", "veteran": false, "firstTime": false },
+      "input": { "homePrice": 400000, "downAmount": 100000, "downPct": 25, "creditBand": "720–739", "occupancy": "Investment", "sellerCredit": 0, "propertyType": "Single Family", "veteran": false, "firstTime": false },
       "expected": { "cashToClose": null, "products": {
         "30-yr Fixed": { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },
         "30-yr FHA":   { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },
@@ -44,7 +44,7 @@
     },
     {
       "name": "Veteran — 500k / 0% down / 700-719 / VA",
-      "input": { "homePrice": 500000, "downAmount": 0, "downPct": 0, "creditBand": "700–719", "occupancy": "Primary", "sellerCredit": 0, "buydown": "None", "veteran": true, "firstTime": true },
+      "input": { "homePrice": 500000, "downAmount": 0, "downPct": 0, "creditBand": "700–719", "occupancy": "Primary", "sellerCredit": 0, "propertyType": "Single Family", "veteran": true, "firstTime": true },
       "expected": { "cashToClose": null, "products": {
         "30-yr Fixed": { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },
         "30-yr FHA":   { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },
@@ -53,8 +53,8 @@
       } }
     },
     {
-      "name": "Temp buydown 2-1 — 450k / 10% / 740-759 / 10k seller",
-      "input": { "homePrice": 450000, "downAmount": 45000, "downPct": 10, "creditBand": "740–759", "occupancy": "Primary", "sellerCredit": 10000, "buydown": "2-1", "veteran": false, "firstTime": true },
+      "name": "Condo — 450k / 10% / 740-759 / 10k seller",
+      "input": { "homePrice": 450000, "downAmount": 45000, "downPct": 10, "creditBand": "740–759", "occupancy": "Primary", "sellerCredit": 10000, "propertyType": "Condo", "veteran": false, "firstTime": true },
       "expected": { "cashToClose": null, "products": {
         "30-yr Fixed": { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },
         "30-yr FHA":   { "rate": null, "apr": null, "principalAndInterest": null, "taxes": null, "insurance": null, "mortgageInsurance": null, "totalPayment": null },

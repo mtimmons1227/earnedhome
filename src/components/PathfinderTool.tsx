@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type {
-  CreditBand, Occupancy, Buydown, PricingInput, PricingQuote, PricingProduct,
+  CreditBand, Occupancy, PropertyType, PricingInput, PricingQuote, PricingProduct,
 } from "@/lib/pricing/types";
 import { evaluateEligibility, type Family } from "@/lib/eligibility";
 
@@ -18,7 +18,7 @@ const CREDIT_BANDS: CreditBand[] = [
   "680–699", "660–679", "640–659", "620–639",
 ];
 const OCCUPANCIES: Occupancy[] = ["Primary", "Second Home", "Investment"];
-const BUYDOWNS: Buydown[] = ["None", "1-0", "2-1", "3-2-1"];
+const PROPERTY_TYPES: PropertyType[] = ["Single Family", "2-4 Unit", "Condo", "Manufactured"];
 
 interface Props {
   tenantId: string;
@@ -34,7 +34,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
   const [creditBand, setCreditBand] = useState<CreditBand>("740–759");
   const [occupancy, setOccupancy] = useState<Occupancy>("Primary");
   const [sellerCredit, setSellerCredit] = useState("5,000");
-  const [buydown, setBuydown] = useState<Buydown>("None");
+  const [propertyType, setPropertyType] = useState<PropertyType>("Single Family");
   const [veteran, setVeteran] = useState(false);
   const [firstTime, setFirstTime] = useState(true);
   // VA-specific inputs — only relevant (and shown) when Military / Veteran is checked.
@@ -92,10 +92,10 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
       downPct: parseNum(downPct),
       creditBand, occupancy,
       sellerCredit: parseNum(sellerCredit),
-      buydown, veteran, firstTime,
+      propertyType, veteran, firstTime,
       vaPriorLoan, vaDisability, vaFundingFee,
     }),
-    [homePrice, downAmt, downPct, creditBand, occupancy, sellerCredit, buydown,
+    [homePrice, downAmt, downPct, creditBand, occupancy, sellerCredit, propertyType,
      veteran, firstTime, vaPriorLoan, vaDisability, vaFundingFee],
   );
 
@@ -253,6 +253,10 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
           <select value={occupancy} onChange={(e) => setOccupancy(e.target.value as Occupancy)}>
             {OCCUPANCIES.map((o) => <option key={o}>{o}</option>)}
           </select>
+          <label>Property Type</label>
+          <select value={propertyType} onChange={(e) => setPropertyType(e.target.value as PropertyType)}>
+            {PROPERTY_TYPES.map((t) => <option key={t}>{t}</option>)}
+          </select>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <label style={{ margin: 0 }}>Seller Credit ($)</label>
             <button type="button" aria-label="What's this?"
@@ -267,20 +271,6 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
           {openTip === "seller" && (
             <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, margin: "6px 0 0" }}>
               Money the seller agrees to put toward your closing costs, which lowers the cash you need at closing. Limits apply by loan type — your loan officer can tell you what&apos;s possible.
-            </div>
-          )}
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <label style={{ margin: 0 }}>Temporary Buydown</label>
-            <button type="button" aria-label="What's this?"
-              onClick={() => setOpenTip(openTip === "buydown" ? null : "buydown")}
-              style={{ background: "none", border: 0, cursor: "pointer", color: "var(--primary)", fontSize: 14, padding: 0, lineHeight: 1 }}>ⓘ</button>
-          </div>
-          <select value={buydown} onChange={(e) => setBuydown(e.target.value as Buydown)}>
-            {BUYDOWNS.map((b) => <option key={b}>{b}</option>)}
-          </select>
-          {openTip === "buydown" && (
-            <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, margin: "6px 0 0" }}>
-              A temporary buydown lowers your interest rate for the first year or two of the loan, easing you into the full payment. (A &ldquo;2-1&rdquo; means 2% lower in year one, 1% lower in year two.) It&apos;s usually paid for by the seller or builder — your loan officer can explain the options.
             </div>
           )}
           <label className="grouphd">Eligibility</label>
