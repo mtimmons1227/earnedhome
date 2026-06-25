@@ -105,15 +105,15 @@ interface Sub {
 interface SubResponse { status: number; body?: unknown }
 
 // Splits sub-requests into chunks of 20 (Graph's per-batch limit), carrying the
-// workbook session on each, and fires the chunks CONCURRENTLY. Sub-requests in a
-// single batch have no ordering guarantee anyway, so the read phase (which runs
-// after the awaited write+recalc batch) is safe to parallelize across chunks.
+// workbook session on each, and sends the chunks SEQUENTIALLY. (Concurrent batch
+// requests against the same non-persisted workbook session can return partial
+// reads — e.g. a product card with $0 P&I — so we serialize. Parallelizing gave
+// no measurable latency benefit anyway; the win is the batching itself, ~90 -> ~6.)
 // Returns a map of sub-request id -> response.
 async function runBatch(subs: Sub[], session: string): Promise<Map<string, SubResponse>> {
-  const chunks: Sub[][] = [];
-  for (let i = 0; i < subs.length; i += 20) chunks.push(subs.slice(i, i + 20));
-
-  const perChunk = await Promise.all(chunks.map(async (chunk) => {
+  const out = new Map<string, SubResponse>();
+  for (let i = 0; i < subs.length; i += 20) {
+    const chunk = subs.slice(i, i + 20);
     const res = await gfetch(`${GRAPH}/$batch`, {
       method: "POST",
       body: JSON.stringify({
@@ -128,12 +128,8 @@ async function runBatch(subs: Sub[], session: string): Promise<Map<string, SubRe
       }),
     });
     if (!res.ok) throw new Error(`$batch failed: ${res.status}`);
-    return (await res.json() as { responses?: { id: string; status: number; body?: unknown }[] }).responses ?? [];
-  }));
-
-  const out = new Map<string, SubResponse>();
-  for (const responses of perChunk) {
-    for (const r of responses) out.set(r.id, { status: r.status, body: r.body });
+    const j = (await res.json()) as { responses?: { id: string; status: number; body?: unknown }[] };
+    for (const r of j.responses ?? []) out.set(r.id, { status: r.status, body: r.body });
   }
   return out;
 }
