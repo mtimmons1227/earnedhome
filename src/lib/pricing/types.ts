@@ -58,6 +58,8 @@ export interface PricingQuote {
   products: PricingProduct[];
   disclosures: string[];
   engine: "stub" | "graph";
+  // Optional perf telemetry (graph adapter only) for latency before/after testing.
+  meta?: { tookMs: number; graphCalls: number; cached: boolean };
 }
 
 export interface PricingAdapter {
