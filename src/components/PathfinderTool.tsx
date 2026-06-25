@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type {
   CreditBand, Occupancy, Buydown, PricingInput, PricingQuote, PricingProduct,
 } from "@/lib/pricing/types";
+import { evaluateEligibility, type Family } from "@/lib/eligibility";
 
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const parseNum = (s: string) => +String(s).replace(/[^0-9.]/g, "") || 0;
@@ -44,6 +45,9 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
   // results state
   const [term, setTerm] = useState<15 | 30>(30);
   const [quote, setQuote] = useState<PricingQuote | null>(null);
+  // The exact input that produced the current quote — eligibility is judged
+  // against this snapshot so the cards stay consistent even if inputs are edited.
+  const [quoteInput, setQuoteInput] = useState<PricingInput | null>(null);
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [requestKey, setRequestKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -112,6 +116,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
     if (errs.length) return;
     setLoading(true);
     setQuote(null);
+    setQuoteInput(null);
     setQuoteId(null);
     setLeadDone(false); // a new quote means a new potential lead
     try {
@@ -123,6 +128,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
       if (!res.ok) throw new Error("quote failed");
       const data = (await res.json()) as { quote: PricingQuote; quoteId: string | null };
       setQuote(data.quote);
+      setQuoteInput(input); // snapshot for eligibility
       setQuoteId(data.quoteId);
       // One idempotency key per quote result: repeat "Connect" clicks for this
       // scenario collapse to a single lead; a new quote starts a new key.
@@ -171,6 +177,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
   // Clear everything back to a fresh start: results, the lead form, and consent.
   function resetAll() {
     setQuote(null);
+    setQuoteInput(null);
     setQuoteId(null);
     setRequestKey(null);
     setErrors([]);
@@ -186,13 +193,22 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
   }
 
   const shown = quote?.products.filter((p) => p.termYears === term) ?? [];
-  // Display whatever the workbook returns. Richard's sheet now computes every loan
-  // size (including Jumbo), so the app no longer applies its own loan-limit edit
-  // checks. VA shows only when Veteran is checked; a card needs a real payment to appear.
-  const eligibleShown = shown.filter((p) => (p.isVa ? veteran : true) && p.totalPayment > 0);
+  // Judge each product against R Parry's lending-criteria matrix (conforming,
+  // jumbo tiers, FHA cap, VA jumbo tiers). Eligible products show only with a real
+  // payment; ineligible ones show greyed-out with the reason. VA shows only when
+  // Veteran is checked. Eligibility uses the snapshot that produced this quote.
+  const eligibility = quoteInput ? evaluateEligibility(quoteInput) : null;
+  const cards =
+    quote && eligibility
+      ? shown
+          .filter((p) => (p.isVa ? veteran : true))
+          .map((p) => ({ p, elig: eligibility[famOf(p)] }))
+          .filter(({ p, elig }) => (elig.eligible ? p.totalPayment > 0 : true))
+      : [];
   const routeMsg =
-    quote && eligibleShown.length === 0
-      ? "Let’s talk through your options to find the right program for you. Use “Connect me with a loan officer” below."
+    quote && cards.length === 0
+      ? eligibility?.routeMessage ??
+        "Let’s talk through your options to find the right program for you. Use “Connect me with a loan officer” below."
       : undefined;
 
   return (
@@ -348,7 +364,9 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
               {routeMsg ? (
                 <div className="flag" style={{ marginBottom: 0 }}>{routeMsg}</div>
               ) : (
-                <div className="cards">{eligibleShown.map((p) => <Card key={p.product} p={p} />)}</div>
+                <div className="cards">{cards.map(({ p, elig }) => (
+                  <Card key={p.product} p={p} reason={elig.eligible ? undefined : elig.reason} />
+                ))}</div>
               )}
               <div className="route">Your loan officer: {loName}</div>
               {!leadDone ? (
@@ -505,7 +523,29 @@ function InfoTerm({ t, d }: { t: string; d: string }) {
   );
 }
 
-function Card({ p }: { p: PricingProduct }) {
+// Which lending family a product belongs to (drives its eligibility check).
+function famOf(p: PricingProduct): Family {
+  return p.isVa ? "va" : p.isFha ? "fha" : "conventional";
+}
+
+function Card({ p, reason }: { p: PricingProduct; reason?: string }) {
+  // Ineligible for this scenario: show the product greyed-out with the reason,
+  // not the (inapplicable) payment numbers.
+  if (reason) {
+    return (
+      <div className="card" style={{ opacity: 0.55 }} aria-disabled="true">
+        <div className="top">
+          <div className="nm">{p.displayName}</div>
+        </div>
+        <div style={{ padding: "12px 0 4px", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)", marginBottom: 4 }}>
+            Not available for this scenario
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{reason}</div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="card">
       <div className="top">
