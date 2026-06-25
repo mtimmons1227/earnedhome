@@ -43,9 +43,35 @@ Live Graph pricing engine (6 products incl. Jumbo/VA), buyer Pathfinder tool, le
 
 ---
 
+## AI solutions — generative vs predictive (Phase II/III)
+
+**The rail (applies to every AI item):** EarnedHome **educates and routes** — it is not an underwriter, and the pricing logic stays in the LO's auditable workbook. So AI here is **educational or internal**, keeps a **human in the loop**, and never gives personalized financial advice or anything resembling a credit decision (RESPA / UDAAP / ECOA). Two families: **generative** (explain / draft / converse) and **predictive** (score / rank / time).
+
+### 6. LO copilot (internal, generative) — **NOT built** — *best near-term AI win*
+- **Plan:** draft the follow-up email/SMS to a new lead, summarize a lead's notes + the exact quote they saw, suggest talking points, and produce a daily "your pipeline" digest. **LO reviews before anything sends.**
+- **Why first:** internal-facing → **lowest compliance risk**, fastest ROI; pairs directly with the lead fan-out (#4) and routing (#5/Phase II).
+- **Plugs in at:** the AI layer (#1) called from dashboard actions + a scheduled digest task.
+
+### 7. Predictive lead scoring & prioritization — **NOT built**
+- **Plan:** a conversion-likelihood score so the LO works the hottest leads first (speed-to-lead is where deals are won).
+- **⚠️ Fair-lending guardrail:** for **outreach prioritization only** — must **not** influence who is offered credit or pricing, and must avoid protected-class proxies (ECOA / disparate-impact). Prioritization ≠ underwriting.
+
+### 8. Readiness / qualification score (predictive) — **NOT built**
+- **Plan:** predict how mortgage-ready a buyer is and **time-to-ready** (credit band, down-payment gap, debt signals). Doubles as buyer motivation ("you're ~2 months away") and LO triage. Complements the #2 plan *generator* (this is the *score*; #2 is the *steps*).
+- **Guardrail:** educational/motivational, **not** a credit decision or approval.
+
+### 9. Re-engagement timing (predictive) — **NOT built**
+- **Plan:** predict when a warm-but-quiet buyer is likely ready to act and nudge the LO — turns saved-quote data into a follow-up engine. Runs as a scheduled, human-approved trigger (agentic edge).
+
+### 10. Constrained buyer education assistant / "the bot" — **NOT built** — *Phase III, cautious*
+- **Decision:** a **free-form** buyer chatbot is **too much / too risky** now (hallucination liability; edges toward advice + fair-lending exposure). A **narrow, grounded** assistant is viable later.
+- **Plan (if built):** scoped to a **curated, compliance-approved knowledge base** (RAG — answers only from vetted content), with hard guardrails: educational only, no rate commitments, no "should you" recommendations, and an explicit **hand-off to the loan officer** the moment a question gets personal or complex. "Guided explainer that knows when to say *let's get your LO on this*," not a general chatbot.
+
+---
+
 ## Suggested phasing
-- **Phase II:** #4 lead fan-out (highest immediate value — closes the LO-notification gap), #2 readiness plan (rules-based), #5 instrument + benchmark performance.
-- **Phase III:** #1 Azure OpenAI layer, #3 LLM scenario explanations, LLM-enhanced readiness plan, agentic assistant.
+- **Phase II:** #4 lead fan-out (closes the LO-notification gap), **#6 LO copilot (internal — start here)**, #2 readiness plan (rules-based), #3 scenario explanations (templated/reviewed), #5 instrument + benchmark (batching already measured ~7s→~2s).
+- **Phase III:** #1 Azure OpenAI layer (the shared `AIAdapter` seam), #7 predictive lead scoring (with fair-lending care), #8 qualification score, #9 re-engagement timing, **#10 constrained education assistant**, LLM-enhanced readiness plan — the agentic layer, under human-approved guardrails.
 
 ## Honesty rule
 When describing EarnedHome (resume, pitch, demo): claim only what's in **"What IS built today"** above. Everything in the gap list is **roadmap** — describe it as planned, not delivered, until it ships and (for #5) is measured.

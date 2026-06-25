@@ -53,6 +53,10 @@ Live Graph pricing engine (6 products incl. Jumbo/VA) — now **batched (~7s →
 - **Today:** the buyer gets no email; the estimate isn't reopenable.
 - **Plan:** on lead submit, email the buyer their estimate summary + disclosures (Resend) and a tokenized **resume link** to reopen a read-only saved estimate (~30-day, no PII in the URL). Researched; parked until forgot-password is finished. Spec: [`../specs/buyer-email-resume-link.md`](../specs/buyer-email-resume-link.md).
 
+### 9. AI layer — generative + predictive — *not built (Phase II/III)*
+- Beyond items #1–3 (AI layer, readiness plan, scenario explanations): **LO copilot** (internal generative — draft follow-ups, summarize a lead + their quote, daily pipeline digest; LO reviews → **lowest risk, start here**); **predictive lead scoring & prioritization** (outreach triage); **readiness / qualification score**; **re-engagement timing**; and a **constrained buyer education assistant** (RAG over compliance-approved content, guardrailed, hands off to the LO — a free-form chatbot is deliberately out of scope).
+- **Rail / guardrails:** educational or internal only, human-in-the-loop, pricing stays in the workbook; predictive scoring is **outreach prioritization only — not credit/pricing decisions** (ECOA / fair-lending). Full breakdown per item + phasing: [`../ROADMAP_PHASE_2_3.md`](../ROADMAP_PHASE_2_3.md) (AI solutions section).
+
 ---
 
 ## Already built and worth noting: Rate Workbook Tool
