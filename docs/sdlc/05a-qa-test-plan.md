@@ -117,6 +117,7 @@ Inputs use the buyer-facing fields. "Expected" is what QA verified. **Result** r
 - [ ] Post-deploy `test:tags` against the deployed config
 - [ ] Partner UAT sign-off on pricing + educational/disclosure copy (RESPA)
 - [ ] Rollback path confirmed (Netlify deploy history + SharePoint version history)
+- [ ] **⚠️ Forgot-password (LO-only) — DO NOT enable until email is production-grade.** Before flipping `NEXT_PUBLIC_ENABLE_PASSWORD_RESET=true` on any environment: **configure Resend SMTP in Supabase** (the built-in sender is rate-limited and unfit for production — it hit "email rate limit exceeded" in testing), add the **QA + prod redirect URLs** in Supabase, and (recommended) switch the recovery email template to **`token_hash`** for cross-device links. The code is built and verified locally; it stays **flag-OFF** on QA/prod until these are done. *(Resend deferred as of June 25 — must be turned on before go-live.)*
 
 ## 6. Defects found & fixed during QA
 | Defect | Root cause | Fix | Verified by |

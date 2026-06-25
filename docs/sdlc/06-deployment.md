@@ -45,6 +45,7 @@ The product's "model" is refreshed daily by the loan officer:
 - [ ] Loan officer's info-panel / disclosure copy RESPA-reviewed and swapped in.
 - [ ] Production deploy verified on desktop and mobile.
 - [ ] Rollback path confirmed (Netlify deploy history + SharePoint version history).
+- [ ] **Forgot-password (LO-only) stays OFF until email is production-grade.** Configure **Resend SMTP** in Supabase (built-in email is rate-limited), add QA+prod redirect URLs, and (recommended) switch the recovery email to `token_hash`; only then set `NEXT_PUBLIC_ENABLE_PASSWORD_RESET=true` per environment. The code is built + verified locally. *(Resend deferred per Marvin, June 25 — see [05a-qa-test-plan.md](05a-qa-test-plan.md) §5 and [../CHANGE_SIGNOFF_LOG.md](../CHANGE_SIGNOFF_LOG.md) #4.)*
 
 ## AI's role in this phase
 **Maturity: AI-Assisted, trending Agentic.** AI produced the deployment runbook, the go-live checklist, and the partner's daily-ops guide, and can help optimize the pipeline and predict/monitor failures. Money-touching and config-changing actions stay with the human by policy — AI never sets production secrets or flips the live engine on its own. Scheduled monitoring (rates/leads) is the agentic edge, run under human-approved guardrails.
