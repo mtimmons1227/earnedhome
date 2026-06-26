@@ -41,9 +41,10 @@ Live Graph pricing engine (6 products incl. Jumbo/VA) — now **batched (~7s →
 - **Plan:** support N loan officers per tenant; promote `app_users` (role `lo`) to the source of truth; add a `lo_routing` strategy (`default` → `community` → `round_robin` → `buyer_choice`); link each lead to a specific LO via `assigned_lo_id`; drive NMLS in disclosures from the resolved LO. Full spec: [`../specs/multi-loan-officer-routing.md`](../specs/multi-loan-officer-routing.md).
 - **Phasing:** 2a default LO → 2b community routing → 2c round-robin / buyer-choice.
 
-### 6. Performance instrumentation & benchmark — *partly shipped (June 24)*
-- **Done:** the graph adapter now reports `quote.meta` (`tookMs` / `graphCalls`), and **request batching** (`/$batch`) cut a quote from a measured **~6–9s to ~2s** on QA (~90 round-trips → ~6). This is the *real, measured* delta — cite this, not any unmeasured "throughput lift."
-- **Remaining (to ~1s):** "block reads" — read each product's outputs as one contiguous named range instead of ~13 cells. Needs a workbook layout change by the loan officer. Spec: [`../specs/graph-block-reads.md`](../specs/graph-block-reads.md).
+### 6. Performance instrumentation & benchmark — ✅ *shipped (June 24–25)*
+- **Batching:** `quote.meta` telemetry + `/$batch` cut a quote from **~6–9s to ~2s** on QA (~90 round-trips → ~6). Real, measured — cite this, not any unmeasured "throughput lift."
+- **Block reads (done):** the `EH_Out` reference tab + `GRAPH_OUTPUT_MODE=grid` reads the whole output block in one call → **~1s, ~3 Graph round-trips**, numbers verified to the dollar. Flag-gated; on QA. Specs: [`../specs/graph-block-reads.md`](../specs/graph-block-reads.md), [`../specs/eh-out-tab-spec.md`](../specs/eh-out-tab-spec.md).
+- Full latency story: **~7s → ~2s (batching) → ~1s (block reads).**
 
 ### 7. White-label scaling — *foundation built; scaling work planned*
 - **Today:** multi-tenant by host with per-tenant branding + RLS is built (one shared Supabase + Netlify). Workbook identity is still a **global env var** (one engine), and onboarding a builder is manual.

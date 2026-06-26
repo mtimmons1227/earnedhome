@@ -63,6 +63,8 @@
 
 **Schema (multi-tenant, RLS):** `tenants`, `app_users` (roles: admin/lo/staff), `communities`, `quotes`, `leads`, `events`. RLS scopes reads/writes to the signed-in user's tenant. Leads are **tenant-shared** (every user in a tenant sees the same inbox), not per-LO.
 
+**Per-tenant identity (migration `0005_tenant_identity.sql`):** `tenants` carries the static compliance/identity fields rendered in the buyer disclosure — `lo_name` (display), `nmls` (originator), plus `legal_name`, `company_nmls`, `originator_name`. These are set once at onboarding (R Parry confirmed; `acme`/`bluekey` demos left null). Frequently-changing eligibility/overlay fields are a Phase II admin-dashboard concern; the legal disclosure prose stays locked in code.
+
 ---
 
 ## 4. Pricing engine — two independent switches
@@ -75,6 +77,8 @@ This trips people up, so it's worth stating plainly. There are two separate sett
 So "pointing to the workbook" (`GRAPH_WORKBOOK_*`) and "using it for buyer pricing" (`PRICING_ADAPTER=graph`) are different things. The results footer shows **"Live engine"** (graph) or **"Demo / stub engine"** (stub).
 
 **The adapter pattern:** the app only calls a `PricingAdapter` interface (`src/lib/pricing/types.ts`) with two implementations — `stub` (demo) and `graph` (live workbook). Swapping them is a single env var, zero UI change.
+
+**Graph read modes (`GRAPH_OUTPUT_MODE`):** the `graph` adapter batches all calls (`/$batch`). In `cells` mode (default) it reads each output named range; in `grid` mode it reads one contiguous block — the **`EH_Out` tab**, a reference grid gathering every `eh_out_*` output into `eh_out_grid` (`B2:N7`), read in a single call (~3 Graph round-trips, ~1s). The `EH_Out` tab decouples the app from the engine's layout: Richard can rearrange Front/Engine freely as long as the reference cells resolve. Spec: [`specs/eh-out-tab-spec.md`](specs/eh-out-tab-spec.md).
 
 ---
 
@@ -100,6 +104,8 @@ Stored in Netlify (host) and `.env.local` (local) — **never committed**.
 | `PRICING_ADAPTER` | `stub` (demo) or `graph` (live) | **per-context: `graph` on Branch deploys, `stub` on Production** |
 | `GRAPH_TENANT_ID` / `GRAPH_CLIENT_ID` / `GRAPH_CLIENT_SECRET` | Microsoft Graph app credentials | all contexts (inert where unused) |
 | `GRAPH_WORKBOOK_DRIVE_ID` / `GRAPH_WORKBOOK_ITEM_ID` | which workbook file | all contexts |
+| `GRAPH_OUTPUT_MODE` | `cells` (default — one read per output) or `grid` (single read of `EH_Out!eh_out_grid`, ~3 Graph calls, ~1s) | **per-context: set `grid` where the `EH_Out` tab is verified live; unset elsewhere** |
+| `NEXT_PUBLIC_ENABLE_PASSWORD_RESET` | shows the LO "Forgot password?" flow when `true` | **off (unset) until Resend SMTP is configured — see go-live gate** |
 
 ---
 
