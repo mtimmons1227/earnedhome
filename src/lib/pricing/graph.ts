@@ -235,54 +235,96 @@ export const graphAdapter: PricingAdapter = {
         });
         await runBatch(writes, session);
 
-        // --- 2) Read every product block (eh_out_<prefix>_*) in batches of 20. ---
-        const reads: Sub[] = [];
-        const rd = (id: string, name: string, select: "values" | "text" = "values") =>
-          reads.push({ id, method: "GET", url: `${wbPath()}/names/${name}/range?$select=${select}` });
-        for (const p of PRODUCTS) {
-          rd(`${p.prefix}_name`, `eh_out_${p.prefix}_name`);
-          rd(`${p.prefix}_rate`, `eh_out_${p.prefix}_rate`);
-          rd(`${p.prefix}_apr`, `eh_out_${p.prefix}_apr`);
-          rd(`${p.prefix}_pi`, `eh_out_${p.prefix}_pi`);
-          rd(`${p.prefix}_taxes`, `eh_out_${p.prefix}_taxes`);
-          rd(`${p.prefix}_ins`, `eh_out_${p.prefix}_ins`);
-          if (!p.va) rd(`${p.prefix}_mi`, `eh_out_${p.prefix}_mi`);
-          rd(`${p.prefix}_total`, `eh_out_${p.prefix}_total`);
-          rd(`${p.prefix}_loanFees`, `eh_out_${p.prefix}_loanFees`);
-          rd(`${p.prefix}_prepaids`, `eh_out_${p.prefix}_prepaids`);
-          rd(`${p.prefix}_downPayment`, `eh_out_${p.prefix}_downPayment`);
-          rd(`${p.prefix}_lessSeller`, `eh_out_${p.prefix}_lessSeller`);
-          rd(`${p.prefix}_cashToClose`, `eh_out_${p.prefix}_cashToClose`);
+        // --- 2) Read the outputs. Two modes (GRAPH_OUTPUT_MODE):
+        //   "grid"  → ONE read of the EH_Out!eh_out_grid block (6×13) + the date.
+        //   "cells" → (default) one GET per output name (~78), batched. ---
+        const mode = (process.env.GRAPH_OUTPUT_MODE ?? "cells").toLowerCase();
+        let products: PricingProduct[];
+        let cashToClose: number;
+        let ratesAsOf: string;
+
+        if (mode === "grid") {
+          // eh_out_grid rows line up with PRODUCTS order; columns are, in order:
+          // name, rate, apr, pi, taxes, ins, mi, total, loanFees, prepaids,
+          // downPayment, lessSeller, cashToClose. (VA mi cell is 0 in the sheet.)
+          const reads: Sub[] = [
+            { id: "grid", method: "GET", url: `${wbPath()}/names/eh_out_grid/range?$select=values` },
+            { id: "ratesAsOf", method: "GET", url: `${wbPath()}/names/eh_out_ratesAsOf/range?$select=text` },
+          ];
+          const m = await runBatch(reads, session);
+          const rows = ((m.get("grid")?.body as { values?: unknown[][] })?.values) ?? [];
+          products = PRODUCTS.map((p, i) => {
+            const r = rows[i] ?? [];
+            return {
+              product: p.name,
+              displayName: String(r[0] ?? p.name),
+              termYears: p.term,
+              isFha: p.fha,
+              isVa: p.va,
+              rate: num(r[1]) * 100,
+              apr: num(r[2]) * 100,
+              principalAndInterest: Math.round(num(r[3])),
+              taxes: Math.round(num(r[4])),
+              insurance: Math.round(num(r[5])),
+              mortgageInsurance: p.va ? 0 : Math.round(num(r[6])),
+              totalPayment: Math.round(num(r[7])),
+              loanFees: Math.round(num(r[8])),
+              prepaids: Math.round(num(r[9])),
+              downPayment: Math.round(num(r[10])),
+              lessSeller: Math.round(num(r[11])),
+              cashToClose: Math.round(num(r[12])),
+            };
+          });
+          cashToClose = products[0]?.cashToClose ?? 0;
+          ratesAsOf = textOf(m, "ratesAsOf") ?? new Date().toISOString().slice(0, 10);
+        } else {
+          const reads: Sub[] = [];
+          const rd = (id: string, name: string, select: "values" | "text" = "values") =>
+            reads.push({ id, method: "GET", url: `${wbPath()}/names/${name}/range?$select=${select}` });
+          for (const p of PRODUCTS) {
+            rd(`${p.prefix}_name`, `eh_out_${p.prefix}_name`);
+            rd(`${p.prefix}_rate`, `eh_out_${p.prefix}_rate`);
+            rd(`${p.prefix}_apr`, `eh_out_${p.prefix}_apr`);
+            rd(`${p.prefix}_pi`, `eh_out_${p.prefix}_pi`);
+            rd(`${p.prefix}_taxes`, `eh_out_${p.prefix}_taxes`);
+            rd(`${p.prefix}_ins`, `eh_out_${p.prefix}_ins`);
+            if (!p.va) rd(`${p.prefix}_mi`, `eh_out_${p.prefix}_mi`);
+            rd(`${p.prefix}_total`, `eh_out_${p.prefix}_total`);
+            rd(`${p.prefix}_loanFees`, `eh_out_${p.prefix}_loanFees`);
+            rd(`${p.prefix}_prepaids`, `eh_out_${p.prefix}_prepaids`);
+            rd(`${p.prefix}_downPayment`, `eh_out_${p.prefix}_downPayment`);
+            rd(`${p.prefix}_lessSeller`, `eh_out_${p.prefix}_lessSeller`);
+            rd(`${p.prefix}_cashToClose`, `eh_out_${p.prefix}_cashToClose`);
+          }
+          rd("top_cashToClose", "eh_out_cashToClose");
+          rd("ratesAsOf", "eh_out_ratesAsOf", "text"); // displayed text, e.g. "June 20, 2026"
+          const m = await runBatch(reads, session);
+
+          products = PRODUCTS.map((p) => ({
+            product: p.name,
+            // Heading text straight from the sheet (e.g. "Jumbo 30 Year Fixed"); fall back to the internal name.
+            displayName: String(valOf(m, `${p.prefix}_name`) ?? p.name),
+            termYears: p.term,
+            isFha: p.fha,
+            isVa: p.va,
+            // RateStream stores rate/APR as decimals (0.0625); the UI shows percent.
+            rate: num(valOf(m, `${p.prefix}_rate`)) * 100,
+            apr: num(valOf(m, `${p.prefix}_apr`)) * 100,
+            principalAndInterest: Math.round(num(valOf(m, `${p.prefix}_pi`))),
+            taxes: Math.round(num(valOf(m, `${p.prefix}_taxes`))),
+            insurance: Math.round(num(valOf(m, `${p.prefix}_ins`))),
+            mortgageInsurance: p.va ? 0 : Math.round(num(valOf(m, `${p.prefix}_mi`))),
+            totalPayment: Math.round(num(valOf(m, `${p.prefix}_total`))),
+            loanFees: Math.round(num(valOf(m, `${p.prefix}_loanFees`))),
+            prepaids: Math.round(num(valOf(m, `${p.prefix}_prepaids`))),
+            downPayment: Math.round(num(valOf(m, `${p.prefix}_downPayment`))),
+            lessSeller: Math.round(num(valOf(m, `${p.prefix}_lessSeller`))),
+            cashToClose: Math.round(num(valOf(m, `${p.prefix}_cashToClose`))),
+          }));
+          // Top-level cash-to-close = the 30-yr Fixed card's (each product also carries its own).
+          cashToClose = products[0]?.cashToClose ?? Math.round(num(valOf(m, "top_cashToClose")));
+          ratesAsOf = textOf(m, "ratesAsOf") ?? new Date().toISOString().slice(0, 10);
         }
-        rd("top_cashToClose", "eh_out_cashToClose");
-        rd("ratesAsOf", "eh_out_ratesAsOf", "text"); // displayed text, e.g. "June 20, 2026"
-        const m = await runBatch(reads, session);
-
-        const products: PricingProduct[] = PRODUCTS.map((p) => ({
-          product: p.name,
-          // Heading text straight from the sheet (e.g. "Jumbo 30 Year Fixed"); fall back to the internal name.
-          displayName: String(valOf(m, `${p.prefix}_name`) ?? p.name),
-          termYears: p.term,
-          isFha: p.fha,
-          isVa: p.va,
-          // RateStream stores rate/APR as decimals (0.0625); the UI shows percent.
-          rate: num(valOf(m, `${p.prefix}_rate`)) * 100,
-          apr: num(valOf(m, `${p.prefix}_apr`)) * 100,
-          principalAndInterest: Math.round(num(valOf(m, `${p.prefix}_pi`))),
-          taxes: Math.round(num(valOf(m, `${p.prefix}_taxes`))),
-          insurance: Math.round(num(valOf(m, `${p.prefix}_ins`))),
-          mortgageInsurance: p.va ? 0 : Math.round(num(valOf(m, `${p.prefix}_mi`))),
-          totalPayment: Math.round(num(valOf(m, `${p.prefix}_total`))),
-          loanFees: Math.round(num(valOf(m, `${p.prefix}_loanFees`))),
-          prepaids: Math.round(num(valOf(m, `${p.prefix}_prepaids`))),
-          downPayment: Math.round(num(valOf(m, `${p.prefix}_downPayment`))),
-          lessSeller: Math.round(num(valOf(m, `${p.prefix}_lessSeller`))),
-          cashToClose: Math.round(num(valOf(m, `${p.prefix}_cashToClose`))),
-        }));
-
-        // Top-level cash-to-close = the 30-yr Fixed card's (each product also carries its own).
-        const cashToClose = products[0]?.cashToClose ?? Math.round(num(valOf(m, "top_cashToClose")));
-        const ratesAsOf = textOf(m, "ratesAsOf") ?? new Date().toISOString().slice(0, 10);
 
         const quote: PricingQuote = {
           engine: "graph",
