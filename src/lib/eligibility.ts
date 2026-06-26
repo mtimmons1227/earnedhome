@@ -40,10 +40,12 @@ const BAND_FLOOR: Record<string, number> = {
 };
 
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
-// Min down implied by a max LTV, e.g. 0.965 -> "3.5%", 0.80 -> "20%".
+// Min down implied by a max LTV. Kept to 2 decimals so an 89.99% cap reads as
+// "10.01%" (the true minimum) rather than a misleading "10%" that implies exactly
+// 10% qualifies. Clean tiers stay clean: 0.95 -> "5%", 0.965 -> "3.5%", 0.80 -> "20%".
 const downNeeded = (maxLtv: number) => {
-  const pct = Math.round((1 - maxLtv) * 1000) / 10;
-  return (Number.isInteger(pct) ? pct.toString() : pct.toFixed(1)) + "%";
+  const pct = Math.round((1 - maxLtv) * 10000) / 100;
+  return `${pct}%`;
 };
 
 export type Family = "conventional" | "fha" | "va";
