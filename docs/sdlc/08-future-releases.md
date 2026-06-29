@@ -58,6 +58,28 @@ Live Graph pricing engine (6 products incl. Jumbo/VA) — now **batched (~7s →
 - Beyond items #1–3 (AI layer, readiness plan, scenario explanations): **LO copilot** (internal generative — draft follow-ups, summarize a lead + their quote, daily pipeline digest; LO reviews → **lowest risk, start here**); **predictive lead scoring & prioritization** (outreach triage); **readiness / qualification score**; **re-engagement timing**; and a **constrained buyer education assistant** (RAG over compliance-approved content, guardrailed, hands off to the LO — a free-form chatbot is deliberately out of scope).
 - **Rail / guardrails:** educational or internal only, human-in-the-loop, pricing stays in the workbook; predictive scoring is **outreach prioritization only — not credit/pricing decisions** (ECOA / fair-lending). Full breakdown per item + phasing: [`../ROADMAP_PHASE_2_3.md`](../ROADMAP_PHASE_2_3.md) (AI solutions section).
 
+### 10. Pricing-engine concurrency & scale — *known Phase 1 ceiling; swap planned*
+The current engine prices every quote by driving **one shared Excel workbook** through Microsoft Graph: write the buyer's inputs into the sheet, recalc, read the outputs. This was the right Phase 1 choice — Richard owns and updates pricing in a tool he knows — but it has a **hard concurrency ceiling** that must be addressed before high-traffic / multi-tenant scale.
+
+- **Where the limit lives (today's code):**
+  - `withLock` in `src/lib/pricing/graph.ts` **serializes quotes** — the shared workbook is a single mutable surface, so two quotes cannot run on it at once (parallel access returns mixed/partial numbers; that exact bug was hit and reverted, June 24).
+  - That lock is **per serverless instance**, not global. Under load Netlify spins up multiple instances that **do not coordinate**, so several instances can hit the *same* workbook simultaneously — re-creating the partial/mixed-quote race. **This is a correctness risk, not just latency.**
+  - The result cache (`Map`, 5-min TTL) is **per instance** — already flagged in-code as "replace with Redis keyed on inputs+rateVersion at scale."
+
+- **Measured behavior (June 25, QA, grid mode, `graphCalls: 3`):**
+  - Warm, sequential, uncontended: **~1.4–1.8s** per real quote (steady).
+  - Interactive / real use: **~1.7–5.9s**, highly variable.
+  - The variance is driven mainly by **Microsoft Graph round-trip latency** against the shared cloud workbook (each quote = 3 Graph calls incl. a per-request `createSession`), plus a cold-start tail on freshly-spun instances. Container idle-warmth on Netlify/Lambda is **not a fixed, reliable number** (minutes, reclaimed unpredictably), so a short idle can still produce a slow quote — i.e. **keep-warm pings reduce the cold tail but do not fix the Graph-side variance.**
+
+- **Failure modes at high concurrency (e.g., ~1,000 simultaneous):** cross-instance races on the shared workbook (wrong/partial quotes) · throughput cap (one workbook, serialized, ~1.5s ≈ **~40 quotes/min**) → queueing · Microsoft Graph **throttling (429s)** at volume.
+
+- **Plan (stepping stones → real fix):**
+  1. **Shared cache** (Redis/KV) keyed on `inputs + ratesAsOf`, replacing the per-instance `Map` — absorbs repeat scenarios across all instances.
+  2. **Cross-instance serialization** (a global queue/lock, or a single dedicated pricing worker) so the shared workbook is **never** hit concurrently — closes the correctness gap as an interim measure.
+  3. **The real fix — swap the engine to native code.** Port the workbook's pricing formulas into a code `PricingAdapter` (or a small pricing service) behind the **existing `stub` / `graph` adapter interface**, so the app doesn't change. This removes the single-workbook bottleneck entirely, enables **true parallel** pricing, and gives **predictable sub-second** latency (no Graph round-trips). Keep the workbook as Richard's **source of truth for rate inputs** (exported/synced into the engine), not the per-request calculator.
+
+- **Pilot reality:** at R Parry pilot concurrency (a handful of buyers at a time) the current engine is fine. This item is the **scale gate** — do the engine swap before onboarding many tenants or marketing-driven traffic spikes.
+
 ---
 
 ## Already built and worth noting: Rate Workbook Tool
@@ -66,6 +88,7 @@ The admin-only **Rate Workbook tool** (download → edit → upload/replace, gua
 ## Suggested phasing
 - **Phase II:** #4 lead fan-out (closes the LO-notification gap), #5 default-LO routing, #2 readiness plan (rules-based), #6 instrument + benchmark.
 - **Phase III:** #1 Azure OpenAI layer, #3 LLM scenario explanations, LLM-enhanced readiness plan, agentic assistant.
+- **Scale gate (before high traffic / many tenants):** #10 pricing-engine concurrency — shared cache, then cross-instance serialization, then the native-engine swap. Required before the single shared workbook is exposed to high concurrency.
 
 ## AI's role in this phase
 **Maturity: AI-Assisted.** AI maintains this ledger, maps each planned item to its insertion point in the current architecture, and enforces the "planned ≠ shipped" honesty rule. Humans decide phasing and own every go/no-go.

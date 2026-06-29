@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type {
   CreditBand, Occupancy, PropertyType, PricingInput, PricingQuote, PricingProduct,
 } from "@/lib/pricing/types";
@@ -149,6 +149,14 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
     setLeadMsg(null);
     setLeadSubmitting(true);
     try {
+      // Compact summary of every ELIGIBLE product the buyer saw (both 30- and 15-yr),
+      // for the estimate email. Mirrors the on-page eligibility so the email never lists
+      // a product that was greyed-out / unavailable (e.g. FHA above the loan limit).
+      const emailElig = quoteInput ? evaluateEligibility(quoteInput) : null;
+      const summaryProducts = (quote?.products ?? [])
+        .filter((p) => p.totalPayment > 0 && (p.isVa ? veteran : true)
+          && (!emailElig || emailElig[famOf(p)].eligible))
+        .map((p) => ({ name: p.displayName, rate: p.rate, totalPayment: p.totalPayment, cashToClose: p.cashToClose }));
       const res = await fetch("/api/lead", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -161,6 +169,18 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
           consentTcpa: tcpa,
           consentText:
             "I agree to be contacted by phone, text, or email about my inquiry. Consent is not a condition of purchase.",
+          quoteSummary: quote ? {
+            ratesAsOf: quote.ratesAsOf,
+            cashToClose: quote.cashToClose,
+            products: summaryProducts,
+            disclosures: quote.disclosures,
+            homePrice: quoteInput?.homePrice,
+            downAmount: quoteInput?.downAmount,
+            downPct: quoteInput?.downPct,
+            creditBand: quoteInput?.creditBand,
+            occupancy: quoteInput?.occupancy,
+            propertyType: quoteInput?.propertyType,
+          } : null,
         }),
       });
       if (!res.ok) throw new Error();
@@ -270,7 +290,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
           </div>
           {openTip === "seller" && (
             <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, margin: "6px 0 0" }}>
-              Money the seller agrees to put toward your closing costs, which lowers the cash you need at closing. Limits apply by loan type — your loan officer can tell you what&apos;s possible.
+              A specific dollar amount (or percentage of the purchase price) that the seller contributes at closing to reduce the buyer&apos;s out-of-pocket expenses.
             </div>
           )}
           <label className="grouphd">Eligibility</label>
@@ -286,7 +306,8 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
               </div>
               {openTip === "vet" && (
                 <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, margin: "4px 0 0 32px" }}>
-                  Check this if you&apos;re an active-duty service member, veteran, or eligible surviving spouse. It unlocks VA loan options — often 0% down and no monthly mortgage insurance.
+                  VA mortgage loans (VA-backed home loans) are a benefit primarily for eligible Veterans, active-duty service members, certain National Guard/Reserve members, and qualifying surviving spouses. You may verify your eligibility directly with the VA — visit{" "}
+                  <a href="https://www.va.gov/housing-assistance/home-loans/eligibility" target="_blank" rel="noopener noreferrer" style={{ color: "var(--primary)", textDecoration: "underline" }}>va.gov/housing-assistance/home-loans/eligibility</a>, or call the VA Loan Guaranty Service.
                 </div>
               )}
             </div>
@@ -485,14 +506,25 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
             <InfoTerm t="Principal & Interest" d="The core of your monthly payment — principal pays down what you owe; interest is the cost of borrowing." />
             <InfoTerm t="Property Taxes" d="The estimated monthly share of your property taxes, collected and paid through escrow." />
             <InfoTerm t="Homeowner's Insurance" d="The estimated monthly share of your homeowner's insurance, collected through escrow." />
-            <InfoTerm t="Mortgage Insurance" d="An extra monthly cost on some loans (typically when you put less than 20% down, or on FHA). VA loans don't have it, and it can fall off over time on conventional loans." />
+            <InfoTerm t="Mortgage Insurance" d={<>
+              Mortgage Insurance (MI) protects the lender in case of default.
+              <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                <li>On conforming conventional loans, MI is typically required when your Loan-to-Value (LTV) ratio is greater than 80%.</li>
+                <li>The monthly MI payment depends on your credit score and LTV ratio.</li>
+                <li>FHA loans include an Upfront Mortgage Insurance Premium (which can often be financed into the loan) plus ongoing monthly MIP.</li>
+                <li>VA loans have an Upfront Funding Fee (which can be financed). The fee varies based on first-time or subsequent use of your VA benefit. Veterans with a service-connected disability may qualify for a waiver — consult your licensed loan officer.</li>
+              </ul>
+            </>} />
             <InfoTerm t="Total Monthly Payment" d="Your estimated total monthly payment — principal, interest, taxes, insurance, and any mortgage insurance." />
-            <div style={{ fontWeight: 700, color: "#0f6e56", fontSize: 14, margin: "14px 0 10px" }}>Estimated Funds (cash to close)</div>
+            <div style={{ fontWeight: 700, color: "#0f6e56", fontSize: 14, margin: "14px 0 4px" }}>Estimated Funds (cash to close)</div>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, margin: "0 0 10px" }}>
+              This is <strong>not</strong> a Loan Estimate (LE) as defined by RESPA or TILA — a formal Loan Estimate will only be provided after you submit a complete, official mortgage application and your credit and property details are verified.
+            </div>
             <InfoTerm t="Loan Fees" d="The costs to set up your loan — origination, underwriting, processing, and similar. Your loan officer can walk through which apply to you." />
             <InfoTerm t="Prepaids" d="Amounts collected upfront to start your escrow account and cover the first stretch of property taxes, homeowner's insurance, and prepaid interest." />
             <InfoTerm t="Down Payment" d="The part of the purchase price you pay out of pocket; the rest is covered by the loan." />
-            <InfoTerm t="Less Seller Contribution" d="Money the seller agrees to put toward your closing costs, which lowers the cash you bring. Limits apply by loan type." />
-            <InfoTerm t="Estimated Total" d="The estimated cash you'd bring to closing — down payment plus loan fees and prepaids, minus any seller contribution." />
+            <InfoTerm t="Less Seller Contribution" d="Money the seller agrees to put toward your closing costs, which lowers the cash you bring. Limits apply by loan type. Consult with your licensed Loan Officer." />
+            <InfoTerm t="Estimated Total" d="The estimated cash you'd bring to closing — down payment plus loan fees and prepaids, minus any seller contribution. These are general explanations. Always consult with your licensed loan officer for details specific to your loan program, credit, and situation." />
             <div style={{ marginTop: 14, padding: "12px 14px", background: "#eef7f0", border: "1px solid #bfe3c9",
               borderRadius: 10, fontSize: 13, color: "var(--primary)", lineHeight: 1.5 }}>
               Wondering if your payment could be lower? Your loan officer can talk through options for your situation —
@@ -504,7 +536,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
     </main>
   );
 }
-function InfoTerm({ t, d }: { t: string; d: string }) {
+function InfoTerm({ t, d }: { t: string; d: ReactNode }) {
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 14, fontWeight: 600, color: "var(--primary)" }}>{t}</div>
