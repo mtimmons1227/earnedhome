@@ -80,6 +80,14 @@ The current engine prices every quote by driving **one shared Excel workbook** t
 
 - **Pilot reality:** at R Parry pilot concurrency (a handful of buyers at a time) the current engine is fine. This item is the **scale gate** — do the engine swap before onboarding many tenants or marketing-driven traffic spikes.
 
+### 11. Auth & identity — current vs. enterprise SSO path — *decision recorded; SSO deferred*
+**Scope note:** this affects only the **loan-officer / staff dashboard login**. Buyers never authenticate (the Pathfinder tool is anonymous + TCPA consent), so the authenticated surface is small.
+
+- **Today (keep for the pilot):** **Supabase Auth** (email/password + the flag-gated forgot-password flow). It's integrated with the **multi-tenant RLS** (row isolation keys off the Supabase auth user/JWT), it's simple, and it covers R Parry's few users. *Entra ID is used elsewhere — but only app-only, for the Microsoft Graph workbook connection (`GRAPH_CLIENT_ID/SECRET`, `Files.ReadWrite.All`) — **not** for user login.*
+- **Enterprise path (add when a customer requires it):** layer **provider-agnostic SSO (OIDC/SAML) federation per tenant** on top of Supabase Auth — so a large lender can bring **their own IdP** (Microsoft **Entra**, Okta, etc.) while a solo broker keeps email/password. Entra is *one* provider, not the standard — partners use different IdPs, so build generic SSO, not Entra-specifically.
+- **Why not Entra-for-all-users now:** external loan officers aren't in our tenant (workforce Entra is awkward for them; Microsoft's external-user product is **Entra External ID / CIAM**, a separate paid product), and switching would require **bridging Entra tokens into Supabase RLS** — real plumbing on the control that protects tenant data, with zero pilot benefit.
+- **Trigger:** add SSO when an **enterprise deal requires it** (procurement commonly mandates IdP SSO), driven by that customer requirement — not built speculatively. This is white-label-friendly: SSO is configured per tenant.
+
 ---
 
 ## Already built and worth noting: Rate Workbook Tool
@@ -89,6 +97,7 @@ The admin-only **Rate Workbook tool** (download → edit → upload/replace, gua
 - **Phase II:** #4 lead fan-out (closes the LO-notification gap), #5 default-LO routing, #2 readiness plan (rules-based), #6 instrument + benchmark.
 - **Phase III:** #1 Azure OpenAI layer, #3 LLM scenario explanations, LLM-enhanced readiness plan, agentic assistant.
 - **Scale gate (before high traffic / many tenants):** #10 pricing-engine concurrency — shared cache, then cross-instance serialization, then the native-engine swap. Required before the single shared workbook is exposed to high concurrency.
+- **Enterprise gate (customer-triggered):** #11 SSO/identity federation — add per-tenant OIDC/SAML SSO when an enterprise customer requires it. Not speculative; keep Supabase Auth as the base.
 
 ## AI's role in this phase
 **Maturity: AI-Assisted.** AI maintains this ledger, maps each planned item to its insertion point in the current architecture, and enforces the "planned ≠ shipped" honesty rule. Humans decide phasing and own every go/no-go.

@@ -65,6 +65,9 @@ export default async function Page() {
         tenantId={tenant.id}
         loName={tenant.lo_name ?? "your loan officer"}
         nmls={tenant.nmls}
+        applyUrl={tenant.apply_url}
+        loPhone={tenant.lo_phone}
+        bookingUrl={tenant.booking_url}
       />
     </div>
   );

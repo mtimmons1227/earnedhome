@@ -17,6 +17,9 @@ export interface Tenant {
   branding: TenantBranding;
   lo_name: string | null;
   nmls: string | null;
+  apply_url: string | null;
+  lo_phone: string | null;
+  booking_url: string | null;
 }
 
 const DEFAULT_SLUG = "earnedhome";
@@ -51,7 +54,7 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
     const supabase = createSupabaseServer();
     const { data, error } = await supabase
       .from("tenants")
-      .select("id, slug, name, type, branding, lo_name, nmls")
+      .select("id, slug, name, type, branding, lo_name, nmls, apply_url, lo_phone, booking_url")
       .eq("slug", slug)
       .eq("status", "active")
       .maybeSingle();

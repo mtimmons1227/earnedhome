@@ -65,6 +65,12 @@
 
 **Per-tenant identity (migration `0005_tenant_identity.sql`):** `tenants` carries the static compliance/identity fields rendered in the buyer disclosure — `lo_name` (display), `nmls` (originator), plus `legal_name`, `company_nmls`, `originator_name`. These are set once at onboarding (R Parry confirmed; `acme`/`bluekey` demos left null). Frequently-changing eligibility/overlay fields are a Phase II admin-dashboard concern; the legal disclosure prose stays locked in code.
 
+**Identity & auth (who logs in with what):**
+- **Buyers** never authenticate — the Pathfinder tool is anonymous (lead capture with TCPA consent only).
+- **Loan officers / staff** sign in via **Supabase Auth** (email/password + flag-gated forgot-password). This is what the multi-tenant **RLS** keys off (tenant isolation = the signed-in Supabase user's JWT).
+- **Microsoft Entra ID is used only for the Graph workbook connection** — an **app-only** registration ("EarnedHome Engine", `GRAPH_CLIENT_ID/SECRET`, `Files.ReadWrite.All`, admin-consented). It is service-to-service; it does **not** authenticate any buyer or loan officer.
+- **Enterprise SSO is deferred** (see [`sdlc/08-future-releases.md`](sdlc/08-future-releases.md) #11): when an enterprise customer requires it, add **provider-agnostic OIDC/SAML SSO per tenant** on top of Supabase Auth (their IdP — Entra/Okta/etc.). Not built speculatively.
+
 ---
 
 ## 4. Pricing engine — two independent switches

@@ -24,19 +24,22 @@ interface Props {
   tenantId: string;
   loName: string;
   nmls: string | null;
+  applyUrl?: string | null;
+  loPhone?: string | null;
+  bookingUrl?: string | null;
 }
 
-export function PathfinderTool({ tenantId, loName, nmls }: Props) {
+export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, bookingUrl }: Props) {
   // form state (display strings for currency fields)
-  const [homePrice, setHomePrice] = useState("450,000");
-  const [downAmt, setDownAmt] = useState("45,000");
-  const [downPct, setDownPct] = useState("10");
-  const [creditBand, setCreditBand] = useState<CreditBand>("740–759");
-  const [occupancy, setOccupancy] = useState<Occupancy>("Primary");
-  const [sellerCredit, setSellerCredit] = useState("5,000");
+  const [homePrice, setHomePrice] = useState("0");
+  const [downAmt, setDownAmt] = useState("0");
+  const [downPct, setDownPct] = useState("0");
+  const [creditBand, setCreditBand] = useState<CreditBand | "">("720–739");
+  const [occupancy, setOccupancy] = useState<Occupancy | "">("Primary");
+  const [sellerCredit, setSellerCredit] = useState("0");
   const [propertyType, setPropertyType] = useState<PropertyType>("Single Family");
   const [veteran, setVeteran] = useState(false);
-  const [firstTime, setFirstTime] = useState(true);
+  const [firstTime, setFirstTime] = useState(false);
   // VA-specific inputs — only relevant (and shown) when Military / Veteran is checked.
   const [vaPriorLoan, setVaPriorLoan] = useState(false);
   const [vaDisability, setVaDisability] = useState(false);
@@ -90,7 +93,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
       homePrice: parseNum(homePrice),
       downAmount: parseNum(downAmt),
       downPct: parseNum(downPct),
-      creditBand, occupancy,
+      creditBand: creditBand as CreditBand, occupancy: occupancy as Occupancy,
       sellerCredit: parseNum(sellerCredit),
       propertyType, veteran, firstTime,
       vaPriorLoan, vaDisability, vaFundingFee,
@@ -99,21 +102,31 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
      veteran, firstTime, vaPriorLoan, vaDisability, vaFundingFee],
   );
 
-  function validate(): string[] {
-    const e: string[] = [];
-    if (input.homePrice <= 0) e.push("Enter a home price.");
-    if (input.homePrice > 0 && input.downAmount >= input.homePrice)
-      e.push("Down payment must be less than the home price.");
-    if (input.downAmount < 0) e.push("Down payment cannot be negative.");
-    return e;
-  }
+  // Per-field required/validity. Down payment can be 0 (e.g. VA) but must be
+  // entered and below the price; no program minimum is enforced here — the result
+  // cards apply program rules. Credit Score and Use must be chosen.
+  const fieldErr = {
+    homePrice: parseNum(homePrice) <= 0 ? "Required" : "",
+    downPayment:
+      downAmt === ""
+        ? "Required"
+        : parseNum(homePrice) > 0 && parseNum(downAmt) >= parseNum(homePrice)
+          ? "Must be less than the home price"
+          : "",
+    creditBand: creditBand === "" ? "Required" : "",
+    occupancy: occupancy === "" ? "Required" : "",
+  };
+  const formValid =
+    !fieldErr.homePrice && !fieldErr.downPayment && !fieldErr.creditBand && !fieldErr.occupancy;
+  // Only surface field errors once the buyer has started filling the form.
+  const touched =
+    homePrice !== "0" || downAmt !== "0" || downPct !== "0" || creditBand !== "" || occupancy !== "" || sellerCredit !== "0";
 
   async function getPayments() {
     if (loading) return; // guard double-clicks
-    const errs = validate();
-    setErrors(errs);
     setLeadMsg(null);
-    if (errs.length) return;
+    if (!formValid) return;
+    setErrors([]);
     setLoading(true);
     setQuote(null);
     setQuoteInput(null);
@@ -140,7 +153,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
     }
   }
 
-  async function submitLead() {
+  async function submitLead(action: "apply" | "call" | "book" | "reach-out" = "reach-out") {
     if (leadSubmitting || leadDone) return; // guard double-clicks / resubmits
     if (!tcpa) {
       setLeadMsg("Please agree to be contacted before connecting.");
@@ -163,6 +176,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
         body: JSON.stringify({
           tenantId,
           loName,
+          action,
           quoteId,
           idempotencyKey: requestKey,
           fullName: leadName, email: leadEmail, phone: leadPhone,
@@ -187,6 +201,17 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
       setLeadDone(true);
       setShowLeadModal(false);
       setLeadMsg(`Thanks — you're connected with ${loName}.`);
+      // Take the buyer to whatever they chose.
+      if (action === "apply" && applyUrl) window.open(applyUrl, "_blank", "noopener");
+      else if (action === "book" && bookingUrl) {
+        // Prefill Calendly with what the buyer already entered (name/email/phone).
+        const u = new URL(bookingUrl);
+        if (leadName) u.searchParams.set("name", leadName);
+        if (leadEmail) u.searchParams.set("email", leadEmail);
+        if (leadPhone) u.searchParams.set("phone_number", leadPhone);
+        window.open(u.toString(), "_blank", "noopener");
+      }
+      else if (action === "call" && loPhone) window.location.href = `tel:${loPhone.replace(/[^0-9+]/g, "")}`;
     } catch {
       setLeadMsg("Something went wrong submitting your info. Please try again.");
     } finally {
@@ -223,7 +248,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
       ? shown
           .filter((p) => (p.isVa ? veteran : true))
           .map((p) => ({ p, elig: eligibility[famOf(p)] }))
-          .filter(({ p, elig }) => (elig.eligible ? p.totalPayment > 0 : true))
+          .filter(({ p, elig }) => elig.eligible && p.totalPayment > 0)
       : [];
   const routeMsg =
     quote && cards.length === 0
@@ -250,6 +275,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
             <input className="money" inputMode="numeric" value={homePrice}
               onChange={(e) => onPrice(e.target.value)} />
           </div>
+          {touched && fieldErr.homePrice && <div style={{ color: "#C8102E", fontSize: 12, marginTop: 3 }}>{fieldErr.homePrice}</div>}
           <div className="twin">
             <div>
               <label>Down Payment ($)</label>
@@ -265,12 +291,13 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
                 onChange={(e) => onDownPct(e.target.value)} />
             </div>
           </div>
+          {touched && fieldErr.downPayment && <div style={{ color: "#C8102E", fontSize: 12, marginTop: 3 }}>{fieldErr.downPayment}</div>}
           <label>Credit Score</label>
-          <select value={creditBand} onChange={(e) => setCreditBand(e.target.value as CreditBand)}>
+          <select value={creditBand} onChange={(e) => setCreditBand(e.target.value as CreditBand | "")}>
             {CREDIT_BANDS.map((b) => <option key={b}>{b}</option>)}
           </select>
           <label>How you&apos;ll use the home</label>
-          <select value={occupancy} onChange={(e) => setOccupancy(e.target.value as Occupancy)}>
+          <select value={occupancy} onChange={(e) => setOccupancy(e.target.value as Occupancy | "")}>
             {OCCUPANCIES.map((o) => <option key={o}>{o}</option>)}
           </select>
           <label>Property Type</label>
@@ -369,7 +396,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
                 <button onClick={() => setShowInfoModal(true)}
                   style={{ background: "none", border: 0, color: "var(--primary)", fontSize: 12.5,
                     cursor: "pointer", padding: 0, textDecoration: "underline", fontWeight: 500 }}>
-                  ⓘ Understanding your estimate
+                  ⓘ Mortgage Terms and Payment Definitions
                 </button>
               </div>
               {routeMsg ? (
@@ -409,9 +436,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
                 </div>
               )}
               <div className="disctop">
-                Estimates only — not a Loan Estimate or commitment to lend. APR
-                assumes financed closing costs; payments include estimated taxes,
-                insurance, and any mortgage insurance. Subject to credit approval.
+                This is NOT a Loan Estimate (LE) as defined by RESPA or TILA — a formal Loan Estimate will only be provided after you submit a complete, official mortgage application and your credit, income and property details are verified. See Disclosures &amp; Assumptions for more information.
               </div>
               <details className="disc">
                 <summary>Disclosures &amp; assumptions</summary>
@@ -435,7 +460,8 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
         {!quote ? (
           <>
             <div className="ctahint">Complete the fields above, then tap Get Payments to see your options.</div>
-            <button onClick={getPayments} disabled={loading}>
+            <button onClick={getPayments} disabled={loading || !formValid}
+              style={{ opacity: loading || !formValid ? 0.55 : 1 }}>
               {loading ? "Calculating…" : <><StepBadge label="1" />Get Payments</>}
             </button>
           </>
@@ -444,8 +470,8 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
             <div className="ctahint">
               Changed a number? Recalculate. To finish, use “Connect me with a loan officer” above.
             </div>
-            <button onClick={getPayments} disabled={loading}
-              style={{ background: "transparent", color: "var(--primary)", border: "2px solid var(--primary)" }}>
+            <button onClick={getPayments} disabled={loading || !formValid}
+              style={{ background: "transparent", color: "var(--primary)", border: "2px solid var(--primary)", opacity: loading || !formValid ? 0.55 : 1 }}>
               {loading ? "Calculating…" : <><StepBadge label="1" />Recalculate</>}
             </button>
           </>
@@ -466,7 +492,7 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
               Connect with {loName}
             </div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-              No pressure — share your info and your loan officer will reach out about your options.
+              Share your info, then choose how you&apos;d like to connect with {loName}.
             </div>
             <input placeholder="Full name" value={leadName} onChange={(e) => setLeadName(e.target.value)} />
             <div className="spacer" />
@@ -477,9 +503,32 @@ export function PathfinderTool({ tenantId, loName, nmls }: Props) {
               <input type="checkbox" checked={tcpa} onChange={(e) => setTcpa(e.target.checked)} />
               I agree to be contacted by phone, text, or email about my inquiry. Consent is not a condition of purchase.
             </label>
-            <button className="leadbtn" onClick={submitLead} disabled={leadSubmitting}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
-              {leadSubmitting ? "Connecting…" : "Connect me with a loan officer"}
+            {applyUrl && (
+              <button className="leadbtn" onClick={() => submitLead("apply")} disabled={leadSubmitting}
+                style={{ width: "100%" }}>
+                {leadSubmitting ? "Connecting…" : "Apply / Reserve your mortgage"}
+              </button>
+            )}
+            {loPhone && (
+              <button onClick={() => submitLead("call")} disabled={leadSubmitting}
+                style={{ width: "100%", marginTop: 8, padding: "11px 14px", borderRadius: 10, cursor: "pointer",
+                  background: "#fff", color: "var(--primary)", border: "2px solid var(--primary)", fontWeight: 700, fontSize: 15 }}>
+                Call {loName}
+              </button>
+            )}
+            {bookingUrl && (
+              <button onClick={() => submitLead("book")} disabled={leadSubmitting}
+                style={{ width: "100%", marginTop: 8, padding: "11px 14px", borderRadius: 10, cursor: "pointer",
+                  background: "#fff", color: "var(--primary)", border: "2px solid var(--primary)", fontWeight: 700, fontSize: 15 }}>
+                Book a time
+              </button>
+            )}
+            <button onClick={() => submitLead("reach-out")} disabled={leadSubmitting}
+              className={applyUrl ? undefined : "leadbtn"}
+              style={applyUrl
+                ? { width: "100%", marginTop: 8, padding: "11px 14px", borderRadius: 10, cursor: "pointer", background: "#fff", color: "var(--primary)", border: "2px solid var(--primary)", fontWeight: 700, fontSize: 15 }
+                : { width: "100%" }}>
+              {leadSubmitting ? "Connecting…" : `Have ${loName} reach out`}
             </button>
             {leadMsg && <div className="hint" style={{ marginTop: 8 }}>{leadMsg}</div>}
           </div>

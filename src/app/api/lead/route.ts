@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { sendBuyerEstimateEmail, type EstimateEmailProduct } from "@/lib/email";
+import { sendBuyerEstimateEmail, sendLoLeadAlert, type EstimateEmailProduct } from "@/lib/email";
 
 interface QuoteSummary {
   ratesAsOf: string;
@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     phone?: string; consentTcpa?: boolean; consentText?: string;
     quoteId?: string | null; idempotencyKey?: string | null;
     quoteSummary?: QuoteSummary | null;
+    action?: string | null; // "apply" | "call" | "book" | "reach-out"
   };
   try {
     body = await req.json();
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
 
   const {
     tenantId, loName, fullName, email, phone, consentTcpa, consentText,
-    quoteId, idempotencyKey, quoteSummary,
+    quoteId, idempotencyKey, quoteSummary, action,
   } = body;
   if (!tenantId) {
     return NextResponse.json({ error: "Missing tenantId" }, { status: 400 });
@@ -99,6 +100,32 @@ export async function POST(req: Request) {
     }).then((r) => { if (!r.sent) console.log("[lead] buyer estimate email not sent:", r.reason); });
   }
 
-  // TODO (WBS #17): notify the LO via email + SMS (Resend/SendGrid + Twilio).
+  // LO lead alert (best-effort, non-blocking). Look up where to send + the LO's
+  // name from the tenant. No-ops if Resend or notify_email isn't configured.
+  // (Cast: notify_email is a new 0006 column not yet in generated DB types.)
+  void (async () => {
+    const tRes = await (supabase.from("tenants") as unknown as {
+      select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { notify_email?: string | null; lo_name?: string | null } | null }> } };
+    }).select("notify_email, lo_name").eq("id", tenantId).maybeSingle();
+    const notify = tRes.data?.notify_email ?? null;
+    if (!notify) return;
+    const r = await sendLoLeadAlert({
+      to: notify,
+      loName: tRes.data?.lo_name ?? loName ?? "your loan officer",
+      buyerName: fullName ?? null,
+      buyerEmail: email ?? null,
+      buyerPhone: phone ?? null,
+      action: action ?? null,
+      homePrice: quoteSummary?.homePrice,
+      downAmount: quoteSummary?.downAmount,
+      downPct: quoteSummary?.downPct,
+      creditBand: quoteSummary?.creditBand,
+      occupancy: quoteSummary?.occupancy,
+      propertyType: quoteSummary?.propertyType,
+      leadId,
+    });
+    if (!r.sent) console.log("[lead] LO alert not sent:", r.reason);
+  })();
+
   return NextResponse.json({ ok: true, deduped: false, leadId, routedTo: loName ?? null });
 }

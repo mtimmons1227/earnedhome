@@ -9,8 +9,8 @@ export type Database = {
   public: {
     Tables: {
       tenants: {
-        Row: { id: string; slug: string; name: string; type: Database["public"]["Enums"]["tenant_type"]; status: Database["public"]["Enums"]["tenant_status"]; branding: Json; lo_name: string | null; nmls: string | null; custom_domain: string | null; created_at: string };
-        Insert: { id?: string; slug: string; name: string; type?: Database["public"]["Enums"]["tenant_type"]; status?: Database["public"]["Enums"]["tenant_status"]; branding?: Json; lo_name?: string | null; nmls?: string | null; custom_domain?: string | null; created_at?: string };
+        Row: { id: string; slug: string; name: string; type: Database["public"]["Enums"]["tenant_type"]; status: Database["public"]["Enums"]["tenant_status"]; branding: Json; lo_name: string | null; nmls: string | null; lo_phone: string | null; notify_email: string | null; apply_url: string | null; booking_url: string | null; custom_domain: string | null; created_at: string };
+        Insert: { id?: string; slug: string; name: string; type?: Database["public"]["Enums"]["tenant_type"]; status?: Database["public"]["Enums"]["tenant_status"]; branding?: Json; lo_name?: string | null; nmls?: string | null; lo_phone?: string | null; notify_email?: string | null; apply_url?: string | null; booking_url?: string | null; custom_domain?: string | null; created_at?: string };
         Update: Partial<Database["public"]["Tables"]["tenants"]["Insert"]>;
         Relationships: [];
       };
