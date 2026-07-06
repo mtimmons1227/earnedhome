@@ -38,6 +38,28 @@ export default async function AgentPage({ params }: { params: { slug: string } }
     ["--bg" as string]: b.bg,
   } as React.CSSProperties;
 
+  // Revoked seat: the slug exists but the agent is turned off. Block the link
+  // with a graceful message instead of running a (mis-attributed) estimate, and
+  // point the buyer at the lender's main page so they're never fully stranded.
+  if (agent && !agent.active) {
+    return (
+      <div style={themeVars}>
+        <BrandHeader tenant={tenant} />
+        <main style={{ maxWidth: 560, margin: "10vh auto", padding: 16 }}>
+          <div className="panel" style={{ textAlign: "center" }}>
+            <h2 style={{ marginTop: 0, color: "var(--primary)" }}>This link is no longer active</h2>
+            <p className="hint">
+              The link you used has been turned off. You can still get your home-payment estimate
+              from {tenant.lo_name ?? "our team"} below.
+            </p>
+            <a href="/" className="leadbtn" style={{ display: "inline-block", marginTop: 8,
+              textDecoration: "none" }}>Get my estimate</a>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div style={themeVars}>
       <BrandHeader tenant={tenant} />

@@ -22,9 +22,10 @@ export interface AgentRow {
   active: boolean;
 }
 
-// Resolve an ACTIVE agent by tenant + slug for the public /a/<slug> link
-// (service role — RLS on agents is server-only). Returns null if not found or
-// deactivated (a revoked seat's link stops resolving).
+// Resolve an agent by tenant + slug for the public /a/<slug> link (service role
+// — RLS on agents is server-only). Returns the agent REGARDLESS of active state
+// (the `active` flag is included) so the page can tell a revoked seat apart from
+// an unknown slug. Returns null only when no agent has that slug.
 export async function getAgentBySlug(
   tenantId: string,
   slug: string,
@@ -35,7 +36,6 @@ export async function getAgentBySlug(
     .select("id, tenant_id, name, email, phone, slug, active")
     .eq("tenant_id", tenantId)
     .eq("slug", slug)
-    .eq("active", true)
     .maybeSingle();
   return (data as AgentRow | null) ?? null;
 }
