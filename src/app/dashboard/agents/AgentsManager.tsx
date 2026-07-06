@@ -9,6 +9,7 @@ interface Agent {
   phone: string | null;
   slug: string;
   active: boolean;
+  invite_sent_at?: string | null;
   created_at?: string;
 }
 
@@ -24,6 +25,8 @@ export function AgentsManager() {
 
   const [origin, setOrigin] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sentId, setSentId] = useState<string | null>(null);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -95,18 +98,28 @@ export function AgentsManager() {
     setTimeout(() => setCopiedId((c) => (c === a.id ? null : c)), 1500);
   }
 
-  // Open the LO's own mail app with a pre-filled note + the agent's link.
-  function emailLink(a: Agent) {
-    if (!a.email) return;
-    const link = `${origin}/a/${a.slug}`;
-    const subject = encodeURIComponent("Your EarnedHome estimate link");
-    const body = encodeURIComponent(
-      `Hi ${a.name},\n\n` +
-        `Here's your personal EarnedHome link to share with buyers:\n${link}\n\n` +
-        `Any buyer who runs an estimate from this link is automatically tied to you, ` +
-        `and you'll get a copy of the lead.\n`,
-    );
-    window.location.href = `mailto:${a.email}?subject=${subject}&body=${body}`;
+  // Send the agent their link via the app (Resend) — one click, no mail client.
+  async function emailLink(a: Agent) {
+    if (!a.email || sendingId === a.id) return;
+    setSendingId(a.id);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/admin/agents/${a.id}/invite`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ origin }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not send");
+      const at = data.invite_sent_at ?? new Date().toISOString();
+      setAgents((prev) => prev.map((x) => (x.id === a.id ? { ...x, invite_sent_at: at } : x)));
+      setSentId(a.id);
+      setTimeout(() => setSentId((c) => (c === a.id ? null : c)), 2000);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setSendingId(null);
+    }
   }
 
   return (
@@ -166,15 +179,23 @@ export function AgentsManager() {
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {link}
                     </div>
+                    {a.invite_sent_at && (
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                        ✓ Link sent {new Date(a.invite_sent_at).toLocaleString()}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <button onClick={() => copyLink(a)} style={smallBtn}>
                       {copiedId === a.id ? "Copied!" : "Copy link"}
                     </button>
                     {a.email && (
-                      <button onClick={() => emailLink(a)} style={smallBtn}>Email link</button>
+                      <button onClick={() => emailLink(a)} disabled={sendingId === a.id} style={smallBtn}>
+                        {sentId === a.id ? "Sent!" : sendingId === a.id ? "Sending…" : "Email link"}
+                      </button>
                     )}
-                    <button onClick={() => toggleActive(a)} style={smallBtn}>
+                    <button onClick={() => toggleActive(a)}
+                      style={{ ...smallBtn, ...(a.active ? offBtn : onBtn) }}>
                       {a.active ? "Turn off" : "Turn on"}
                     </button>
                   </div>
@@ -199,3 +220,7 @@ const smallBtn: React.CSSProperties = {
   background: "transparent", border: "1px solid var(--line)", borderRadius: 8,
   padding: "6px 10px", cursor: "pointer", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap",
 };
+// Toggle colors: red = the button turns the seat OFF (agent is active);
+// green = the button turns it ON (agent is currently off).
+const offBtn: React.CSSProperties = { background: "#dc2626", color: "#fff", border: "1px solid #dc2626" };
+const onBtn: React.CSSProperties = { background: "#16a34a", color: "#fff", border: "1px solid #16a34a" };

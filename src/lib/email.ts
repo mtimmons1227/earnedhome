@@ -179,6 +179,49 @@ export async function sendAgentLeadAlert(d: AgentLeadAlert): Promise<{ sent: boo
   }
 }
 
+// "Here's your EarnedHome link" — emailed to a realtor agent so they can start
+// sharing it with buyers. Same safe-by-design no-op if Resend / email unset.
+export interface AgentLinkInvite {
+  to: string;            // agent.email
+  agentName?: string | null;
+  loName: string;        // the lender, e.g. "R Parry Financial"
+  link: string;          // the agent's /a/<slug> URL
+}
+
+export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: boolean; reason?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!key || !from) return { sent: false, reason: "email not configured (RESEND_API_KEY / RESEND_FROM)" };
+  if (!d.to) return { sent: false, reason: "no agent email" };
+
+  const hi = d.agentName ? `Hi ${escapeHtml(d.agentName.split(" ")[0])},` : "Hi,";
+  const safeLink = escapeHtml(d.link);
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
+    <h2 style="color:#1F3864;margin:0 0 8px;">Here's your EarnedHome link</h2>
+    <p>${hi}</p>
+    <p>Share this link with your buyers so they can run a home-payment estimate. Any buyer who
+       runs the numbers from your link is automatically tied to you, and you'll get a copy of the
+       lead — while <strong>${escapeHtml(d.loName)}</strong> handles the financing.</p>
+    <p style="margin:16px 0;">
+      <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Open your link</a>
+    </p>
+    <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from, to: d.to, subject: "Your EarnedHome estimate link", html }),
+    });
+    if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, reason: (e as Error).message };
+  }
+}
+
 function renderHtml(d: BuyerEstimateEmail): string {
   const greeting = d.buyerName ? `Hi ${escapeHtml(d.buyerName.split(" ")[0])},` : "Hi there,";
 
