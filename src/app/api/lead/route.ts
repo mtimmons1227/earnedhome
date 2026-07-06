@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { sendBuyerEstimateEmail, sendLoLeadAlert, type EstimateEmailProduct } from "@/lib/email";
+import { emitLeadCreated } from "@/lib/leadEvent";
 
 interface QuoteSummary {
   ratesAsOf: string;
@@ -125,6 +126,42 @@ export async function POST(req: Request) {
       leadId,
     });
     if (!r.sent) console.log("[lead] LO alert not sent:", r.reason);
+  })();
+
+  // Lead-event webhook (vendor-neutral seam). Emits `lead.created` with the
+  // tenant's CRM config so a downstream flow (Power Automate -> partner CRM) can
+  // route/map/push. Best-effort, non-blocking; no-ops if LEAD_EVENT_WEBHOOK_URL
+  // is unset, and skips entirely when the tenant has no CRM configured. The lead
+  // is already saved above, so this never affects capture.
+  // (Cast: tenant_integrations isn't in the generated DB types yet.)
+  void (async () => {
+    const iRes = await (supabase.from("tenant_integrations") as unknown as {
+      select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { crm_type?: string | null; crm_api_key?: string | null; crm_config?: Record<string, unknown> | null } | null }> } };
+    }).select("crm_type, crm_api_key, crm_config").eq("tenant_id", tenantId).maybeSingle();
+    const crmType = iRes.data?.crm_type ?? "none";
+    if (crmType === "none") return; // no CRM to push to — dashboard + email alert are enough
+    const r = await emitLeadCreated({
+      leadId,
+      tenant: tenantId,
+      crm: {
+        type: crmType,
+        apiKey: iRes.data?.crm_api_key ?? null,
+        source: "EarnedHome",
+        config: iRes.data?.crm_config ?? null,
+      },
+      buyer: { fullName: fullName ?? null, email: email ?? null, phone: phone ?? null, consentTcpa: true },
+      scenario: {
+        homePrice: quoteSummary?.homePrice,
+        downAmount: quoteSummary?.downAmount,
+        downPct: quoteSummary?.downPct,
+        creditBand: quoteSummary?.creditBand,
+        occupancy: quoteSummary?.occupancy,
+        propertyType: quoteSummary?.propertyType,
+      },
+      action: action ?? null,
+      createdAt: new Date().toISOString(),
+    });
+    if (!r.sent) console.log("[lead] lead.created webhook not sent:", r.reason);
   })();
 
   return NextResponse.json({ ok: true, deduped: false, leadId, routedTo: loName ?? null });
