@@ -200,9 +200,11 @@ export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: b
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
     <h2 style="color:#1F3864;margin:0 0 8px;">Here's your EarnedHome link</h2>
     <p>${hi}</p>
-    <p>Share this link with your buyers so they can run a home-payment estimate. Any buyer who
-       runs the numbers from your link is automatically tied to you, and you'll get a copy of the
-       lead — while <strong>${escapeHtml(d.loName)}</strong> handles the financing.</p>
+    <p>This is your personal EarnedHome link. Keep it handy on your phone or tablet when you're
+       out showing homes — you and your buyer can run real monthly-payment numbers together, right
+       there at the property, so they can picture the true cost before they fall for a home.</p>
+    <p>Every buyer who runs the numbers from your link is automatically tied to you, and you'll get
+       a copy of the lead — while <strong>${escapeHtml(d.loName)}</strong> handles the financing.</p>
     <p style="margin:16px 0;">
       <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Open your link</a>
     </p>
