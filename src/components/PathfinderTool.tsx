@@ -69,6 +69,8 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
   const [leadMsg, setLeadMsg] = useState<string | null>(null);
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadDone, setLeadDone] = useState(false);
+  const [leadId, setLeadId] = useState<string | null>(null); // set on submit; lets the buyer edit their own record
+  const [editingContact, setEditingContact] = useState(false); // reusing the modal to correct contact info after connecting
 
   // keep $ and % in sync off home price
   function onPrice(v: string) {
@@ -203,6 +205,8 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
         }),
       });
       if (!res.ok) throw new Error();
+      const data = await res.json().catch(() => ({} as { leadId?: string }));
+      if (data.leadId) setLeadId(data.leadId); // remember our record so the buyer can edit their info
       setLeadDone(true);
       setShowLeadModal(false);
       setLeadMsg(`Thanks — you're connected with ${loName}.`);
@@ -224,6 +228,29 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
     }
   }
 
+  // Correct the contact info on the lead we already created (same record, no
+  // duplicate). Used by the "Update my info" button after connecting.
+  async function updateContact() {
+    if (!leadId || leadSubmitting) return;
+    setLeadSubmitting(true);
+    setLeadMsg(null);
+    try {
+      const res = await fetch("/api/lead/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ leadId, fullName: leadName, email: leadEmail, phone: leadPhone }),
+      });
+      if (!res.ok) throw new Error();
+      setEditingContact(false);
+      setShowLeadModal(false);
+      setLeadMsg("Your contact info was updated.");
+    } catch {
+      setLeadMsg("Couldn't update your info — please try again.");
+    } finally {
+      setLeadSubmitting(false);
+    }
+  }
+
   // Clear everything back to a fresh start: results, the lead form, and consent.
   function resetAll() {
     setQuote(null);
@@ -233,6 +260,8 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
     setErrors([]);
     setShowLeadModal(false);
     setLeadDone(false);
+    setLeadId(null);
+    setEditingContact(false);
     setLeadSubmitting(false);
     setLeadMsg(null);
     setLeadName("");
@@ -433,11 +462,21 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
                       A loan officer will reach out shortly about your{" "}
                       {money(quote.cashToClose)} cash-to-close scenario.
                     </div>
-                    <button onClick={resetAll} style={{ marginTop: 10, background: "transparent",
-                      border: "1px solid var(--line)", color: "var(--primary)", padding: "8px 12px",
-                      borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                      Start over
-                    </button>
+                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                      {leadId && (
+                        <button onClick={() => { setEditingContact(true); setLeadMsg(null); setShowLeadModal(true); }}
+                          style={{ background: "transparent", border: "1px solid var(--line)",
+                            color: "var(--primary)", padding: "8px 12px", borderRadius: 8, fontWeight: 600,
+                            cursor: "pointer", fontSize: 13 }}>
+                          Update my info
+                        </button>
+                      )}
+                      <button onClick={resetAll} style={{ background: "transparent",
+                        border: "1px solid var(--line)", color: "var(--primary)", padding: "8px 12px",
+                        borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                        Start over
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -485,30 +524,41 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
       </div>
 
       {showLeadModal && quote && (
-        <div onClick={() => setShowLeadModal(false)}
+        <div onClick={() => { setShowLeadModal(false); setEditingContact(false); }}
           style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 1000,
             display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()}
             style={{ background: "#fff", borderRadius: 16, maxWidth: 440, width: "100%",
               padding: "24px 24px 20px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", position: "relative" }}>
-            <button onClick={() => setShowLeadModal(false)} aria-label="Close"
+            <button onClick={() => { setShowLeadModal(false); setEditingContact(false); }} aria-label="Close"
               style={{ position: "absolute", top: 12, right: 16, background: "none", border: 0,
                 fontSize: 26, lineHeight: 1, color: "var(--muted)", cursor: "pointer" }}>×</button>
             <div style={{ fontWeight: 700, fontSize: 18, color: "var(--primary)", marginBottom: 4 }}>
-              Connect with {loName}
+              {editingContact ? "Update your info" : `Connect with ${loName}`}
             </div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-              Share your info, then choose how you&apos;d like to connect with {loName}.
+              {editingContact
+                ? "Change your name, email, or phone below, then save."
+                : `Share your info, then choose how you'd like to connect with ${loName}.`}
             </div>
             <input placeholder="Full name" value={leadName} onChange={(e) => setLeadName(e.target.value)} />
             <div className="spacer" />
             <input placeholder="Email" type="email" inputMode="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} />
             <div className="spacer" />
             <input placeholder="Phone" type="tel" inputMode="tel" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} />
+            {editingContact && (
+              <button className="leadbtn" onClick={updateContact} disabled={leadSubmitting}
+                style={{ width: "100%" }}>
+                {leadSubmitting ? "Saving…" : "Save changes"}
+              </button>
+            )}
+            {!editingContact && (
             <label className="consent">
               <input type="checkbox" checked={tcpa} onChange={(e) => setTcpa(e.target.checked)} />
               I agree to be contacted by phone, text, or email about my inquiry. Consent is not a condition of purchase.
             </label>
+            )}
+            {!editingContact && (<>
             {applyUrl && (
               <button className="leadbtn" onClick={() => submitLead("apply")} disabled={leadSubmitting}
                 style={{ width: "100%" }}>
@@ -536,6 +586,7 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
                 : { width: "100%" }}>
               {leadSubmitting ? "Connecting…" : `Have ${loName} reach out`}
             </button>
+            </>)}
             {leadMsg && <div className="hint" style={{ marginTop: 8 }}>{leadMsg}</div>}
           </div>
         </div>
