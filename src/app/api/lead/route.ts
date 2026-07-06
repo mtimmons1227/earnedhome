@@ -74,95 +74,127 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Could not save lead" }, { status: 500 });
   }
 
-  // New lead only: log the event without blocking the response.
-  void supabase.from("events").insert({
-    tenant_id: tenantId,
-    type: "lead_captured",
-    payload: { leadId, routedTo: loName ?? null, quoteId: quoteId ?? null },
-  });
+  // Best-effort side effects. IMPORTANT: on serverless (Netlify Functions) the
+  // execution context is frozen the instant the response returns, so plain
+  // fire-and-forget (`void`) promises get cut off and emails send only
+  // intermittently. We collect them and `await Promise.allSettled` before
+  // returning so they reliably complete. Each is wrapped so a failure never
+  // blocks lead capture (the lead is already saved above).
+  const sideEffects: Promise<unknown>[] = [];
 
-  // Buyer estimate email (best-effort, non-blocking). No-ops if Resend isn't
-  // configured, so a missing email setup never affects lead capture.
+  // Event log
+  sideEffects.push(
+    (async () => {
+      try {
+        await supabase.from("events").insert({
+          tenant_id: tenantId,
+          type: "lead_captured",
+          payload: { leadId, routedTo: loName ?? null, quoteId: quoteId ?? null },
+        });
+      } catch {
+        /* best-effort */
+      }
+    })(),
+  );
+
+  // Buyer estimate email. No-ops if Resend isn't configured.
   if (email && quoteSummary) {
-    void sendBuyerEstimateEmail({
-      to: email,
-      buyerName: fullName ?? null,
-      loName: loName ?? "your loan officer",
-      ratesAsOf: quoteSummary.ratesAsOf,
-      homePrice: quoteSummary.homePrice,
-      downAmount: quoteSummary.downAmount,
-      downPct: quoteSummary.downPct,
-      creditBand: quoteSummary.creditBand,
-      occupancy: quoteSummary.occupancy,
-      propertyType: quoteSummary.propertyType,
-      cashToClose: quoteSummary.cashToClose,
-      products: quoteSummary.products ?? [],
-      disclosures: quoteSummary.disclosures ?? [],
-    }).then((r) => { if (!r.sent) console.log("[lead] buyer estimate email not sent:", r.reason); });
+    sideEffects.push(
+      sendBuyerEstimateEmail({
+        to: email,
+        buyerName: fullName ?? null,
+        loName: loName ?? "your loan officer",
+        ratesAsOf: quoteSummary.ratesAsOf,
+        homePrice: quoteSummary.homePrice,
+        downAmount: quoteSummary.downAmount,
+        downPct: quoteSummary.downPct,
+        creditBand: quoteSummary.creditBand,
+        occupancy: quoteSummary.occupancy,
+        propertyType: quoteSummary.propertyType,
+        cashToClose: quoteSummary.cashToClose,
+        products: quoteSummary.products ?? [],
+        disclosures: quoteSummary.disclosures ?? [],
+      })
+        .then((r) => { if (!r.sent) console.log("[lead] buyer estimate email not sent:", r.reason); })
+        .catch((e) => console.log("[lead] buyer estimate email error:", (e as Error).message)),
+    );
   }
 
-  // LO lead alert (best-effort, non-blocking). Look up where to send + the LO's
-  // name from the tenant. No-ops if Resend or notify_email isn't configured.
+  // LO lead alert. Looks up notify_email + lo_name from the tenant.
   // (Cast: notify_email is a new 0006 column not yet in generated DB types.)
-  void (async () => {
-    const tRes = await (supabase.from("tenants") as unknown as {
-      select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { notify_email?: string | null; lo_name?: string | null } | null }> } };
-    }).select("notify_email, lo_name").eq("id", tenantId).maybeSingle();
-    const notify = tRes.data?.notify_email ?? null;
-    if (!notify) return;
-    const r = await sendLoLeadAlert({
-      to: notify,
-      loName: tRes.data?.lo_name ?? loName ?? "your loan officer",
-      buyerName: fullName ?? null,
-      buyerEmail: email ?? null,
-      buyerPhone: phone ?? null,
-      action: action ?? null,
-      homePrice: quoteSummary?.homePrice,
-      downAmount: quoteSummary?.downAmount,
-      downPct: quoteSummary?.downPct,
-      creditBand: quoteSummary?.creditBand,
-      occupancy: quoteSummary?.occupancy,
-      propertyType: quoteSummary?.propertyType,
-      leadId,
-    });
-    if (!r.sent) console.log("[lead] LO alert not sent:", r.reason);
-  })();
+  sideEffects.push(
+    (async () => {
+      try {
+        const tRes = await (supabase.from("tenants") as unknown as {
+          select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { notify_email?: string | null; lo_name?: string | null } | null }> } };
+        }).select("notify_email, lo_name").eq("id", tenantId).maybeSingle();
+        const notify = tRes.data?.notify_email ?? null;
+        if (!notify) return;
+        const r = await sendLoLeadAlert({
+          to: notify,
+          loName: tRes.data?.lo_name ?? loName ?? "your loan officer",
+          buyerName: fullName ?? null,
+          buyerEmail: email ?? null,
+          buyerPhone: phone ?? null,
+          action: action ?? null,
+          homePrice: quoteSummary?.homePrice,
+          downAmount: quoteSummary?.downAmount,
+          downPct: quoteSummary?.downPct,
+          creditBand: quoteSummary?.creditBand,
+          occupancy: quoteSummary?.occupancy,
+          propertyType: quoteSummary?.propertyType,
+          leadId,
+        });
+        if (!r.sent) console.log("[lead] LO alert not sent:", r.reason);
+      } catch (e) {
+        console.log("[lead] LO alert error:", (e as Error).message);
+      }
+    })(),
+  );
 
-  // Lead-event webhook (vendor-neutral seam). Emits `lead.created` with the
-  // tenant's CRM config so a downstream flow (Power Automate -> partner CRM) can
-  // route/map/push. Best-effort, non-blocking; no-ops if LEAD_EVENT_WEBHOOK_URL
-  // is unset, and skips entirely when the tenant has no CRM configured. The lead
-  // is already saved above, so this never affects capture.
+  // Lead-event webhook (vendor-neutral seam) → downstream flow (Power Automate /
+  // own backend) → partner CRM. No-ops if LEAD_EVENT_WEBHOOK_URL is unset; skips
+  // when the tenant has no CRM configured.
   // (Cast: tenant_integrations isn't in the generated DB types yet.)
-  void (async () => {
-    const iRes = await (supabase.from("tenant_integrations") as unknown as {
-      select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { crm_type?: string | null; crm_api_key?: string | null; crm_config?: Record<string, unknown> | null } | null }> } };
-    }).select("crm_type, crm_api_key, crm_config").eq("tenant_id", tenantId).maybeSingle();
-    const crmType = iRes.data?.crm_type ?? "none";
-    if (crmType === "none") return; // no CRM to push to — dashboard + email alert are enough
-    const r = await emitLeadCreated({
-      leadId,
-      tenant: tenantId,
-      crm: {
-        type: crmType,
-        apiKey: iRes.data?.crm_api_key ?? null,
-        source: "EarnedHome",
-        config: iRes.data?.crm_config ?? null,
-      },
-      buyer: { fullName: fullName ?? null, email: email ?? null, phone: phone ?? null, consentTcpa: true },
-      scenario: {
-        homePrice: quoteSummary?.homePrice,
-        downAmount: quoteSummary?.downAmount,
-        downPct: quoteSummary?.downPct,
-        creditBand: quoteSummary?.creditBand,
-        occupancy: quoteSummary?.occupancy,
-        propertyType: quoteSummary?.propertyType,
-      },
-      action: action ?? null,
-      createdAt: new Date().toISOString(),
-    });
-    if (!r.sent) console.log("[lead] lead.created webhook not sent:", r.reason);
-  })();
+  sideEffects.push(
+    (async () => {
+      try {
+        const iRes = await (supabase.from("tenant_integrations") as unknown as {
+          select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { crm_type?: string | null; crm_api_key?: string | null; crm_config?: Record<string, unknown> | null } | null }> } };
+        }).select("crm_type, crm_api_key, crm_config").eq("tenant_id", tenantId).maybeSingle();
+        const crmType = iRes.data?.crm_type ?? "none";
+        if (crmType === "none") return; // no CRM to push to — dashboard + email alert are enough
+        const r = await emitLeadCreated({
+          leadId,
+          tenant: tenantId,
+          crm: {
+            type: crmType,
+            apiKey: iRes.data?.crm_api_key ?? null,
+            source: "EarnedHome",
+            config: iRes.data?.crm_config ?? null,
+          },
+          buyer: { fullName: fullName ?? null, email: email ?? null, phone: phone ?? null, consentTcpa: true },
+          scenario: {
+            homePrice: quoteSummary?.homePrice,
+            downAmount: quoteSummary?.downAmount,
+            downPct: quoteSummary?.downPct,
+            creditBand: quoteSummary?.creditBand,
+            occupancy: quoteSummary?.occupancy,
+            propertyType: quoteSummary?.propertyType,
+          },
+          action: action ?? null,
+          createdAt: new Date().toISOString(),
+        });
+        if (!r.sent) console.log("[lead] lead.created webhook not sent:", r.reason);
+      } catch (e) {
+        console.log("[lead] webhook error:", (e as Error).message);
+      }
+    })(),
+  );
+
+  // Wait for all best-effort work to finish before the serverless function
+  // freezes — this is what makes emails reliable on Netlify (vs fire-and-forget).
+  await Promise.allSettled(sideEffects);
 
   return NextResponse.json({ ok: true, deduped: false, leadId, routedTo: loName ?? null });
 }
