@@ -16,6 +16,8 @@ export interface BuyerEstimateEmail {
   to: string;
   buyerName?: string | null;
   loName: string;
+  loPhone?: string | null;
+  bookingUrl?: string | null;
   ratesAsOf: string;
   // The buyer's scenario (so the numbers have context).
   homePrice?: number;
@@ -246,6 +248,20 @@ function renderHtml(d: BuyerEstimateEmail): string {
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">${money(p.cashToClose)}</td>
     </tr>`).join("");
   const disc = d.disclosures.map((x) => `<p style="margin:0 0 8px;">${escapeHtml(x)}</p>`).join("");
+
+  // "Get back to your loan officer" CTA — a booking button and/or phone number so
+  // the buyer can always reconnect with the LO directly from the email.
+  const ctaParts: string[] = [];
+  if (d.bookingUrl) {
+    ctaParts.push(`<a href="${escapeHtml(d.bookingUrl)}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">Book a time with ${escapeHtml(d.loName)}</a>`);
+  }
+  if (d.loPhone) {
+    ctaParts.push(`<p style="margin:10px 0 0;font-size:14px;">Prefer to talk now? Call ${escapeHtml(d.loName)} at <a href="tel:${escapeHtml(d.loPhone.replace(/[^0-9+]/g, ""))}" style="color:#1F3864;font-weight:600;">${escapeHtml(d.loPhone)}</a>.</p>`);
+  }
+  const ctaHtml = ctaParts.length
+    ? `<div style="text-align:center;margin:20px 0;padding:16px;background:#f3f4f6;border-radius:8px;">${ctaParts.join("")}</div>`
+    : "";
+
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;margin:0 auto;padding:8px;">
     <h2 style="color:#1F3864;margin:0 0 4px;">Your home payment estimate</h2>
@@ -263,6 +279,7 @@ function renderHtml(d: BuyerEstimateEmail): string {
       <tbody>${rows}</tbody>
     </table>
     <p style="font-size:12px;color:#6b7280;margin:0 0 4px;">Cash to close and payment are estimates per loan option above.</p>
+    ${ctaHtml}
     <div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#6b7280;line-height:1.5;">
       ${disc}
     </div>

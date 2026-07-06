@@ -178,6 +178,8 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
         body: JSON.stringify({
           tenantId,
           loName,
+          loPhone: loPhone ?? null,
+          bookingUrl: bookingUrl ?? null,
           agentId: agentId ?? null,
           action,
           quoteId,

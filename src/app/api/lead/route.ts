@@ -19,7 +19,8 @@ interface QuoteSummary {
 
 export async function POST(req: Request) {
   let body: {
-    tenantId?: string; loName?: string; fullName?: string; email?: string;
+    tenantId?: string; loName?: string; loPhone?: string | null; bookingUrl?: string | null;
+    fullName?: string; email?: string;
     phone?: string; consentTcpa?: boolean; consentText?: string;
     quoteId?: string | null; idempotencyKey?: string | null; agentId?: string | null;
     quoteSummary?: QuoteSummary | null;
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
   }
 
   const {
-    tenantId, loName, fullName, email, phone, consentTcpa, consentText,
+    tenantId, loName, loPhone, bookingUrl, fullName, email, phone, consentTcpa, consentText,
     quoteId, idempotencyKey, quoteSummary, action, agentId,
   } = body;
   if (!tenantId) {
@@ -105,6 +106,8 @@ export async function POST(req: Request) {
         to: email,
         buyerName: fullName ?? null,
         loName: loName ?? "your loan officer",
+        loPhone: loPhone ?? null,
+        bookingUrl: bookingUrl ?? null,
         ratesAsOf: quoteSummary.ratesAsOf,
         homePrice: quoteSummary.homePrice,
         downAmount: quoteSummary.downAmount,
