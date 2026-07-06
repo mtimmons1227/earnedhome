@@ -39,7 +39,7 @@ export default async function DashboardPage() {
   const { data: leads } = await supabase
     .from("leads")
     .select(
-      "id, full_name, email, phone, status, consent_tcpa, consent_text, consent_at, source, notes, created_at, agents ( name ), quotes ( inputs, outputs, rates_as_of )",
+      "id, full_name, email, phone, status, consent_tcpa, consent_text, consent_at, source, notes, created_at, agents ( name, active ), quotes ( inputs, outputs, rates_as_of )",
     )
     .order("created_at", { ascending: false });
 
@@ -72,6 +72,7 @@ export default async function DashboardPage() {
     status: l.status, consent_tcpa: l.consent_tcpa, consent_text: l.consent_text,
     consent_at: l.consent_at, source: l.source, notes: l.notes, created_at: l.created_at,
     agent_name: Array.isArray(l.agents) ? (l.agents[0]?.name ?? null) : (l.agents?.name ?? null),
+    agent_active: Array.isArray(l.agents) ? (l.agents[0]?.active ?? null) : (l.agents?.active ?? null),
     quote: Array.isArray(l.quotes) ? (l.quotes[0] ?? null) : (l.quotes ?? null),
   }));
 

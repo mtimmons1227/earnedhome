@@ -17,6 +17,7 @@ export interface LeadRow {
   notes: string | null;
   created_at: string;
   agent_name: string | null;
+  agent_active: boolean | null;
   quote: { inputs: Record<string, unknown> | null; outputs: PricingQuote | null; rates_as_of: string | null } | null;
 }
 
@@ -152,7 +153,14 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
                   <td style={{ ...th, color: "var(--muted)" }}>{isOpen ? "▾" : "▸"}</td>
                   <td style={{ ...th, whiteSpace: "nowrap", color: "var(--muted)" }}>{new Date(l.created_at).toLocaleDateString()}</td>
                   <td style={{ ...th, fontWeight: 600 }}>{l.full_name ?? "—"}{(notesByLead[l.id]?.length ?? 0) > 0 ? " 📝" : ""}</td>
-                  <td style={{ ...th, color: l.agent_name ? undefined : "var(--muted)" }}>{l.agent_name ?? "—"}</td>
+                  <td style={{ ...th, color: l.agent_name ? undefined : "var(--muted)" }}>
+                    {l.agent_name ?? "—"}
+                    {l.agent_name && l.agent_active === false && (
+                      <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: "#b91c1c",
+                        border: "1px solid #fca5a5", background: "#fef2f2", borderRadius: 5, padding: "1px 5px",
+                        whiteSpace: "nowrap" }}>DISABLED</span>
+                    )}
+                  </td>
                   <td style={th}>{l.email ?? "—"}</td>
                   <td style={{ ...th, whiteSpace: "nowrap" }}>{l.phone ?? "—"}</td>
                   <td style={th}>{l.consent_tcpa ? "✓" : "—"}</td>
@@ -172,7 +180,7 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
                           <div style={{ fontWeight: 700, color: "var(--primary)", marginBottom: 6 }}>Buyer & consent</div>
                           <Field k="Name" v={l.full_name} /><Field k="Email" v={l.email} /><Field k="Phone" v={l.phone} />
                           <Field k="Source" v={l.source} />
-                          <Field k="Agent" v={l.agent_name} />
+                          <Field k="Agent" v={l.agent_name ? `${l.agent_name}${l.agent_active === false ? " (disabled)" : ""}` : null} />
                           <Field k="Consent" v={l.consent_tcpa ? "Yes" : "No"} />
                           {l.consent_at && <Field k="Consent at" v={new Date(l.consent_at).toLocaleString()} />}
                           {l.consent_text && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6, fontStyle: "italic" }}>&ldquo;{l.consent_text}&rdquo;</div>}
