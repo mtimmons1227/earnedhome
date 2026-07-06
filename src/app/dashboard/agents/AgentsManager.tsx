@@ -95,6 +95,20 @@ export function AgentsManager() {
     setTimeout(() => setCopiedId((c) => (c === a.id ? null : c)), 1500);
   }
 
+  // Open the LO's own mail app with a pre-filled note + the agent's link.
+  function emailLink(a: Agent) {
+    if (!a.email) return;
+    const link = `${origin}/a/${a.slug}`;
+    const subject = encodeURIComponent("Your EarnedHome estimate link");
+    const body = encodeURIComponent(
+      `Hi ${a.name},\n\n` +
+        `Here's your personal EarnedHome link to share with buyers:\n${link}\n\n` +
+        `Any buyer who runs an estimate from this link is automatically tied to you, ` +
+        `and you'll get a copy of the lead.\n`,
+    );
+    window.location.href = `mailto:${a.email}?subject=${subject}&body=${body}`;
+  }
+
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div className="panel">
@@ -157,6 +171,9 @@ export function AgentsManager() {
                     <button onClick={() => copyLink(a)} style={smallBtn}>
                       {copiedId === a.id ? "Copied!" : "Copy link"}
                     </button>
+                    {a.email && (
+                      <button onClick={() => emailLink(a)} style={smallBtn}>Email link</button>
+                    )}
                     <button onClick={() => toggleActive(a)} style={smallBtn}>
                       {a.active ? "Turn off" : "Turn on"}
                     </button>
