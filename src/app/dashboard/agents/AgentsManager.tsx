@@ -13,6 +13,8 @@ interface Agent {
   created_at?: string;
 }
 
+type Filter = "all" | "active" | "off";
+
 export function AgentsManager() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +29,15 @@ export function AgentsManager() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sentId, setSentId] = useState<string | null>(null);
+
+  const [filter, setFilter] = useState<Filter>("all");
+
+  // Inline edit state.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -72,7 +83,6 @@ export function AgentsManager() {
 
   async function toggleActive(a: Agent) {
     setErr(null);
-    // optimistic
     setAgents((prev) => prev.map((x) => (x.id === a.id ? { ...x, active: !x.active } : x)));
     try {
       const res = await fetch(`/api/admin/agents/${a.id}`, {
@@ -86,8 +96,45 @@ export function AgentsManager() {
       }
     } catch (e) {
       setErr((e as Error).message);
-      // revert
       setAgents((prev) => prev.map((x) => (x.id === a.id ? { ...x, active: a.active } : x)));
+    }
+  }
+
+  function startEdit(a: Agent) {
+    setEditingId(a.id);
+    setEditName(a.name);
+    setEditEmail(a.email ?? "");
+    setEditPhone(a.phone ?? "");
+    setErr(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(a: Agent) {
+    if (!editName.trim() || savingEdit) return;
+    setSavingEdit(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/admin/agents/${a.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: editName.trim(),
+          email: editEmail.trim() || null,
+          phone: editPhone.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not save changes");
+      // Merge returned fields; keep invite_sent_at (PATCH doesn't return it).
+      setAgents((prev) => prev.map((x) => (x.id === a.id ? { ...x, ...data.agent } : x)));
+      setEditingId(null);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -122,6 +169,12 @@ export function AgentsManager() {
     }
   }
 
+  const activeCount = agents.filter((a) => a.active).length;
+  const visible =
+    filter === "active" ? agents.filter((a) => a.active)
+    : filter === "off" ? agents.filter((a) => !a.active)
+    : agents;
+
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div className="panel">
@@ -151,54 +204,95 @@ export function AgentsManager() {
       </div>
 
       <div className="panel">
-        <h3 style={{ marginTop: 0 }}>Agents ({agents.length})</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+          gap: 8, flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0 }}>Agents ({activeCount} active · {agents.length} total)</h3>
+          <label style={{ fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+            Show:
+            <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)}
+              style={{ padding: "6px 8px", fontSize: 13 }}>
+              <option value="all">All</option>
+              <option value="active">Active only</option>
+              <option value="off">Turned off</option>
+            </select>
+          </label>
+        </div>
+
         {loading ? (
-          <div className="hint">Loading…</div>
+          <div className="hint" style={{ marginTop: 12 }}>Loading…</div>
         ) : agents.length === 0 ? (
-          <div className="hint">No agents yet. Add one above to generate a share link.</div>
+          <div className="hint" style={{ marginTop: 12 }}>No agents yet. Add one above to generate a share link.</div>
+        ) : visible.length === 0 ? (
+          <div className="hint" style={{ marginTop: 12 }}>No agents in this view.</div>
         ) : (
-          <div style={{ display: "grid", gap: 8 }}>
-            {agents.map((a) => {
+          <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+            {visible.map((a) => {
               const link = `${origin}/a/${a.slug}`;
+              const editing = editingId === a.id;
               return (
                 <div key={a.id} style={{ display: "grid",
                   gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center",
                   border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px",
-                  opacity: a.active ? 1 : 0.55 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700 }}>
-                      {a.name}
-                      {!a.active && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700,
-                        color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 6,
-                        padding: "1px 6px" }}>SEAT OFF</span>}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                      {[a.email, a.phone].filter(Boolean).join(" · ") || "No contact info"}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4,
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {link}
-                    </div>
-                    {a.invite_sent_at && (
-                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                        ✓ Link sent {new Date(a.invite_sent_at).toLocaleString()}
+                  opacity: a.active || editing ? 1 : 0.55 }}>
+                  {editing ? (
+                    <>
+                      <div style={{ display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+                        <label style={fieldLabel}>Name*
+                          <input value={editName} onChange={(e) => setEditName(e.target.value)} style={input} />
+                        </label>
+                        <label style={fieldLabel}>Email
+                          <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} type="email" style={input} />
+                        </label>
+                        <label style={fieldLabel}>Phone
+                          <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={input} />
+                        </label>
                       </div>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <button onClick={() => copyLink(a)} style={smallBtn}>
-                      {copiedId === a.id ? "Copied!" : "Copy link"}
-                    </button>
-                    {a.email && (
-                      <button onClick={() => emailLink(a)} disabled={sendingId === a.id} style={smallBtn}>
-                        {sentId === a.id ? "Sent!" : sendingId === a.id ? "Sending…" : "Email link"}
-                      </button>
-                    )}
-                    <button onClick={() => toggleActive(a)}
-                      style={{ ...smallBtn, ...(a.active ? offBtn : onBtn) }}>
-                      {a.active ? "Turn off" : "Turn on"}
-                    </button>
-                  </div>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <button onClick={() => saveEdit(a)} disabled={savingEdit || !editName.trim()}
+                          style={{ ...smallBtn, ...onBtn }}>{savingEdit ? "Saving…" : "Save"}</button>
+                        <button onClick={cancelEdit} style={smallBtn}>Cancel</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700 }}>
+                          {a.name}
+                          {!a.active && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700,
+                            color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 6,
+                            padding: "1px 6px" }}>SEAT OFF</span>}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                          {[a.email, a.phone].filter(Boolean).join(" · ") || "No contact info"}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {link}
+                        </div>
+                        {a.invite_sent_at && (
+                          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                            ✓ Link sent {new Date(a.invite_sent_at).toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                        <button onClick={() => copyLink(a)} style={smallBtn}>
+                          {copiedId === a.id ? "Copied!" : "Copy link"}
+                        </button>
+                        {a.email && (
+                          <button onClick={() => emailLink(a)} disabled={sendingId === a.id} style={smallBtn}>
+                            {sentId === a.id ? "Sent!" : sendingId === a.id ? "Sending…" : "Email link"}
+                          </button>
+                        )}
+                        <button onClick={() => startEdit(a)} style={smallBtn}>Edit</button>
+                        <button onClick={() => toggleActive(a)}
+                          style={{ ...smallBtn, ...(a.active ? offBtn : onBtn) }}>
+                          {a.active ? "Turn off" : "Turn on"}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })}
