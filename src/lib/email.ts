@@ -33,10 +33,28 @@ export interface BuyerEstimateEmail {
 export interface LoLeadAlert {
   to: string;            // tenant.notify_email
   loName: string;
+  agentName?: string | null; // the realtor who ran the estimate, if any
   buyerName?: string | null;
   buyerEmail?: string | null;
   buyerPhone?: string | null;
   action?: string | null; // "apply" | "call" | "book" | "reach-out"
+  homePrice?: number;
+  downAmount?: number;
+  downPct?: number;
+  creditBand?: string;
+  occupancy?: string;
+  propertyType?: string;
+  leadId?: string;
+}
+
+// Copy of the lead alert emailed to the realtor agent who ran the estimate.
+export interface AgentLeadAlert {
+  to: string;            // agent.email
+  agentName?: string | null;
+  loName: string;        // the lender the buyer connects with, e.g. "R Parry Financial"
+  buyerName?: string | null;
+  buyerEmail?: string | null;
+  buyerPhone?: string | null;
   homePrice?: number;
   downAmount?: number;
   downPct?: number;
@@ -86,6 +104,7 @@ export async function sendLoLeadAlert(d: LoLeadAlert): Promise<{ sent: boolean; 
     "have you reach out";
   const name = d.buyerName ? escapeHtml(d.buyerName) : "A buyer";
   const rows: string[] = [];
+  if (d.agentName) rows.push(`<strong>Agent:</strong> ${escapeHtml(d.agentName)}`);
   if (d.buyerPhone) rows.push(`<strong>Phone:</strong> ${escapeHtml(d.buyerPhone)}`);
   if (d.buyerEmail) rows.push(`<strong>Email:</strong> ${escapeHtml(d.buyerEmail)}`);
   if (d.homePrice != null) rows.push(`<strong>Home price:</strong> ${money(d.homePrice)}`);
@@ -97,7 +116,7 @@ export async function sendLoLeadAlert(d: LoLeadAlert): Promise<{ sent: boolean; 
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
     <h2 style="color:#1F3864;margin:0 0 8px;">New buyer lead — EarnedHome</h2>
-    <p><strong>${name}</strong> just ran the numbers and chose to <strong>${actionLabel}</strong>.</p>
+    <p><strong>${name}</strong>${d.agentName ? ` (via ${escapeHtml(d.agentName)})` : ""} just ran the numbers and chose to <strong>${actionLabel}</strong>.</p>
     <div style="background:#f3f4f6;border-radius:8px;padding:12px 14px;margin:8px 0;font-size:14px;line-height:1.7;">
       ${rows.map((r) => `<div>${r}</div>`).join("")}
     </div>
@@ -109,6 +128,49 @@ export async function sendLoLeadAlert(d: LoLeadAlert): Promise<{ sent: boolean; 
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
       body: JSON.stringify({ from, to: d.to, subject: `New buyer lead — ${name}`, html }),
+    });
+    if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, reason: (e as Error).message };
+  }
+}
+
+// Agent's copy of the lead alert. Same safe-by-design no-op if Resend or the
+// agent's email is unset.
+export async function sendAgentLeadAlert(d: AgentLeadAlert): Promise<{ sent: boolean; reason?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!key || !from) return { sent: false, reason: "email not configured (RESEND_API_KEY / RESEND_FROM)" };
+  if (!d.to) return { sent: false, reason: "no agent email" };
+
+  const name = d.buyerName ? escapeHtml(d.buyerName) : "A buyer";
+  const rows: string[] = [];
+  if (d.buyerPhone) rows.push(`<strong>Phone:</strong> ${escapeHtml(d.buyerPhone)}`);
+  if (d.buyerEmail) rows.push(`<strong>Email:</strong> ${escapeHtml(d.buyerEmail)}`);
+  if (d.homePrice != null) rows.push(`<strong>Home price:</strong> ${money(d.homePrice)}`);
+  if (d.downAmount != null) rows.push(`<strong>Down:</strong> ${money(d.downAmount)}${d.downPct != null ? ` (${d.downPct}%)` : ""}`);
+  if (d.creditBand) rows.push(`<strong>Credit:</strong> ${escapeHtml(d.creditBand)}`);
+  const use = [d.occupancy, d.propertyType].filter(Boolean).map((x) => escapeHtml(x as string));
+  if (use.length) rows.push(`<strong>Use:</strong> ${use.join(" · ")}`);
+
+  const hi = d.agentName ? `Hi ${escapeHtml(d.agentName.split(" ")[0])},` : "Hi,";
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
+    <h2 style="color:#1F3864;margin:0 0 8px;">Your buyer just signed up — EarnedHome</h2>
+    <p>${hi}</p>
+    <p>Your buyer <strong>${name}</strong> just ran the numbers and connected with <strong>${escapeHtml(d.loName)}</strong>.</p>
+    <div style="background:#f3f4f6;border-radius:8px;padding:12px 14px;margin:8px 0;font-size:14px;line-height:1.7;">
+      ${rows.map((r) => `<div>${r}</div>`).join("")}
+    </div>
+    <p style="font-size:12px;color:#6b7280;">Captured with TCPA consent via your EarnedHome link${d.leadId ? ` (lead ${escapeHtml(d.leadId)})` : ""}.</p>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from, to: d.to, subject: `Your buyer ${name} just signed up`, html }),
     });
     if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
     return { sent: true };

@@ -16,6 +16,7 @@ export interface LeadRow {
   source: string | null;
   notes: string | null;
   created_at: string;
+  agent_name: string | null;
   quote: { inputs: Record<string, unknown> | null; outputs: PricingQuote | null; rates_as_of: string | null } | null;
 }
 
@@ -123,14 +124,14 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
         <thead>
           <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
             <th style={{ ...th, width: 24 }}></th>
-            <th style={th}>Date</th><th style={th}>Name</th><th style={th}>Email</th>
+            <th style={th}>Date</th><th style={th}>Name</th><th style={th}>Agent</th><th style={th}>Email</th>
             <th style={th}>Phone</th><th style={th}>Consent</th><th style={th}>Status</th>
           </tr>
         </thead>
         <tbody>
           {visible.length === 0 && (
             <tr>
-              <td colSpan={7} style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+              <td colSpan={8} style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
                 No leads in this view.{" "}
                 <button onClick={() => setFilter("all")}
                   style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: 600,
@@ -151,6 +152,7 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
                   <td style={{ ...th, color: "var(--muted)" }}>{isOpen ? "▾" : "▸"}</td>
                   <td style={{ ...th, whiteSpace: "nowrap", color: "var(--muted)" }}>{new Date(l.created_at).toLocaleDateString()}</td>
                   <td style={{ ...th, fontWeight: 600 }}>{l.full_name ?? "—"}{(notesByLead[l.id]?.length ?? 0) > 0 ? " 📝" : ""}</td>
+                  <td style={{ ...th, color: l.agent_name ? undefined : "var(--muted)" }}>{l.agent_name ?? "—"}</td>
                   <td style={th}>{l.email ?? "—"}</td>
                   <td style={{ ...th, whiteSpace: "nowrap" }}>{l.phone ?? "—"}</td>
                   <td style={th}>{l.consent_tcpa ? "✓" : "—"}</td>
@@ -164,12 +166,13 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
                 </tr>
                 {isOpen && (
                   <tr>
-                    <td colSpan={7} style={{ padding: 0 }}>
+                    <td colSpan={8} style={{ padding: 0 }}>
                       <div style={{ background: "#f7f9fc", border: "1px solid var(--line)", borderRadius: 10, margin: "0 10px 12px", padding: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                         <div>
                           <div style={{ fontWeight: 700, color: "var(--primary)", marginBottom: 6 }}>Buyer & consent</div>
                           <Field k="Name" v={l.full_name} /><Field k="Email" v={l.email} /><Field k="Phone" v={l.phone} />
                           <Field k="Source" v={l.source} />
+                          <Field k="Agent" v={l.agent_name} />
                           <Field k="Consent" v={l.consent_tcpa ? "Yes" : "No"} />
                           {l.consent_at && <Field k="Consent at" v={new Date(l.consent_at).toLocaleString()} />}
                           {l.consent_text && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6, fontStyle: "italic" }}>&ldquo;{l.consent_text}&rdquo;</div>}

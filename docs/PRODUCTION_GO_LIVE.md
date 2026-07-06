@@ -1,7 +1,7 @@
 # Production Go-Live Runbook — EarnedHome
 
 **Single source of truth for taking EarnedHome (R Parry pilot) from QA to a real, buyer-facing production site.**
-_Last updated: June 30, 2026. Owner: Marvin. Read alongside [`RELEASE_MANIFEST_QA.md`](RELEASE_MANIFEST_QA.md) (what's queued to promote), [`WHITE_LABEL_ARCHITECTURE.md`](WHITE_LABEL_ARCHITECTURE.md) (branding/domains), and [`sdlc/06-deployment.md`](sdlc/06-deployment.md) (deploy mechanics)._
+_Last updated: July 6, 2026. Owner: Marvin. Read alongside [`RELEASE_MANIFEST_QA.md`](RELEASE_MANIFEST_QA.md) (what's queued to promote), [`WHITE_LABEL_ARCHITECTURE.md`](WHITE_LABEL_ARCHITECTURE.md) (branding/domains), and [`sdlc/06-deployment.md`](sdlc/06-deployment.md) (deploy mechanics)._
 
 > This runbook answers four questions: **(1)** what test-only state must be reset, **(2)** what configuration makes the system production-ready, **(3)** how buyers will see it (branding), and **(4)** how the URL/domain is set up. Nothing here changes code — it's the settings, SQL, and steps for go-live.
 
@@ -12,10 +12,24 @@ _Last updated: June 30, 2026. Owner: Marvin. Read alongside [`RELEASE_MANIFEST_Q
 | Environment | URL | Branch | Pricing engine | Emails (Resend) |
 |---|---|---|---|---|
 | **Local** | `localhost:3000` | working tree | `graph` + `grid` (your `.env.local`) | configured for your testing |
-| **QA / dev** | `dev--earnedhome.netlify.app` | `dev` | currently per dev context | **dormant** (no Resend keys set) |
+| **QA / dev** | `dev--earnedhome.netlify.app` | `dev` | `graph` | **live (Jul 6)** — `RESEND_API_KEY` + `RESEND_FROM` set; connect flow + instant emails firing |
 | **Production** | `earnedhome.netlify.app` | `main` | **`stub` (demo) — not live pricing yet** | **dormant** (no Resend keys set) |
 
-Production is **not yet live** in two senses: it runs the demo `stub` engine (not real Graph pricing), and email is dormant (no LO alerts / buyer estimates send). Both are deliberate and are flipped as part of go-live (§2).
+Production is **not yet live** in two senses: it runs the demo `stub` engine (not real Graph pricing), and email is dormant (no LO alerts / buyer estimates send). Both are deliberate and are flipped as part of go-live (§2). **QA now sends the real connect-flow emails** (added Jul 6 — see §0a).
+
+---
+
+## 0a. Email & Resend — operational notes (learned Jul 6)
+
+Hard-won during the QA email bring-up. Keep these for production:
+
+- **`RESEND_FROM` must be an address on a Resend-*verified* domain.** Verified today: **`thetimmonsfoundation.org`**. Using `…@rparryfinancial.com` returns **`403 domain not verified`** and *nothing* sends. The **display name** can be `R Parry Financial` (branding) but the **address stays `@thetimmonsfoundation.org`** until R Parry's own domain is added + verified in Resend (needs their DNS).
+- **`RESEND_FROM` = sender; `notify_email` = recipient (Richard).** Don't put Richard's address in `RESEND_FROM`.
+- **Await side effects on serverless.** The lead route now `await`s all emails + the webhook (`Promise.allSettled`) before returning. Netlify Functions freeze the instant the response returns, so the old fire-and-forget (`void`) pattern cut emails off intermittently (worked locally, flaky on QA). Fix: commit `b0350d0`.
+- **Deliverability:** the domain has SPF + DKIM (verified) + DMARC (`p=quarantine`). **Same-domain / M365 recipients inbox reliably; external addresses (Yahoo, etc.) may spam-filter.** For best inbox placement to buyers and Richard, eventually send from an **R Parry-owned verified domain**.
+- **Resend free tier = 100 emails/day.** Each submit sends 2 (buyer + LO); heavy testing can exhaust the daily quota → sends start failing *everywhere* until it resets. Not a bug.
+- **Duplicate submits de-dupe.** Identical resubmits (same idempotency key) are skipped (no re-send) — use a fresh name/email/phone when testing.
+- **QA env (Netlify, added Jul 6):** `RESEND_API_KEY` (secret; scoped Builds/Functions/Runtime), `RESEND_FROM` = `R Parry Financial <estimates@thetimmonsfoundation.org>`.
 
 ---
 

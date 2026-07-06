@@ -39,7 +39,7 @@ export default async function DashboardPage() {
   const { data: leads } = await supabase
     .from("leads")
     .select(
-      "id, full_name, email, phone, status, consent_tcpa, consent_text, consent_at, source, notes, created_at, quotes ( inputs, outputs, rates_as_of )",
+      "id, full_name, email, phone, status, consent_tcpa, consent_text, consent_at, source, notes, created_at, agents ( name ), quotes ( inputs, outputs, rates_as_of )",
     )
     .order("created_at", { ascending: false });
 
@@ -71,6 +71,7 @@ export default async function DashboardPage() {
     id: l.id, full_name: l.full_name, email: l.email, phone: l.phone,
     status: l.status, consent_tcpa: l.consent_tcpa, consent_text: l.consent_text,
     consent_at: l.consent_at, source: l.source, notes: l.notes, created_at: l.created_at,
+    agent_name: Array.isArray(l.agents) ? (l.agents[0]?.name ?? null) : (l.agents?.name ?? null),
     quote: Array.isArray(l.quotes) ? (l.quotes[0] ?? null) : (l.quotes ?? null),
   }));
 
@@ -90,6 +91,9 @@ export default async function DashboardPage() {
           <a href="/" target="_blank" rel="noreferrer" style={{ color: "#fff",
             border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
             fontWeight: 600, textDecoration: "none" }}>View EarnedHome</a>
+          <a href="/dashboard/agents" style={{ color: "#fff",
+            border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
+            fontWeight: 600, textDecoration: "none" }}>Agents</a>
           {appUser.role === "admin" && (
             <a href="/dashboard/workbook" style={{ color: "#fff",
               border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
