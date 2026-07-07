@@ -20,6 +20,15 @@ const CREDIT_BANDS: CreditBand[] = [
 const OCCUPANCIES: Occupancy[] = ["Primary", "Second Home", "Investment"];
 const PROPERTY_TYPES: PropertyType[] = ["Single Family", "2-4 Unit", "Condo", "Manufactured"];
 
+// Format a US 10-digit phone as (XXX) XXX-XXXX; leave anything else as-is.
+function formatPhoneUS(p: string | null | undefined): string {
+  if (!p) return "";
+  const d = p.replace(/\D/g, "");
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  if (d.length === 11 && d[0] === "1") return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
+  return p;
+}
+
 interface Props {
   tenantId: string;
   loName: string;
@@ -471,7 +480,7 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
                     justifyContent: "center", fontWeight: 700 }}>✓</div>
                   <div>
                     <div style={{ fontWeight: 700, color: "var(--primary)" }}>
-                      You&apos;re connected with {loName}
+                      You&apos;re connected with {loName}{loPhone ? ` ${formatPhoneUS(loPhone)}` : ""}
                     </div>
                     <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
                       {leadName ? `Thanks, ${leadName.split(" ")[0]}. ` : "Thanks. "}
