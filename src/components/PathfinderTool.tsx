@@ -159,6 +159,14 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
 
   async function submitLead(action: "apply" | "call" | "book" | "reach-out" = "reach-out") {
     if (leadSubmitting || leadDone) return; // guard double-clicks / resubmits
+    if (!leadName.trim() || !leadEmail.trim() || !leadPhone.trim()) {
+      setLeadMsg("Please enter your name, email, and phone.");
+      return;
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(leadEmail.trim())) {
+      setLeadMsg("Please enter a valid email address.");
+      return;
+    }
     if (!tcpa) {
       setLeadMsg("Please agree to be contacted before connecting.");
       return;
@@ -232,6 +240,14 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
   // duplicate). Used by the "Update my info" button after connecting.
   async function updateContact() {
     if (!leadId || leadSubmitting) return;
+    if (!leadName.trim() || !leadEmail.trim() || !leadPhone.trim()) {
+      setLeadMsg("Please enter your name, email, and phone.");
+      return;
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(leadEmail.trim())) {
+      setLeadMsg("Please enter a valid email address.");
+      return;
+    }
     setLeadSubmitting(true);
     setLeadMsg(null);
     try {
@@ -462,6 +478,10 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
                       A loan officer will reach out shortly about your{" "}
                       {money(quote.cashToClose)} cash-to-close scenario.
                     </div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
+                      If you booked a meeting, you can reschedule or cancel anytime using the
+                      Calendly confirmation email that was sent to you.
+                    </div>
                     <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                       {leadId && (
                         <button onClick={() => { setEditingContact(true); setLeadMsg(null); setShowLeadModal(true); }}
@@ -541,11 +561,11 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
                 ? "Change your name, email, or phone below, then save."
                 : `Share your info, then choose how you'd like to connect with ${loName}.`}
             </div>
-            <input placeholder="Full name" value={leadName} onChange={(e) => setLeadName(e.target.value)} />
+            <input placeholder="Full name *" required value={leadName} onChange={(e) => setLeadName(e.target.value)} />
             <div className="spacer" />
-            <input placeholder="Email" type="email" inputMode="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} />
+            <input placeholder="Email *" type="email" inputMode="email" required value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} />
             <div className="spacer" />
-            <input placeholder="Phone" type="tel" inputMode="tel" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} />
+            <input placeholder="Phone *" type="tel" inputMode="tel" required value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} />
             {editingContact && (
               <button className="leadbtn" onClick={updateContact} disabled={leadSubmitting}
                 style={{ width: "100%" }}>
