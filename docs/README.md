@@ -39,6 +39,7 @@ The [artifact index](artifacts/README.md) maps each SDLC phase to its supporting
 | [`CHANGE_SIGNOFF_LOG.md`](CHANGE_SIGNOFF_LOG.md) | Running log of changes needing Richard's / counsel's sign-off. |
 | [`HOW_TO_DEPLOY.md`](HOW_TO_DEPLOY.md) | Deploy procedure. |
 | [`QA_PROD_DB_SPLIT.md`](QA_PROD_DB_SPLIT.md) | Split QA/Prod databases before real buyers (final environment isolation). |
+| [`MICROSOFT_TENANT_MIGRATION.md`](MICROSOFT_TENANT_MIGRATION.md) | Move workbook + Graph app from Incryptable → EarnedHome M365 at go-live. |
 | [`RUNBOOK_connect_graph_engine.md`](RUNBOOK_connect_graph_engine.md) | Connecting the Graph pricing engine. |
 
 ### Tenant onboarding
