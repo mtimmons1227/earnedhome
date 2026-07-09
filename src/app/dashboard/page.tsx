@@ -91,6 +91,8 @@ export default async function DashboardPage() {
     (l) => l.closed_at && new Date(l.closed_at).getTime() >= monthStart,
   ).length;
   const leadToClosed = rows.length > 0 ? Math.round((closedTotal / rows.length) * 100) : 0;
+  const leadsThisMonth = rows.filter((l) => new Date(l.created_at).getTime() >= monthStart).length;
+  const closedRateMonth = leadsThisMonth > 0 ? Math.round((closedThisMonth / leadsThisMonth) * 100) : 0;
 
   return (
     <div>
@@ -120,16 +122,22 @@ export default async function DashboardPage() {
       </header>
 
       <main>
+        {/* Row 1 — volume (counts), left→right down the funnel */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-          gap: 12, marginBottom: 16 }}>
+          gap: 12, marginBottom: 12 }}>
+          <Metric label="Quotes run" value={String(quotesRun ?? 0)} />
           <Metric label="Total leads" value={String(rows.length)} />
           <Metric label="New (unworked)" value={String(newLeads)} />
           <Metric label="Leads this week" value={String(leadsThisWeek)} />
           <Metric label="Closed / Funded" value={String(closedTotal)} />
           <Metric label="Closed this month" value={String(closedThisMonth)} />
-          <Metric label="Lead → Closed" value={`${leadToClosed}%`} />
-          <Metric label="Quotes run" value={String(quotesRun ?? 0)} />
+        </div>
+        {/* Row 2 — conversion rates (%) */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+          gap: 12, marginBottom: 16 }}>
           <Metric label="Quote → lead" value={`${conversion}%`} />
+          <Metric label="Lead → Closed" value={`${leadToClosed}%`} />
+          <Metric label="Close rate (this month)" value={`${closedRateMonth}%`} />
         </div>
         <LeadsTable initialLeads={rows} initialNotes={notesByLead} />
       </main>
