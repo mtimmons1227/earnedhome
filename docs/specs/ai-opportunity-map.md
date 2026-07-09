@@ -47,6 +47,36 @@ EarnedHome is **B2B2C vertical SaaS**: we sell to the **LO/lender** (tenant), wh
 
 ---
 
+## Phase III+ expansion — more AI surfaces
+Beyond the persona grid above, AI is a horizontal layer that touches more of the product. ⭐ = highest-leverage next after LO Copilot.
+
+**Documents & data**
+- ⭐ **Ratesheet sanity-check** — before the LO's daily rate upload goes live, AI flags outliers ("15-yr FHA jumped 2% vs yesterday — typo?"). Because the *workbook is the engine*, a fat-finger rate would show buyers wrong payments. A **risk reducer**, not a nicety.
+- ⭐ **Doc intake → pre-approval** — buyer uploads paystub/W2/bank statement; AI extracts income/assets to *organize the file and gauge readiness*, then hands to the LO. Moves the funnel forward (not a credit decision — prep only).
+- **Document checklist automation** — tells the buyer which docs they'll need and checks them off.
+
+**Language & access**
+- ⭐ **Spanish / multilingual** — translate the whole buyer experience + emails on the fly (a large underserved mortgage market). Compliance-reviewed templates.
+- **Reading-level adaptation** — explain at a 6th-grade level.
+- **Voice intake** — buyer calls a number; an AI voice assistant runs the estimate conversationally (accessibility).
+
+**LO knowledge & compliance**
+- **"Ask the guidelines"** — LO asks program/eligibility questions, answered from the lender's *own* overlays/guidelines (RAG over R Parry's docs). Internal, not a decision.
+- **Compliance copilot** — "is this disclosure language OK?" checked against the approved corpus.
+
+**Risk & quality**
+- **Lead-quality / spam filter** — auto-flag junk leads (e.g. the `;asjf;laj;aldsf` test lead). Keeps the pipeline clean.
+- **Duplicate-lead detection** — merge suggestions.
+
+**Insight & analytics**
+- **"What changed this week"** — AI reads the dashboard metrics and writes two sentences ("closings up 20%, new leads down; Jane is your top source"). Cheap, high delight.
+- **Anonymized cross-tenant benchmarking** — "your close rate is above average for your volume."
+
+**Ops / onboarding**
+- **AI-assisted tenant onboarding** — parse a new LO's ratesheet + brand assets to auto-fill the tenant config (supercharges the clone script) and map their workbook to the named-range schema (helps per-tenant pricing).
+
+*Same rails apply:* buyer-facing = educational + human-reviewed + no automated decisions; predictive = outreach-only; pricing stays in the engine.
+
 ## Recommended sequencing (crawl → walk → run)
 1. **Crawl — LO Copilot (generative, internal, human-approved).** Lowest regulatory risk (internal, LO reviews everything), highest adoption, immediate time-savings: lead summaries, draft follow-ups, daily digest, monthly production narrative. **Start here.**
 2. **Walk — Predictive lead scoring + buyer scenario explainer.** Scoring is outreach prioritization (fair-lending-safe); the buyer explainer is education. Both ride the data moat.
