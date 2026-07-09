@@ -33,8 +33,8 @@ export type Database = {
         Relationships: [];
       };
       leads: {
-        Row: { id: string; tenant_id: string; community_id: string | null; quote_id: string | null; agent_id: string | null; full_name: string | null; email: string | null; phone: string | null; consent_tcpa: boolean; consent_text: string | null; consent_at: string | null; source: string | null; routed_to: string | null; status: Database["public"]["Enums"]["lead_status"]; created_at: string };
-        Insert: { id?: string; tenant_id: string; community_id?: string | null; quote_id?: string | null; agent_id?: string | null; full_name?: string | null; email?: string | null; phone?: string | null; consent_tcpa?: boolean; consent_text?: string | null; consent_at?: string | null; source?: string | null; routed_to?: string | null; status?: Database["public"]["Enums"]["lead_status"]; created_at?: string };
+        Row: { id: string; tenant_id: string; community_id: string | null; quote_id: string | null; agent_id: string | null; full_name: string | null; email: string | null; phone: string | null; consent_tcpa: boolean; consent_text: string | null; consent_at: string | null; source: string | null; routed_to: string | null; status: Database["public"]["Enums"]["lead_status"]; closed_at: string | null; created_at: string };
+        Insert: { id?: string; tenant_id: string; community_id?: string | null; quote_id?: string | null; agent_id?: string | null; full_name?: string | null; email?: string | null; phone?: string | null; consent_tcpa?: boolean; consent_text?: string | null; consent_at?: string | null; source?: string | null; routed_to?: string | null; status?: Database["public"]["Enums"]["lead_status"]; closed_at?: string | null; created_at?: string };
         Update: Partial<Database["public"]["Tables"]["leads"]["Insert"]>;
         Relationships: [];
       };

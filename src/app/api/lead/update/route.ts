@@ -22,7 +22,11 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const patch: Record<string, unknown> = {};
-  if (status !== undefined) patch.status = status;
+  if (status !== undefined) {
+    patch.status = status;
+    // Stamp closed_at when a deal funds (status → closed); clear it if reopened.
+    patch.closed_at = status === "closed" ? new Date().toISOString() : null;
+  }
   if (notes !== undefined) patch.notes = notes;
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });

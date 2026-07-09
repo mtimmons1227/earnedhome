@@ -17,6 +17,7 @@ export interface LeadRow {
   source: string | null;
   notes: string | null;
   created_at: string;
+  closed_at: string | null;
   agent_name: string | null;
   agent_active: boolean | null;
   quote: { inputs: Record<string, unknown> | null; outputs: PricingQuote | null; rates_as_of: string | null } | null;
@@ -27,7 +28,7 @@ const ACTIVE_STATUSES: LeadStatus[] = ["new", "contacted", "working"];
 type FilterValue = "active" | "all" | LeadStatus;
 // Display labels — the stored value stays `contacted`, but it shows as "Initial contact".
 const STATUS_LABELS: Record<LeadStatus, string> = {
-  new: "New", contacted: "Initial contact", working: "Working", closed: "Closed", lost: "Lost",
+  new: "New", contacted: "Initial contact", working: "Working", closed: "Closed / Funded", lost: "Lost",
 };
 export interface LeadNote { authorName: string; body: string; created_at: string; }
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");

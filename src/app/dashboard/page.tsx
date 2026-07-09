@@ -39,7 +39,7 @@ export default async function DashboardPage() {
   const { data: leads } = await supabase
     .from("leads")
     .select(
-      "id, full_name, email, phone, status, consent_tcpa, consent_text, consent_at, source, notes, created_at, agents ( name, active ), quotes ( inputs, outputs, rates_as_of )",
+      "id, full_name, email, phone, status, consent_tcpa, consent_text, consent_at, source, notes, created_at, closed_at, agents ( name, active ), quotes ( inputs, outputs, rates_as_of )",
     )
     .order("created_at", { ascending: false });
 
@@ -71,6 +71,7 @@ export default async function DashboardPage() {
     id: l.id, full_name: l.full_name, email: l.email, phone: l.phone,
     status: l.status, consent_tcpa: l.consent_tcpa, consent_text: l.consent_text,
     consent_at: l.consent_at, source: l.source, notes: l.notes, created_at: l.created_at,
+    closed_at: l.closed_at ?? null,
     agent_name: Array.isArray(l.agents) ? (l.agents[0]?.name ?? null) : (l.agents?.name ?? null),
     agent_active: Array.isArray(l.agents) ? (l.agents[0]?.active ?? null) : (l.agents?.active ?? null),
     quote: Array.isArray(l.quotes) ? (l.quotes[0] ?? null) : (l.quotes ?? null),
@@ -80,6 +81,16 @@ export default async function DashboardPage() {
   const leadsThisWeek = rows.filter((l) => new Date(l.created_at).getTime() >= weekAgo).length;
   const newLeads = rows.filter((l) => l.status === "new").length;
   const conversion = (quotesRun ?? 0) > 0 ? Math.round((rows.length / (quotesRun ?? 1)) * 100) : 0;
+
+  // Closed / funded production. "This month" counts by close date (closed_at).
+  const closedRows = rows.filter((l) => l.status === "closed");
+  const closedTotal = closedRows.length;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const closedThisMonth = closedRows.filter(
+    (l) => l.closed_at && new Date(l.closed_at).getTime() >= monthStart,
+  ).length;
+  const leadToClosed = rows.length > 0 ? Math.round((closedTotal / rows.length) * 100) : 0;
 
   return (
     <div>
@@ -114,6 +125,9 @@ export default async function DashboardPage() {
           <Metric label="Total leads" value={String(rows.length)} />
           <Metric label="New (unworked)" value={String(newLeads)} />
           <Metric label="Leads this week" value={String(leadsThisWeek)} />
+          <Metric label="Closed / Funded" value={String(closedTotal)} />
+          <Metric label="Closed this month" value={String(closedThisMonth)} />
+          <Metric label="Lead → Closed" value={`${leadToClosed}%`} />
           <Metric label="Quotes run" value={String(quotesRun ?? 0)} />
           <Metric label="Quote → lead" value={`${conversion}%`} />
         </div>
