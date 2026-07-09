@@ -51,7 +51,7 @@ The [artifact index](artifacts/README.md) maps each SDLC phase to its supporting
 [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`PRICING_ENGINE.md`](PRICING_ENGINE.md) · [`ENVIRONMENT_ARCHITECTURE.md`](ENVIRONMENT_ARCHITECTURE.md) · [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md) · [`WHITE_LABEL_ARCHITECTURE.md`](WHITE_LABEL_ARCHITECTURE.md)
 
 ### Roadmap, specs & testing
-[`ROADMAP_PHASE_2_3.md`](ROADMAP_PHASE_2_3.md) · feature specs in [`specs/`](specs/) (connect flow, eligibility, agent attribution, per-tenant pricing, workbook swap, multi-LO routing, …) · QA scripts: [`AGENT_ATTRIBUTION_QA_TEST.md`](AGENT_ATTRIBUTION_QA_TEST.md), [`sdlc/05a-qa-test-plan.md`](sdlc/05a-qa-test-plan.md).
+[`ROADMAP_PHASE_2_3.md`](ROADMAP_PHASE_2_3.md) · feature specs in [`specs/`](specs/) (connect flow, eligibility, agent attribution, per-tenant pricing, **native pricing engine**, workbook swap, multi-LO routing, …) · QA scripts: [`AGENT_ATTRIBUTION_QA_TEST.md`](AGENT_ATTRIBUTION_QA_TEST.md), [`sdlc/05a-qa-test-plan.md`](sdlc/05a-qa-test-plan.md) · partner testing: [`RICHARD_TEST_GUIDE_2026-07-06.md`](RICHARD_TEST_GUIDE_2026-07-06.md).
 
 ## The standard, in one line
 **Markdown is the source of truth; Word is the polished output generated from it.** Edit the Markdown; regenerate Word deliverables when you need something to hand off.

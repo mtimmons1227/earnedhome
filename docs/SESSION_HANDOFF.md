@@ -1,6 +1,6 @@
 # Session Handoff — Start Here
 
-**Purpose:** the single "pick up where we left off" doc. Read this first when starting a new session. Last updated **2026-07-06** (late-night agent-attribution session).
+**Purpose:** the single "pick up where we left off" doc. Read this first when starting a new session. Last updated **2026-07-08** (domain/email go-live + closed-funded metrics + workbook decode).
 
 ---
 
@@ -8,10 +8,18 @@
 
 | Environment | Branch | State |
 |---|---|---|
-| **Production** | `main` @ `b0350d0` | The **tested connect flow only** (buyer estimate email + LO alert + Calendly + serverless email fix). **No agent feature.** Runs **live pricing** (`PRICING_ADAPTER=graph`, `GRAPH_OUTPUT_MODE=grid`). |
-| **QA** | `dev` (latest) | Everything in Production **plus the entire Phase 1A agent attribution feature** and this session's polish. This is the full sandbox. |
+| **Production** | `main` (connect flow + rparry sender) | The **tested connect flow** with the **rparry email sender live** (rebuilt for `RESEND_FROM`). **No agent feature / no closed-funded metrics yet.** Live pricing (`graph`/`grid`). At **`home.rparryfinancial.com`** (SSL) + `earnedhome.netlify.app`. |
+| **QA** | `dev` (latest) | Everything in Production **plus** the full Phase 1A agent attribution feature, buyer self-correct, and the **closed/funded production metrics**. At `dev--earnedhome.netlify.app`. |
+
+**Live URLs:** Prod = **https://home.rparryfinancial.com** (branded, SSL). QA = **https://dev--earnedhome.netlify.app**.
 
 **One shared Supabase project** (`azfesppisxniclnntrmc`) and **one Netlify site** serve both QA and Prod. So DB rows, migrations, and `notify_email` are shared across environments; only the **code** differs by branch.
+
+### Email / domain — LIVE (2026-07-08)
+- **`rparryfinancial.com` is a verified Resend sending domain** (DKIM/SPF/MX green). `thetimmonsfoundation.org` was removed (free tier = 1 domain).
+- **`RESEND_FROM` = `R Parry Financial <no-reply@rparryfinancial.com>`** on all Netlify contexts + `.env.local`.
+- **Recipient routing:** local → `LEAD_NOTIFY_OVERRIDE` (Marvin's inbox); QA + Prod → DB `notify_email` = **Richard** (`richard@rparryfinancial.com`).
+- **`home.rparryfinancial.com`** → Netlify production, SSL issued. DNS at **Network Solutions** (managed by Dominika / Raise Your Media). To have local send *from* Timmons while Prod uses rparry would require Resend **Pro** (2 verified domains) — deferred.
 
 ---
 
@@ -29,6 +37,11 @@
 - **Connected screen** shows the **LO phone** next to the name + a **Calendly reschedule** note.
 - Header **NMLS = 1924318** (company); phone formatting `(XXX) XXX-XXXX` on the agents list.
 
+**Added 2026-07-08 (also on QA):**
+- **Closed / Funded production tracking** — the "Closed" status is now **"Closed / Funded"**; a `closed_at` timestamp is stamped on close (`0011`); the dashboard shows **Closed / Funded**, **Closed this month**, **Lead → Closed %**, and **Close rate (this month)**, organized into a **counts row + rates row** in funnel order. Metric cards **refresh live** on a status change.
+- **Email/domain go-live** — rparry verified, sender flipped to `no-reply@rparryfinancial.com`, `home.rparryfinancial.com` live with SSL (see §1).
+- **Native pricing engine — workbook DECODED.** The RateStream workbook was reverse-engineered (rate/price ladder + LLPAs + `PMT` + PMI/MIP/VA factor tables). Spec + findings: [`specs/native-pricing-engine.md`](specs/native-pricing-engine.md). Ready to build the code engine (validated to the penny against the workbook's cached values).
+
 **Docs written this session (in `docs/`, uncommitted unless you ran the commit):**
 `SESSION_HANDOFF.md` (this file), `TENANT_ONBOARDING.md` (the run script), `TENANT_ONBOARDING_CHECKLIST.md`, `TENANT_TEMPLATE_AND_CLONE.md`, `AGENT_ATTRIBUTION_QA_TEST.md`, `specs/per-tenant-pricing.md`, plus updates to `CHANGE_SIGNOFF_LOG.md`, `RELEASE_MANIFEST_QA.md`, `sdlc/08-future-releases.md`.
 
@@ -39,6 +52,7 @@
 - **`0008_agents.sql`** — `agents` table + `leads.agent_id` + RLS (service-role).
 - **`0009_agents_member_read.sql`** — RLS policy so signed-in staff can read agents in their tenant (fixes the dashboard Agent column).
 - **`0010_agents_invite_sent_at.sql`** — `agents.invite_sent_at` (Email-link timestamp).
+- **`0011_lead_closed_at.sql`** — `leads.closed_at` (+ index) for closed/funded period metrics.
 - **Data edits (SQL run in editor):** `tenants.nmls` = `1924318`; `tenants.branding.tag` = "Powered by R Parry Financial · NMLS 1924318".
 
 > Migrations 0005–0010 were run as **raw SQL in the editor**, so the Supabase dashboard "Last migration" tracker shows an older number — cosmetic only; the tables exist.
@@ -51,15 +65,15 @@
 
 ## 5. Open items / next steps (roughly in priority order)
 
-1. **Promote the agent feature QA → Prod** when ready — `git stash -u` → `git checkout main` → `git pull` → `git merge dev` → `git push origin main` → `git checkout dev` → `git stash pop`. `SUPABASE_SERVICE_ROLE_KEY` + migrations 0009/0010 are already on the shared infra, so Prod is prepped.
-2. **Before real buyers on Prod:** point `notify_email` → Richard (`update public.tenants set notify_email='richard@rparryfinancial.com' where slug='rparry';`); set `LEAD_NOTIFY_OVERRIDE` on QA/local.
-3. **Per-tenant pricing** — biggest productization item. Spec ready: `docs/specs/per-tenant-pricing.md` (add `graph_drive_id`/`graph_item_id` to tenants; adapter takes a workbook ref; env fallback). Unlocks true "clone a workbook per LO."
+1. **Promote the agent feature + closed/funded metrics QA → Prod** once Richard signs off — working tree clean, so: `git checkout main` → `git pull` → `git merge dev` → `git push origin main` → `git checkout dev`. `SUPABASE_SERVICE_ROLE_KEY` + migrations 0009/0010/0011 are already on the shared infra, so Prod is prepped. (Richard tests on the **QA** URL for now.)
+2. ✅ **Done:** `notify_email` = Richard; `LEAD_NOTIFY_OVERRIDE` on local → Marvin's inbox; `RESEND_FROM` = rparry everywhere; rparry verified; `home.rparryfinancial.com` live.
+3. **Per-tenant pricing** — spec: `docs/specs/per-tenant-pricing.md`. **Related and higher-leverage: the native pricing engine** — the workbook is now fully decoded; build the code engine (`docs/specs/native-pricing-engine.md`) to remove the Graph dependency + concurrency ceiling and enable true multi-tenant/sub-second pricing. Validate to the penny against the workbook.
 4. **Per-tenant disclosures** — move the shared R Parry disclosure module to tenant data (needed before a 2nd live LO). No spec yet.
 5. **Buyer resume link** (`/r/<token>`) — reopen a saved estimate; still not built. The in-session "Update my info" partly covers it.
 6. **Super-admin Tenants page** — form wrapper around the onboarding clone script (see `TENANT_ONBOARDING.md`). Needs a new cross-tenant super-admin role.
 7. **Footer NMLS decision** — footer still reads Richard's individual `927662`; header shows company `1924318`. Decide which the EHO footer should show (one SQL either way).
 8. **Resend SMTP → Supabase Auth** so self-serve "Forgot password" works (currently no link; reset via Supabase dashboard). Then add the login-page link + URL allowlist.
-9. **Verify `rparryfinancial.com` in Resend** → then set Prod `RESEND_FROM` to that domain (currently the verified `thetimmonsfoundation.org` everywhere).
+9. ✅ **Done:** `rparryfinancial.com` verified in Resend; Prod `RESEND_FROM` = `no-reply@rparryfinancial.com`. (Timmons domain removed.)
 10. **Compliance:** Richard/counsel sign-off on disclosures + eligibility before real buyers (Section A of the release manifest).
 
 ---

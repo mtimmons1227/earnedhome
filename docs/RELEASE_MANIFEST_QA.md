@@ -33,6 +33,9 @@ _As of July 6, 2026. This is the approval + go-live checklist for the next produ
 - **Buyer-estimate email (Resend) — ships DORMANT.** On lead submit, emails the buyer their eligibility-aware estimate (30/15-yr, per-product cash-to-close, scenario box) + disclosures, but **no-ops unless `RESEND_API_KEY` / `RESEND_FROM` are set** — safe on QA with no config; it will not send. Copy needs Richard sign-off (A6) + a verified Resend domain before enabling (Section C).
 - **Desktop no-scroll layout** + heading/date tweaks.
 - **Phase 1A Agent (Realtor) Attribution (2026-07-06):** per-agent `/a/<slug>` links tag buyers to a realtor; dashboard Agents page (add/edit/copy-link/email-link/on-off/filter); revoked links blocked; leads show agent + DISABLED badge; buyer "Update my info" edits the same lead. Migrations **0008/0009/0010** (already applied to the shared DB). Requires **`SUPABASE_SERVICE_ROLE_KEY`** on the deploy context (already set all contexts). Test script: [`AGENT_ATTRIBUTION_QA_TEST.md`](AGENT_ATTRIBUTION_QA_TEST.md).
+- **Closed/funded production tracking (2026-07-08):** "Closed" → **"Closed / Funded"**; `closed_at` stamped on close; dashboard adds **Closed / Funded**, **Closed this month**, **Lead → Closed %**, **Close rate (this month)** in a counts-row + rates-row layout; cards refresh live on status change. Migration **0011** (`leads.closed_at`, applied to shared DB).
+
+> **Email/domain now LIVE (both environments):** `rparryfinancial.com` verified in Resend; `RESEND_FROM` = `no-reply@rparryfinancial.com`; `home.rparryfinancial.com` is the branded production URL (SSL). See [`CHANGE_SIGNOFF_LOG.md`](CHANGE_SIGNOFF_LOG.md) #13–14 and [`SESSION_HANDOFF.md`](SESSION_HANDOFF.md) §1.
 
 ---
 

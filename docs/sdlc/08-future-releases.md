@@ -79,6 +79,7 @@ The current engine prices every quote by driving **one shared Excel workbook** t
   1. **Shared cache** (Redis/KV) keyed on `inputs + ratesAsOf`, replacing the per-instance `Map` — absorbs repeat scenarios across all instances.
   2. **Cross-instance serialization** (a global queue/lock, or a single dedicated pricing worker) so the shared workbook is **never** hit concurrently — closes the correctness gap as an interim measure.
   3. **The real fix — swap the engine to native code.** Port the workbook's pricing formulas into a code `PricingAdapter` (or a small pricing service) behind the **existing `stub` / `graph` adapter interface**, so the app doesn't change. This removes the single-workbook bottleneck entirely, enables **true parallel** pricing, and gives **predictable sub-second** latency (no Graph round-trips). Keep the workbook as Richard's **source of truth for rate inputs** (exported/synced into the engine), not the per-request calculator.
+  - **Update (2026-07-08): the workbook is fully DECODED.** Reverse-engineered to a rate/price ladder + LLPA deltas + `PMT` + PMI/MIP/VA factor tables — all standard mortgage math + lookups. Design + build plan: [`../specs/native-pricing-engine.md`](../specs/native-pricing-engine.md). Ready to build the code engine, validated to the penny against the workbook's own cached values.
 
 - **Pilot reality:** at R Parry pilot concurrency (a handful of buyers at a time) the current engine is fine. This item is the **scale gate** — do the engine swap before onboarding many tenants or marketing-driven traffic spikes.
 
