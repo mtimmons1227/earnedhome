@@ -38,6 +38,7 @@ The [artifact index](artifacts/README.md) maps each SDLC phase to its supporting
 | [`RELEASE_MANIFEST_QA.md`](RELEASE_MANIFEST_QA.md) | What's on QA awaiting Production + the sign-off / config checklist. |
 | [`CHANGE_SIGNOFF_LOG.md`](CHANGE_SIGNOFF_LOG.md) | Running log of changes needing Richard's / counsel's sign-off. |
 | [`HOW_TO_DEPLOY.md`](HOW_TO_DEPLOY.md) | Deploy procedure. |
+| [`QA_PROD_DB_SPLIT.md`](QA_PROD_DB_SPLIT.md) | Split QA/Prod databases before real buyers (final environment isolation). |
 | [`RUNBOOK_connect_graph_engine.md`](RUNBOOK_connect_graph_engine.md) | Connecting the Graph pricing engine. |
 
 ### Tenant onboarding
