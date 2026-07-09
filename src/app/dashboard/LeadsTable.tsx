@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { PricingQuote } from "@/lib/pricing/types";
 
 export type LeadStatus = "new" | "contacted" | "working" | "closed" | "lost";
@@ -39,6 +40,7 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [noteMsg, setNoteMsg] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<FilterValue>("active");
+  const router = useRouter();
 
   async function patch(id: string, body: Record<string, unknown>): Promise<boolean> {
     setSavingId(id);
@@ -59,7 +61,8 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
   async function changeStatus(id: string, status: LeadStatus) {
     const prev = leads;
     setLeads((ls) => ls.map((l) => (l.id === id ? { ...l, status } : l)));
-    if (!(await patch(id, { status }))) setLeads(prev);
+    if (!(await patch(id, { status }))) { setLeads(prev); return; }
+    router.refresh(); // re-sync the top metric cards (New/unworked, conversion) with the saved status
   }
 
   async function addNote(id: string) {
