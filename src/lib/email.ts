@@ -187,7 +187,8 @@ export interface AgentLinkInvite {
   to: string;            // agent.email
   agentName?: string | null;
   loName: string;        // the lender, e.g. "R Parry Financial"
-  link: string;          // the agent's /a/<slug> URL
+  link: string;          // the agent's /a/<slug> share URL
+  statusLink?: string | null; // the agent's private /agent/<token> status portal URL
 }
 
 export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: boolean; reason?: string }> {
@@ -198,19 +199,35 @@ export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: b
 
   const hi = d.agentName ? `Hi ${escapeHtml(d.agentName.split(" ")[0])},` : "Hi,";
   const safeLink = escapeHtml(d.link);
+  const safeStatus = d.statusLink ? escapeHtml(d.statusLink) : null;
+  const statusBlock = safeStatus
+    ? `
+    <div style="margin:22px 0 6px;border-top:1px solid #eee;padding-top:18px;">
+      <h3 style="color:#1F3864;margin:0 0 6px;font-size:16px;">2) Track your buyers</h3>
+      <p style="margin:0 0 12px;">This private link shows the status of the buyers you referred
+         (connected, in process, closed). <strong>Bookmark it — and keep it private</strong>
+         (don't forward it; it shows your buyers' status).</p>
+      <p style="margin:0 0 8px;">
+        <a href="${safeStatus}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">See my buyers' status</a>
+      </p>
+      <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeStatus}</p>
+    </div>`
+    : "";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
-    <h2 style="color:#1F3864;margin:0 0 8px;">Here's your EarnedHome link</h2>
+    <h2 style="color:#1F3864;margin:0 0 8px;">Your EarnedHome links</h2>
     <p>${hi}</p>
-    <p>This is your personal EarnedHome link. Keep it handy on your phone or tablet when you're
-       out showing homes — you and your buyer can run real monthly-payment numbers together, right
-       there at the property, so they can picture the true cost before they fall for a home.</p>
-    <p>Every buyer who runs the numbers from your link is automatically tied to you, and you'll get
-       a copy of the lead — while <strong>${escapeHtml(d.loName)}</strong> handles the financing.</p>
-    <p style="margin:16px 0;">
-      <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Open your link</a>
+    <p><strong>Bookmark both links below</strong> — they're how you'll use EarnedHome (no login needed).</p>
+    <h3 style="color:#1F3864;margin:18px 0 6px;font-size:16px;">1) Run buyers' numbers</h3>
+    <p style="margin:0 0 12px;">Keep this link handy on your phone or tablet when you're out showing homes —
+       you and your buyer can run real monthly-payment numbers together at the property. Every buyer who
+       runs the numbers from it is automatically tied to you, and you'll get a copy of the lead —
+       while <strong>${escapeHtml(d.loName)}</strong> handles the financing. Share this one with your buyers.</p>
+    <p style="margin:0 0 8px;">
+      <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Open my estimate link</a>
     </p>
     <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
+    ${statusBlock}
   </div>`;
 
   try {
