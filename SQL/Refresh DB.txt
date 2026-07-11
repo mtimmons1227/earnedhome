@@ -1,0 +1,15 @@
+begin;
+  delete from public.leads;    -- buyer submissions
+  delete from public.quotes;   -- saved quotes
+  delete from public.agents;   -- realtor agents
+  delete from public.events;   -- activity log (quotes run, notes, captures)
+commit;
+
+-- verify: test data cleared, logins + tenants kept
+select 'leads' t, count(*) n from public.leads
+union all select 'quotes',   count(*) from public.quotes
+union all select 'agents',   count(*) from public.agents
+union all select 'events',   count(*) from public.events
+union all select 'tenants (kept)',   count(*) from public.tenants
+union all select 'app_users (kept)', count(*) from public.app_users
+order by 1;

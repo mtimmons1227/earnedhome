@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { sendBuyerEstimateEmail, sendLoLeadAlert, sendAgentLeadAlert, type EstimateEmailProduct } from "@/lib/email";
 import { emitLeadCreated } from "@/lib/leadEvent";
+import { getResolvedLO } from "@/lib/loanOfficer";
 
 interface QuoteSummary {
   ratesAsOf: string;
@@ -44,6 +45,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "TCPA consent required" }, { status: 422 });
   }
 
+  // Resolve which loan officer this lead belongs to (Phase II). For a single-LO
+  // shop (R Parry) this is that one LO; for a multi-LO broker it's the routed LO.
+  // Additive: stored as assigned_lo_id; routed_to (display copy) is unchanged.
+  const resolvedLO = await getResolvedLO(tenantId);
+
   // Generate the id server-side and insert directly (no read-back: the anon
   // buyer role has INSERT but no SELECT on leads by design).
   const leadId = randomUUID();
@@ -53,6 +59,7 @@ export async function POST(req: Request) {
     tenant_id: tenantId,
     quote_id: quoteId ?? null,
     agent_id: agentId ?? null,
+    assigned_lo_id: resolvedLO?.id ?? null,
     idempotency_key: idempotencyKey ?? null,
     full_name: fullName ?? null,
     email: email ?? null,
