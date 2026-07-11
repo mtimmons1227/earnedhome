@@ -4,6 +4,7 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 import { sendBuyerEstimateEmail, sendLoLeadAlert, sendAgentLeadAlert, type EstimateEmailProduct } from "@/lib/email";
 import { emitLeadCreated } from "@/lib/leadEvent";
 import { getResolvedLO } from "@/lib/loanOfficer";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 interface QuoteSummary {
   ratesAsOf: string;
@@ -138,10 +139,14 @@ export async function POST(req: Request) {
     (async () => {
       try {
         // Attribution: the realtor agent who ran the estimate, if any.
+        // Use the service-role client: the `agents` table's read policy is
+        // authenticated-only, and this runs as the anonymous buyer — so the anon
+        // client would return null and the agent copy would silently never send.
         let agentName: string | null = null;
         let agentEmail: string | null = null;
         if (agentId) {
-          const aRes = await supabase.from("agents").select("name, email").eq("id", agentId).maybeSingle();
+          const admin = createSupabaseAdmin();
+          const aRes = await admin.from("agents").select("name, email").eq("id", agentId).maybeSingle();
           agentName = aRes.data?.name ?? null;
           agentEmail = aRes.data?.email ?? null;
         }
@@ -149,7 +154,7 @@ export async function POST(req: Request) {
         const tRes = await (supabase.from("tenants") as unknown as {
           select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { notify_email?: string | null; lo_name?: string | null } | null }> } };
         }).select("notify_email, lo_name").eq("id", tenantId).maybeSingle();
-        const loDisplay = tRes.data?.lo_name ?? loName ?? "your loan officer";
+        const loDisplay = resolvedLO?.full_name ?? tRes.data?.lo_name ?? loName ?? "your loan officer";
         // Per-environment override: the DB notify_email is shared across all
         // Netlify contexts (one Supabase project). Setting LEAD_NOTIFY_OVERRIDE
         // on the QA / local contexts routes test alerts to a test inbox while

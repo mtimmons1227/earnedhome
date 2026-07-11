@@ -32,6 +32,7 @@ function formatPhoneUS(p: string | null | undefined): string {
 interface Props {
   tenantId: string;
   loName: string;
+  loNmls?: string | null;
   nmls: string | null;
   applyUrl?: string | null;
   loPhone?: string | null;
@@ -40,7 +41,7 @@ interface Props {
   agentName?: string | null;
 }
 
-export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, bookingUrl, agentId, agentName }: Props) {
+export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPhone, bookingUrl, agentId, agentName }: Props) {
   // form state (display strings for currency fields)
   const [homePrice, setHomePrice] = useState("0");
   const [downAmt, setDownAmt] = useState("0");
@@ -466,7 +467,7 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
                 ))}</div>
               )}
               {agentName && <div className="route">Your agent: {agentName}</div>}
-              <div className="route">Your loan officer: {loName}</div>
+              <div className="route">Your loan officer: {loName}{loNmls ? ` · NMLS ${loNmls}` : ""}</div>
               {!leadDone ? (
                 <button className="leadbtn" onClick={() => setShowLeadModal(true)}
                   style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>

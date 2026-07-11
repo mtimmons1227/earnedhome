@@ -5,7 +5,7 @@
  *
  * Run:  npm run test:lo
  */
-import { pickLO, type LORow } from "../src/lib/loSelect";
+import { pickLO, displayIdentity, type LORow } from "../src/lib/loSelect";
 
 let pass = 0;
 let fail = 0;
@@ -79,6 +79,35 @@ check(
   "returns id/full_name/email/nmls of the chosen LO",
   r?.id === "x" && r?.full_name === "Richard McHargue" && r?.email === "r@rparry.com" && r?.nmls === "927662",
 );
+
+// --- displayIdentity (Option A buyer-facing correspondence) ---
+console.log("\ndisplayIdentity — LO person + company brand");
+
+// LO resolves → show the person + their individual NMLS; company NMLS from branding
+const idA = displayIdentity({
+  resolved: { id: "r", full_name: "Richard McHargue", email: null, nmls: "927662" },
+  tenantLoName: "R Parry Financial",
+  tenantNmls: "927662",
+  companyNmls: "1924318",
+});
+check("LO name is the person, not the company", idA.loName === "Richard McHargue");
+check("LO NMLS is the individual (927662)", idA.loNmls === "927662");
+check("company NMLS is the broker (1924318)", idA.companyNmls === "1924318");
+
+// No LO resolves → fall back to the tenant company display (no regression)
+const idB = displayIdentity({
+  resolved: null,
+  tenantLoName: "Acme Homes preferred lender",
+  tenantNmls: "111111",
+  companyNmls: null,
+});
+check("falls back to tenant lo_name when no LO", idB.loName === "Acme Homes preferred lender");
+check("company NMLS falls back to tenant.nmls when branding empty", idB.companyNmls === "111111");
+check("no LO NMLS when nobody resolved", idB.loNmls === null);
+
+// Nothing at all → safe default string
+const idC = displayIdentity({ resolved: null, tenantLoName: null, tenantNmls: null, companyNmls: null });
+check("safe default when everything is null", idC.loName === "your loan officer");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

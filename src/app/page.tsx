@@ -1,6 +1,8 @@
 import { headers } from "next/headers";
 import { getTenantForHost, slugFromHost } from "@/lib/tenant";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getResolvedLO } from "@/lib/loanOfficer";
+import { displayIdentity } from "@/lib/loSelect";
 import { BrandHeader } from "@/components/BrandHeader";
 import { PathfinderTool } from "@/components/PathfinderTool";
 
@@ -23,6 +25,17 @@ export default async function Page() {
       </main>
     );
   }
+
+  // Option A correspondence: resolve the routed LO (the person) and show them as
+  // the loan officer, with the company (brand) staying in the header/footer. Falls
+  // back to the tenant's company display when no LO record resolves.
+  const resolvedLO = await getResolvedLO(tenant.id);
+  const identity = displayIdentity({
+    resolved: resolvedLO,
+    tenantLoName: tenant.lo_name,
+    tenantNmls: tenant.nmls,
+    companyNmls: tenant.branding.company_nmls ?? null,
+  });
 
   const b = tenant.branding;
   const themeVars = {
@@ -63,8 +76,9 @@ export default async function Page() {
       <BrandHeader tenant={tenant} />
       <PathfinderTool
         tenantId={tenant.id}
-        loName={tenant.lo_name ?? "your loan officer"}
-        nmls={tenant.nmls}
+        loName={identity.loName}
+        loNmls={identity.loNmls}
+        nmls={identity.companyNmls}
         applyUrl={tenant.apply_url}
         loPhone={tenant.lo_phone}
         bookingUrl={tenant.booking_url}

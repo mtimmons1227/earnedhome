@@ -42,3 +42,25 @@ export function pickLO(rows: LORow[]): ResolvedLO | null {
     nmls: row.nmls ?? null,
   };
 }
+
+// What the buyer-facing correspondence shows (Option A: LO person + company brand,
+// each with its own NMLS). Pure/testable. Falls back to the tenant's lo_name when
+// no LO resolves (preserves Phase 1A behavior), and company NMLS falls back to the
+// legacy tenant.nmls if the clean branding.company_nmls isn't set.
+export interface DisplayIdentity {
+  loName: string; // the person (or company name as fallback)
+  loNmls: string | null; // the LO's individual NMLS
+  companyNmls: string | null; // the broker/company NMLS
+}
+export function displayIdentity(args: {
+  resolved: ResolvedLO | null;
+  tenantLoName: string | null;
+  tenantNmls: string | null;
+  companyNmls: string | null;
+}): DisplayIdentity {
+  return {
+    loName: args.resolved?.full_name ?? args.tenantLoName ?? "your loan officer",
+    loNmls: args.resolved?.nmls ?? null,
+    companyNmls: args.companyNmls ?? args.tenantNmls ?? null,
+  };
+}
