@@ -43,6 +43,16 @@ export function pickLO(rows: LORow[]): ResolvedLO | null {
   };
 }
 
+// When a lead comes through an agent link, the agent's own LO takes precedence
+// over the tenant's default (primary) LO. Pure/testable. Falls back to the tenant
+// default when the agent has no (active) LO.
+export function preferAgentLO(
+  agentLO: ResolvedLO | null,
+  tenantDefault: ResolvedLO | null,
+): ResolvedLO | null {
+  return agentLO ?? tenantDefault;
+}
+
 // What the buyer-facing correspondence shows (Option A: LO person + company brand,
 // each with its own NMLS). Pure/testable. Falls back to the tenant's lo_name when
 // no LO resolves (preserves Phase 1A behavior), and company NMLS falls back to the

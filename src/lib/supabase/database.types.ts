@@ -45,8 +45,8 @@ export type Database = {
         Relationships: [];
       };
       agents: {
-        Row: { id: string; tenant_id: string; name: string; email: string | null; phone: string | null; slug: string; active: boolean; invite_sent_at: string | null; created_at: string; updated_at: string };
-        Insert: { id?: string; tenant_id: string; name: string; email?: string | null; phone?: string | null; slug: string; active?: boolean; invite_sent_at?: string | null; created_at?: string; updated_at?: string };
+        Row: { id: string; tenant_id: string; lo_id: string | null; name: string; email: string | null; phone: string | null; slug: string; active: boolean; invite_sent_at: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; tenant_id: string; lo_id?: string | null; name: string; email?: string | null; phone?: string | null; slug: string; active?: boolean; invite_sent_at?: string | null; created_at?: string; updated_at?: string };
         Update: Partial<Database["public"]["Tables"]["agents"]["Insert"]>;
         Relationships: [];
       };

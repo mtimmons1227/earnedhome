@@ -5,7 +5,7 @@
  *
  * Run:  npm run test:lo
  */
-import { pickLO, displayIdentity, type LORow } from "../src/lib/loSelect";
+import { pickLO, displayIdentity, preferAgentLO, type LORow, type ResolvedLO } from "../src/lib/loSelect";
 
 let pass = 0;
 let fail = 0;
@@ -108,6 +108,16 @@ check("no LO NMLS when nobody resolved", idB.loNmls === null);
 // Nothing at all → safe default string
 const idC = displayIdentity({ resolved: null, tenantLoName: null, tenantNmls: null, companyNmls: null });
 check("safe default when everything is null", idC.loName === "your loan officer");
+
+// --- preferAgentLO (agent link routes to the agent's LO) ---
+console.log("\npreferAgentLO — agent link routes to the agent's LO");
+
+const agentLO: ResolvedLO = { id: "agentsLO", full_name: "Nancy LO", email: null, nmls: "555" };
+const tenantLO: ResolvedLO = { id: "tenantPrimary", full_name: "Richard McHargue", email: null, nmls: "927662" };
+
+check("agent's LO wins when present", preferAgentLO(agentLO, tenantLO)?.id === "agentsLO");
+check("falls back to tenant default when agent has no LO", preferAgentLO(null, tenantLO)?.id === "tenantPrimary");
+check("null when neither resolves", preferAgentLO(null, null) === null);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

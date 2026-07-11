@@ -56,6 +56,9 @@ export async function POST(req: Request) {
     .from("agents")
     .insert({
       tenant_id: gate.tenantId,
+      // The agent belongs to whoever created them (the owning LO). For R Parry the
+      // admin is the LO; for a multi-LO broker each LO owns the agents they add.
+      lo_id: gate.userId,
       name,
       email: body.email?.trim() || null,
       phone: body.phone?.trim() || null,
