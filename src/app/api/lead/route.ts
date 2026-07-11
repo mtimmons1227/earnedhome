@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     fullName?: string; email?: string;
     phone?: string; consentTcpa?: boolean; consentText?: string;
     quoteId?: string | null; idempotencyKey?: string | null; agentId?: string | null;
+    agentStatusConsent?: boolean; // buyer authorizes sharing loan status with their agent
     quoteSummary?: QuoteSummary | null;
     action?: string | null; // "apply" | "call" | "book" | "reach-out"
   };
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
 
   const {
     tenantId, loName, loPhone, bookingUrl, fullName, email, phone, consentTcpa, consentText,
-    quoteId, idempotencyKey, quoteSummary, action, agentId,
+    quoteId, idempotencyKey, quoteSummary, action, agentId, agentStatusConsent,
   } = body;
   if (!tenantId) {
     return NextResponse.json({ error: "Missing tenantId" }, { status: 400 });
@@ -61,6 +62,8 @@ export async function POST(req: Request) {
     quote_id: quoteId ?? null,
     agent_id: agentId ?? null,
     assigned_lo_id: resolvedLO?.id ?? null,
+    // Only meaningful when the buyer came through an agent link.
+    agent_status_consent: agentId ? !!agentStatusConsent : false,
     idempotency_key: idempotencyKey ?? null,
     full_name: fullName ?? null,
     email: email ?? null,

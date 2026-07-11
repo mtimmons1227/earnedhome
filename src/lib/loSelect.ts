@@ -43,6 +43,25 @@ export function pickLO(rows: LORow[]): ResolvedLO | null {
   };
 }
 
+// The buyer-facing "stage" a referral agent is allowed to see for a lead they
+// referred. Pure/testable. WITHOUT the buyer's status-share consent, the agent
+// only ever sees "Connected" — never loan progression (borrower NPI stays with
+// the LO). WITH consent, the internal lead status maps to a friendly milestone.
+export type AgentStage = "Connected" | "In process" | "Closed" | "Inactive";
+export function agentStage(status: string, consent: boolean): AgentStage {
+  if (!consent) return "Connected";
+  switch (status) {
+    case "working":
+      return "In process";
+    case "closed":
+      return "Closed";
+    case "lost":
+      return "Inactive";
+    default:
+      return "Connected"; // new / contacted
+  }
+}
+
 // When a lead comes through an agent link, the agent's own LO takes precedence
 // over the tenant's default (primary) LO. Pure/testable. Falls back to the tenant
 // default when the agent has no (active) LO.

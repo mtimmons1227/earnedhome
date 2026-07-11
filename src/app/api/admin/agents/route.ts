@@ -13,7 +13,7 @@ export async function GET() {
   const admin = createSupabaseAdmin();
   const { data, error } = await admin
     .from("agents")
-    .select("id, name, email, phone, slug, active, invite_sent_at, created_at")
+    .select("id, name, email, phone, slug, active, status_token, invite_sent_at, created_at")
     .eq("tenant_id", gate.tenantId)
     .order("created_at", { ascending: false });
 
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
       slug,
       active: true,
     })
-    .select("id, name, email, phone, slug, active, created_at")
+    .select("id, name, email, phone, slug, active, status_token, created_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

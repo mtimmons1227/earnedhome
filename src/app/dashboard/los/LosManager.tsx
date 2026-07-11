@@ -10,6 +10,7 @@ interface LO {
   role: string;
   is_primary: boolean;
   active: boolean;
+  invite_sent_at: string | null;
   created_at: string;
 }
 
@@ -31,9 +32,36 @@ export function LosManager() {
   const [editNmls, setEditNmls] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // send sign-in link
+  const [origin, setOrigin] = useState("");
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sentId, setSentId] = useState<string | null>(null);
+
   useEffect(() => {
+    setOrigin(window.location.origin);
     void load();
   }, []);
+
+  async function sendInvite(id: string) {
+    setSendingId(id);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/admin/los/${id}/invite`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ origin }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Could not send link");
+      setSentId(id);
+      setTimeout(() => setSentId(null), 3000);
+      await load();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setSendingId(null);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -180,8 +208,18 @@ export function LosManager() {
                       <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 2 }}>
                         {lo.email}{lo.nmls ? ` · NMLS ${lo.nmls}` : ""}
                       </div>
+                      {lo.invite_sent_at && (
+                        <div style={{ color: "#15803d", fontSize: 12, marginTop: 2 }}>
+                          ✓ Sign-in link sent {new Date(lo.invite_sent_at).toLocaleString()}
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                      {lo.email && (
+                        <button style={smallBtn} onClick={() => sendInvite(lo.id)} disabled={sendingId === lo.id}>
+                          {sendingId === lo.id ? "Sending…" : sentId === lo.id ? "Sent ✓" : "Email link"}
+                        </button>
+                      )}
                       {!lo.is_primary && (
                         <button style={smallBtn} onClick={() => patch(lo.id, { isPrimary: true })}>Make primary</button>
                       )}

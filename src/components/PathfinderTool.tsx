@@ -76,6 +76,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
   const [leadEmail, setLeadEmail] = useState("");
   const [leadPhone, setLeadPhone] = useState("");
   const [tcpa, setTcpa] = useState(false);
+  const [agentShareConsent, setAgentShareConsent] = useState(false);
   const [leadMsg, setLeadMsg] = useState<string | null>(null);
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadDone, setLeadDone] = useState(false);
@@ -201,6 +202,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
           loPhone: loPhone ?? null,
           bookingUrl: bookingUrl ?? null,
           agentId: agentId ?? null,
+          agentStatusConsent: agentId ? agentShareConsent : false,
           action,
           quoteId,
           idempotencyKey: requestKey,
@@ -294,6 +296,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
     setLeadEmail("");
     setLeadPhone("");
     setTcpa(false);
+    setAgentShareConsent(false);
     setTerm(30);
   }
 
@@ -586,6 +589,13 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
             <label className="consent">
               <input type="checkbox" checked={tcpa} onChange={(e) => setTcpa(e.target.checked)} />
               I agree to be contacted by phone, text, or email about my inquiry. Consent is not a condition of purchase.
+            </label>
+            )}
+            {!editingContact && agentName && (
+            <label className="consent">
+              <input type="checkbox" checked={agentShareConsent}
+                onChange={(e) => setAgentShareConsent(e.target.checked)} />
+              I authorize {agentName} to receive updates on my loan status. (Optional — no financial details are shared.)
             </label>
             )}
             {!editingContact && (<>

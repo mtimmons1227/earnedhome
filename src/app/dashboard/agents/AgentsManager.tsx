@@ -9,6 +9,7 @@ interface Agent {
   phone: string | null;
   slug: string;
   active: boolean;
+  status_token?: string | null;
   invite_sent_at?: string | null;
   created_at?: string;
 }
@@ -36,6 +37,7 @@ export function AgentsManager() {
 
   const [origin, setOrigin] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedStatusId, setCopiedStatusId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sentId, setSentId] = useState<string | null>(null);
 
@@ -152,6 +154,16 @@ export function AgentsManager() {
     void navigator.clipboard.writeText(link);
     setCopiedId(a.id);
     setTimeout(() => setCopiedId((c) => (c === a.id ? null : c)), 1500);
+  }
+
+  // The agent's private status portal link (/agent/<token>) — where they see the
+  // status of the buyers they referred. Secret + revocable (turning the seat off
+  // blocks it). Different from the public /a/<slug> share link.
+  function copyStatusLink(a: Agent) {
+    if (!a.status_token) return;
+    void navigator.clipboard.writeText(`${origin}/agent/${a.status_token}`);
+    setCopiedStatusId(a.id);
+    setTimeout(() => setCopiedStatusId((c) => (c === a.id ? null : c)), 1500);
   }
 
   // Send the agent their link via the app (Resend) — one click, no mail client.
@@ -289,6 +301,11 @@ export function AgentsManager() {
                         <button onClick={() => copyLink(a)} style={smallBtn}>
                           {copiedId === a.id ? "Copied!" : "Copy link"}
                         </button>
+                        {a.status_token && (
+                          <button onClick={() => copyStatusLink(a)} style={smallBtn}>
+                            {copiedStatusId === a.id ? "Copied!" : "Status link"}
+                          </button>
+                        )}
                         {a.email && (
                           <button onClick={() => emailLink(a)} disabled={sendingId === a.id} style={smallBtn}>
                             {sentId === a.id ? "Sent!" : sendingId === a.id ? "Sending…" : "Email link"}

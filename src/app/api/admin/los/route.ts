@@ -14,7 +14,7 @@ export async function GET() {
   const admin = createSupabaseAdmin();
   const { data, error } = await admin
     .from("app_users")
-    .select("id, full_name, email, nmls, role, is_primary, active, created_at")
+    .select("id, full_name, email, nmls, role, is_primary, active, invite_sent_at, created_at")
     .eq("tenant_id", gate.tenantId)
     .in("role", ["lo", "admin"])
     .order("is_primary", { ascending: false })
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       is_primary: false,
       active: true,
     })
-    .select("id, full_name, email, nmls, role, is_primary, active, created_at")
+    .select("id, full_name, email, nmls, role, is_primary, active, invite_sent_at, created_at")
     .single();
 
   if (error) {

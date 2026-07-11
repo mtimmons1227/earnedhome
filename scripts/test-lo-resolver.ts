@@ -5,7 +5,7 @@
  *
  * Run:  npm run test:lo
  */
-import { pickLO, displayIdentity, preferAgentLO, type LORow, type ResolvedLO } from "../src/lib/loSelect";
+import { pickLO, displayIdentity, preferAgentLO, agentStage, type LORow, type ResolvedLO } from "../src/lib/loSelect";
 
 let pass = 0;
 let fail = 0;
@@ -118,6 +118,16 @@ const tenantLO: ResolvedLO = { id: "tenantPrimary", full_name: "Richard McHargue
 check("agent's LO wins when present", preferAgentLO(agentLO, tenantLO)?.id === "agentsLO");
 check("falls back to tenant default when agent has no LO", preferAgentLO(null, tenantLO)?.id === "tenantPrimary");
 check("null when neither resolves", preferAgentLO(null, null) === null);
+
+// --- agentStage (agent status portal — consent-gated) ---
+console.log("\nagentStage — what a referral agent may see");
+
+check("no consent → always 'Connected' even if closed", agentStage("closed", false) === "Connected");
+check("no consent → 'Connected' even if working", agentStage("working", false) === "Connected");
+check("consent + working → 'In process'", agentStage("working", true) === "In process");
+check("consent + closed → 'Closed'", agentStage("closed", true) === "Closed");
+check("consent + lost → 'Inactive'", agentStage("lost", true) === "Inactive");
+check("consent + new → 'Connected'", agentStage("new", true) === "Connected");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
