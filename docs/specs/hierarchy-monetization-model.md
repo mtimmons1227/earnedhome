@@ -191,5 +191,42 @@ Keep **two things separate**:
 
 ---
 
+## 10. LO departure & license (seat) lifecycle
+
+When a loan officer leaves a broker, two separate things move on their own tracks — the **seat** (the paid EarnedHome license) and the **book** (their data/relationships). Keep them separate.
+
+### The seat is its own entity with an `owner`
+Every seat carries `owner ∈ { wholesaler, broker, lo }`, set when it's sold. Departure is then a simple rule:
+
+| Seat owner | On LO departure |
+|---|---|
+| **Wholesaler** (top-down) | Deactivate → returns to the wholesaler's **pool** for reassignment |
+| **Broker** | Deactivate → the broker reuses it for the next LO |
+| **LO** (bottom-up) | **Travels with the LO** |
+
+### Keep the LO's identity stable; only change `tenant_id`
+The efficient design principle: an LO's identity (`app_users.id`) stays **constant** across moves — only its `tenant_id` changes ("re-parenting"). This makes the hard parts fall out automatically:
+- **Production history follows the person** — it's "all leads where `assigned_lo_id` = the LO's stable id," across any broker they worked under. Change the tenant, not the id.
+- **Ratesheet switches automatically** to the new broker's (pricing resolves per-broker).
+- **Portable agents travel** — move `agents` where `lo_id` = the LO to the new `tenant_id`.
+- **Active pipeline stays** with the old broker (never yank a loan mid-process).
+- **Login is unchanged** — same auth user, re-pointed.
+
+### The three LO-owned departure paths
+1. **Moves to another EarnedHome broker** → **re-parent** the LO (change `tenant_id`, carry portable agents + history, leave active pipeline). Seat stays live. Billing: the LO-owned seat is the LO's line item; the new broker's per-LO billing **excludes** it (no double charge). *Watch:* consent/TCPA if any buyer data moves.
+2. **Becomes their own broker** → recreates the R Parry pattern for themselves: (a) register the broker entity + **broker/company NMLS**, (b) establish a **wholesaler relationship** (no wholesaler = no ratesheet = can't originate — the commonly forgotten step), (c) stand up their broker tenant (normal onboarding), (d) re-parent themselves in. Seat live again. Bigger real-world lift (licensing + wholesaler), but no new software machinery.
+3. **Neither** (lands at a non-EarnedHome broker, isn't a broker themselves) → the seat **parks** (suspend billing, dormant) because there's no broker ratesheet to attach to; it **lapses** if never reactivated.
+
+### Agents (referral partners) bind to the LO, not the broker
+A partner's loyalty is to the **person** (the LO they trust), so:
+- Add **`agents.lo_id`** (the owning LO); the partner's link (`/a/<slug>`) is the token that binds them, and a buyer through that link routes to the agent's LO.
+- On departure, agents **travel with the LO** (re-parent to the new tenant) — they are *not* dropped. Active in-flight deals from that agent stay with the old broker. The broker's **contract** can modify the default (some shops claim shop-sourced leads).
+
+### Phasing
+- **Phase II** delivers the **data** side: stable LO identity, re-parent operation, `agents.lo_id` + agent portability.
+- **Phase III** delivers the **seat/billing** side: the `owner` field, the wholesaler pool, park/reactivate, and billing reconciliation.
+
+---
+
 *Companion docs: [`multi-loan-officer-routing.md`](multi-loan-officer-routing.md) (the Phase II technical spec), [`ai-opportunity-map.md`](ai-opportunity-map.md) and [`lo-copilot.md`](lo-copilot.md) (the AI premium tiers), [`../ROADMAP_PHASE_2_3.md`](../ROADMAP_PHASE_2_3.md).*
 *Compliance framing here is general and not legal advice; confirm any pricing/relationship model with mortgage compliance counsel.*
