@@ -60,6 +60,9 @@ details.disc>summary{font-size:13px;font-weight:700;color:var(--text);cursor:poi
 details.disc p{line-height:1.5;margin:6px 0}
 .route{font-size:13px;color:var(--accent);font-weight:700;margin-bottom:10px}
 .leadbtn{width:100%;background:var(--accent);color:#fff;border:0;padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer}
+.lbl{font-size:12px;color:var(--muted);margin:0 0 4px;font-weight:600}
+.secbtn{background:#fff;color:var(--primary);border:1px solid var(--line);padding:9px 12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.secbtn:hover{background:#f5f7fa}
 .spacer{height:10px}
 .cta{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid var(--line);backdrop-filter:blur(6px);z-index:50}
 .cta button{width:100%;max-width:1168px;margin:0 auto;display:block;background:var(--accent);color:#fff;border:0;padding:16px;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer}

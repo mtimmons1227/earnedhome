@@ -109,6 +109,11 @@ export default async function DashboardPage() {
             border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
             fontWeight: 600, textDecoration: "none" }}>Agents</a>
           {appUser.role === "admin" && (
+            <a href="/dashboard/los" style={{ color: "#fff",
+              border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
+              fontWeight: 600, textDecoration: "none" }}>Loan officers</a>
+          )}
+          {appUser.role === "admin" && (
             <a href="/dashboard/workbook" style={{ color: "#fff",
               border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
               fontWeight: 600, textDecoration: "none" }}>Update rates</a>
