@@ -1,5 +1,6 @@
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { agentStage, type AgentStage } from "@/lib/loSelect";
+import { AutoRefresh } from "./AutoRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
 
   return (
     <div style={themeVars}>
+      <AutoRefresh seconds={30} />
       <header className="eh-header">
         <div>
           <div className="eh-brand">Your referred buyers</div>
