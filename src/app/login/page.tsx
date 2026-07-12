@@ -19,13 +19,17 @@ export default function LoginPage() {
   // the reset form and explain. Read from window (no useSearchParams → no
   // Suspense boundary needed for this client page).
   useEffect(() => {
-    const reset = new URLSearchParams(window.location.search).get("reset");
+    const params = new URLSearchParams(window.location.search);
+    const reset = params.get("reset");
     if (reset === "expired") {
       setMode("reset");
       setError("That reset link was invalid or expired. Request a new one below.");
     } else if (reset === "success") {
       setMode("signin");
       setInfo("Your password was updated. Please sign in with your new password.");
+    } else if (params.get("timeout") === "1") {
+      setMode("signin");
+      setInfo("You were signed out after 15 minutes of inactivity. Please sign in again.");
     }
   }, []);
 
