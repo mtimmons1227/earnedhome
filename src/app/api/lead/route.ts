@@ -158,11 +158,16 @@ export async function POST(req: Request) {
           select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { notify_email?: string | null; lo_name?: string | null } | null }> } };
         }).select("notify_email, lo_name").eq("id", tenantId).maybeSingle();
         const loDisplay = resolvedLO?.full_name ?? tRes.data?.lo_name ?? loName ?? "your loan officer";
-        // Per-environment override: the DB notify_email is shared across all
-        // Netlify contexts (one Supabase project). Setting LEAD_NOTIFY_OVERRIDE
-        // on the QA / local contexts routes test alerts to a test inbox while
-        // Production (no override) uses the real DB value (the LO).
-        const notify = process.env.LEAD_NOTIFY_OVERRIDE || tRes.data?.notify_email || null;
+        // Phase II — route the alert to the ASSIGNED loan officer's own inbox.
+        // The lead belongs to a specific LO (the agent's LO for an agent lead,
+        // otherwise the tenant's primary LO), so that LO — not the broker-level
+        // notify_email — should get the alert. Fall back to the tenant notify_email
+        // only when the resolved LO has no email on file.
+        //   LEAD_NOTIFY_OVERRIDE — a per-environment TEST hook: when set (QA/local)
+        //   ALL alerts go to one test inbox; unset in Production so each real LO
+        //   gets their own alerts.
+        const notify =
+          process.env.LEAD_NOTIFY_OVERRIDE || resolvedLO?.email || tRes.data?.notify_email || null;
 
         // The loan officer's alert (names the agent it came through).
         if (notify) {
