@@ -39,7 +39,7 @@ export default async function DashboardPage() {
   const { data: leads } = await supabase
     .from("leads")
     .select(
-      "id, full_name, email, phone, status, consent_tcpa, consent_text, consent_at, source, notes, created_at, closed_at, agents ( name, active ), quotes ( inputs, outputs, rates_as_of )",
+      "id, full_name, email, phone, status, consent_tcpa, consent_text, consent_at, source, notes, created_at, closed_at, agents ( name, active ), assigned_lo:app_users!assigned_lo_id ( full_name ), quotes ( inputs, outputs, rates_as_of )",
     )
     .order("created_at", { ascending: false });
 
@@ -74,6 +74,7 @@ export default async function DashboardPage() {
     closed_at: l.closed_at ?? null,
     agent_name: Array.isArray(l.agents) ? (l.agents[0]?.name ?? null) : (l.agents?.name ?? null),
     agent_active: Array.isArray(l.agents) ? (l.agents[0]?.active ?? null) : (l.agents?.active ?? null),
+    assigned_lo_name: Array.isArray(l.assigned_lo) ? (l.assigned_lo[0]?.full_name ?? null) : (l.assigned_lo?.full_name ?? null),
     quote: Array.isArray(l.quotes) ? (l.quotes[0] ?? null) : (l.quotes ?? null),
   }));
 
@@ -144,7 +145,7 @@ export default async function DashboardPage() {
           <Metric label="Lead → Closed" value={`${leadToClosed}%`} />
           <Metric label="Close rate (this month)" value={`${closedRateMonth}%`} />
         </div>
-        <LeadsTable initialLeads={rows} initialNotes={notesByLead} />
+        <LeadsTable initialLeads={rows} initialNotes={notesByLead} isAdmin={appUser.role === "admin"} />
       </main>
     </div>
   );
