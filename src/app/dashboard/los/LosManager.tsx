@@ -15,6 +15,15 @@ interface LO {
   created_at: string;
 }
 
+// Pretty-print a US phone number for display (matches the Agents page).
+function formatPhone(raw: string | null): string {
+  if (!raw) return "";
+  const d = raw.replace(/\D/g, "");
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  if (d.length === 11 && d[0] === "1") return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
+  return raw;
+}
+
 export function LosManager() {
   const [los, setLos] = useState<LO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -218,7 +227,7 @@ export function LosManager() {
                         {!lo.active && <span style={badgeOff}>Off</span>}
                       </div>
                       <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 2 }}>
-                        {lo.email}{lo.nmls ? ` · NMLS ${lo.nmls}` : ""}{lo.phone ? ` · ${lo.phone}` : ""}
+                        {lo.email}{lo.nmls ? ` · NMLS ${lo.nmls}` : ""}{lo.phone ? ` · ${formatPhone(lo.phone)}` : ""}
                       </div>
                       {lo.invite_sent_at && (
                         <div style={{ color: "#15803d", fontSize: 12, marginTop: 2 }}>
