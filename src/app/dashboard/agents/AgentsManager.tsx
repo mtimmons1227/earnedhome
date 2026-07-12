@@ -12,7 +12,11 @@ interface Agent {
   status_token?: string | null;
   invite_sent_at?: string | null;
   created_at?: string;
+  lo_id?: string | null;
+  lo_name?: string | null;
 }
+
+interface LoOption { id: string; full_name: string | null; active: boolean; role: string; }
 
 type Filter = "all" | "active" | "off";
 
@@ -50,6 +54,13 @@ export function AgentsManager() {
   const [editPhone, setEditPhone] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // Reassign an agent to a different loan officer (broker-admin only).
+  const [los, setLos] = useState<LoOption[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editLoId, setEditLoId] = useState<string>("");
+  const [moveOpenLeads, setMoveOpenLeads] = useState(false);
+  const [reassignMsg, setReassignMsg] = useState<string | null>(null);
+
   useEffect(() => {
     setOrigin(window.location.origin);
     void load();
@@ -68,6 +79,12 @@ export function AgentsManager() {
     } finally {
       setLoading(false);
     }
+    // Only broker admins can list LOs; if this succeeds we enable reassign.
+    try {
+      const lr = await fetch("/api/admin/los");
+      if (lr.ok) { const lj = await lr.json(); setLos(lj.los ?? []); setIsAdmin(true); }
+      else setIsAdmin(false);
+    } catch { setIsAdmin(false); }
   }
 
   async function addAgent(e: React.FormEvent) {
@@ -116,6 +133,8 @@ export function AgentsManager() {
     setEditName(a.name);
     setEditEmail(a.email ?? "");
     setEditPhone(a.phone ?? "");
+    setEditLoId(a.lo_id ?? "");
+    setMoveOpenLeads(false);
     setErr(null);
   }
 
@@ -127,21 +146,33 @@ export function AgentsManager() {
     if (!editName.trim() || savingEdit) return;
     setSavingEdit(true);
     setErr(null);
+    setReassignMsg(null);
     try {
+      const payload: Record<string, unknown> = {
+        name: editName.trim(),
+        email: editEmail.trim() || null,
+        phone: editPhone.trim() || null,
+      };
+      const reassigning = isAdmin && !!editLoId && editLoId !== (a.lo_id ?? "");
+      if (reassigning) { payload.loId = editLoId; payload.moveOpenLeads = moveOpenLeads; }
+
       const res = await fetch(`/api/admin/agents/${a.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name: editName.trim(),
-          email: editEmail.trim() || null,
-          phone: editPhone.trim() || null,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save changes");
-      // Merge returned fields; keep invite_sent_at (PATCH doesn't return it).
-      setAgents((prev) => prev.map((x) => (x.id === a.id ? { ...x, ...data.agent } : x)));
       setEditingId(null);
+      if (reassigning) {
+        const loName = los.find((l) => l.id === editLoId)?.full_name ?? "the new loan officer";
+        setReassignMsg(
+          `Reassigned to ${loName}` +
+          (moveOpenLeads ? ` · moved ${data.movedLeads ?? 0} open lead${(data.movedLeads ?? 0) === 1 ? "" : "s"}` : ""),
+        );
+        setTimeout(() => setReassignMsg(null), 6000);
+      }
+      await load(); // refresh the owning-LO name (and any moved leads)
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -239,6 +270,13 @@ export function AgentsManager() {
           </label>
         </div>
 
+        {reassignMsg && (
+          <div style={{ marginTop: 10, fontSize: 13, color: "#15803d", background: "#f0fdf4",
+            border: "1px solid #86efac", borderRadius: 8, padding: "8px 12px" }}>
+            {reassignMsg}
+          </div>
+        )}
+
         {loading ? (
           <div className="hint" style={{ marginTop: 12 }}>Loading…</div>
         ) : agents.length === 0 ? (
@@ -257,17 +295,37 @@ export function AgentsManager() {
                   opacity: a.active || editing ? 1 : 0.55 }}>
                   {editing ? (
                     <>
-                      <div style={{ display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
-                        <label style={fieldLabel}>Name*
-                          <input value={editName} onChange={(e) => setEditName(e.target.value)} style={input} />
-                        </label>
-                        <label style={fieldLabel}>Email
-                          <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} type="email" style={input} />
-                        </label>
-                        <label style={fieldLabel}>Phone
-                          <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={input} />
-                        </label>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+                          <label style={fieldLabel}>Name*
+                            <input value={editName} onChange={(e) => setEditName(e.target.value)} style={input} />
+                          </label>
+                          <label style={fieldLabel}>Email
+                            <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} type="email" style={input} />
+                          </label>
+                          <label style={fieldLabel}>Phone
+                            <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={input} />
+                          </label>
+                          {isAdmin && (
+                            <label style={fieldLabel}>Loan officer
+                              <select value={editLoId} onChange={(e) => setEditLoId(e.target.value)} style={input}>
+                                <option value="">— select —</option>
+                                {los.filter((l) => l.active).map((l) => (
+                                  <option key={l.id} value={l.id}>{l.full_name ?? "(no name)"}</option>
+                                ))}
+                              </select>
+                            </label>
+                          )}
+                        </div>
+                        {isAdmin && editLoId && editLoId !== (a.lo_id ?? "") && (
+                          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12,
+                            color: "var(--muted)", marginTop: 8 }}>
+                            <input type="checkbox" checked={moveOpenLeads}
+                              onChange={(e) => setMoveOpenLeads(e.target.checked)} />
+                            Also move this agent&apos;s open (active) leads to the new loan officer — closed leads stay put
+                          </label>
+                        )}
                       </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <button onClick={() => saveEdit(a)} disabled={savingEdit || !editName.trim()}
@@ -287,6 +345,11 @@ export function AgentsManager() {
                         <div style={{ fontSize: 12, color: "var(--muted)" }}>
                           {[a.email, formatPhone(a.phone)].filter(Boolean).join(" · ") || "No contact info"}
                         </div>
+                        {a.lo_name && (
+                          <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                            Loan officer: <strong style={{ fontWeight: 600 }}>{a.lo_name}</strong>
+                          </div>
+                        )}
                         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {link}

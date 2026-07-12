@@ -13,12 +13,20 @@ export async function GET() {
   const admin = createSupabaseAdmin();
   const { data, error } = await admin
     .from("agents")
-    .select("id, name, email, phone, slug, active, status_token, invite_sent_at, created_at")
+    .select("id, name, email, phone, slug, active, status_token, invite_sent_at, created_at, lo_id, lo:app_users!lo_id ( full_name )")
     .eq("tenant_id", gate.tenantId)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ agents: data ?? [] });
+  // Flatten the owning-LO name so the UI can show/reassign it.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const agents = ((data ?? []) as any[]).map((a) => ({
+    id: a.id, name: a.name, email: a.email, phone: a.phone, slug: a.slug, active: a.active,
+    status_token: a.status_token, invite_sent_at: a.invite_sent_at, created_at: a.created_at,
+    lo_id: a.lo_id ?? null,
+    lo_name: Array.isArray(a.lo) ? (a.lo[0]?.full_name ?? null) : (a.lo?.full_name ?? null),
+  }));
+  return NextResponse.json({ agents });
 }
 
 // POST — create an agent { name, email?, phone? }. Generates a slug unique
