@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { DashHeader, BackToDashboard } from "../DashHeader";
 import { WorkbookSwap } from "./WorkbookSwap";
 
 export const dynamic = "force-dynamic";
@@ -23,21 +24,9 @@ export default async function WorkbookPage() {
 
   return (
     <div>
-      <header className="eh-header" style={{ justifyContent: "space-between" }}>
-        <div>
-          <div className="eh-brand">Rate Workbook</div>
-          <div className="eh-tag">{appUser.full_name ?? user.email} · Admin</div>
-        </div>
-        <a
-          href="/dashboard"
-          style={{
-            color: "#fff", border: "1px solid rgba(255,255,255,.5)", borderRadius: 8,
-            padding: "8px 12px", fontWeight: 600, textDecoration: "none",
-          }}
-        >
-          ← Back to Dashboard
-        </a>
-      </header>
+      <DashHeader title="Rate Workbook" subtitle={`${appUser.full_name ?? user.email} · Admin`}>
+        <BackToDashboard />
+      </DashHeader>
       <main style={{ maxWidth: 680, margin: "0 auto", padding: 16 }}>
         <WorkbookSwap />
       </main>

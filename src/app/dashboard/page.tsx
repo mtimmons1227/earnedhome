@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { DashHeader } from "./DashHeader";
 import { LeadsTable, type LeadRow } from "./LeadsTable";
 
 export const dynamic = "force-dynamic";
@@ -31,9 +32,6 @@ export default async function DashboardPage() {
       </main>
     );
   }
-
-  const { data: tenant } = await supabase
-    .from("tenants").select("name").eq("id", appUser.tenant_id).maybeSingle();
 
   // RLS scopes leads + the embedded quote to the signed-in user's tenant.
   const { data: leads } = await supabase
@@ -97,35 +95,15 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <header className="eh-header" style={{ justifyContent: "space-between" }}>
-        <div>
-          <div className="eh-brand">{tenant?.name ?? "EarnedHome"} — Leads</div>
-          <div className="eh-tag">{appUser.full_name ?? user.email} · {roleLabel(appUser.role)}</div>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <a href="/" target="_blank" rel="noreferrer" style={{ color: "#fff",
-            border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
-            fontWeight: 600, textDecoration: "none" }}>View EarnedHome</a>
-          <a href="/dashboard/agents" style={{ color: "#fff",
-            border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
-            fontWeight: 600, textDecoration: "none" }}>Agents</a>
-          {appUser.role === "admin" && (
-            <a href="/dashboard/los" style={{ color: "#fff",
-              border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
-              fontWeight: 600, textDecoration: "none" }}>Loan officers</a>
-          )}
-          {appUser.role === "admin" && (
-            <a href="/dashboard/workbook" style={{ color: "#fff",
-              border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
-              fontWeight: 600, textDecoration: "none" }}>Update rates</a>
-          )}
-          <form action="/auth/signout" method="post">
-            <button type="submit" style={{ background: "transparent", color: "#fff",
-              border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
-              cursor: "pointer", fontWeight: 600 }}>Sign out</button>
-          </form>
-        </div>
-      </header>
+      <DashHeader title="Leads" subtitle={`${appUser.full_name ?? user.email} · ${roleLabel(appUser.role)}`}>
+        <a href="/" target="_blank" rel="noreferrer" className="navbtn">View site</a>
+        <a href="/dashboard/agents" className="navbtn">Agents</a>
+        {appUser.role === "admin" && <a href="/dashboard/los" className="navbtn">Loan officers</a>}
+        {appUser.role === "admin" && <a href="/dashboard/workbook" className="navbtn">Update rates</a>}
+        <form action="/auth/signout" method="post">
+          <button type="submit" className="navbtn">Sign out</button>
+        </form>
+      </DashHeader>
 
       <main>
         {/* Row 1 — volume (counts), left→right down the funnel */}

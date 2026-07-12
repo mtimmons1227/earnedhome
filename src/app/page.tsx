@@ -69,7 +69,7 @@ export default async function Page() {
             style={{ color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none",
               opacity: 0.9 }}
           >
-            ← Back to dashboard
+            ← Dashboard
           </a>
         </div>
       )}
