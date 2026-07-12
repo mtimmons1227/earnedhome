@@ -34,16 +34,24 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!lo) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!lo.email) return NextResponse.json({ error: "This LO has no email on file" }, { status: 422 });
 
-  // Generate a set-password (recovery) link the LO clicks to activate their login.
+  // Generate a set-password (recovery) token. We email a link to our OWN
+  // /auth/confirm page (carrying the hashed token), NOT the raw Supabase
+  // action_link. This (a) keeps the visible link on our sending domain so it
+  // isn't flagged as phishing → spam, and (b) survives email-security link
+  // scanners, which consume one-time links: the token is only spent when the LO
+  // clicks "Continue" on the confirm page.
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
     type: "recovery",
     email: lo.email,
     options: { redirectTo: `${origin}/auth/callback?next=/reset-password` },
   });
-  const actionLink = (linkData as { properties?: { action_link?: string } } | null)?.properties?.action_link;
-  if (linkErr || !actionLink) {
+  const hashedToken = (linkData as { properties?: { hashed_token?: string } } | null)?.properties?.hashed_token;
+  if (linkErr || !hashedToken) {
     return NextResponse.json({ error: linkErr?.message ?? "Could not generate link" }, { status: 500 });
   }
+  const link =
+    `${origin}/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}` +
+    `&type=recovery&next=${encodeURIComponent("/reset-password")}`;
 
   const { data: tenant } = await admin
     .from("tenants").select("lo_name").eq("id", gate.tenantId).maybeSingle();
@@ -52,7 +60,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     to: lo.email,
     loName: lo.full_name as string | null,
     companyName: (tenant?.lo_name as string | null) ?? null,
-    link: actionLink,
+    link,
   });
   if (!r.sent) return NextResponse.json({ error: r.reason ?? "Could not send" }, { status: 502 });
 

@@ -298,17 +298,9 @@ export function AgentsManager() {
                         )}
                       </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                        <button onClick={() => copyLink(a)} style={smallBtn}>
-                          {copiedId === a.id ? "Copied!" : "Copy link"}
-                        </button>
-                        {a.status_token && (
-                          <button onClick={() => copyStatusLink(a)} style={smallBtn}>
-                            {copiedStatusId === a.id ? "Copied!" : "Status link"}
-                          </button>
-                        )}
                         {a.email && (
                           <button onClick={() => emailLink(a)} disabled={sendingId === a.id} style={smallBtn}>
-                            {sentId === a.id ? "Sent!" : sendingId === a.id ? "Sending…" : "Email link"}
+                            {sentId === a.id ? "Sent!" : sendingId === a.id ? "Sending…" : "Email links"}
                           </button>
                         )}
                         <button onClick={() => startEdit(a)} style={smallBtn}>Edit</button>
