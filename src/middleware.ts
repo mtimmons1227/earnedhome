@@ -10,7 +10,7 @@ export async function middleware(req: NextRequest) {
   // Without this, browsers serve a cached copy (and restore it from the
   // back/forward cache on reopen/reload), so the agent sees a stale page until a
   // hard refresh. `no-store` disables both the disk cache and bfcache for it.
-  if (req.nextUrl.pathname.startsWith("/agent/")) {
+  if (req.nextUrl.pathname.startsWith("/agent/") || req.nextUrl.pathname.startsWith("/consent/")) {
     res.headers.set("Cache-Control", "no-store, max-age=0, must-revalidate");
   }
 

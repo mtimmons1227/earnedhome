@@ -287,6 +287,57 @@ export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boole
   }
 }
 
+// "Share your loan progress with your agent?" — emailed to the buyer so they can
+// grant or decline (and later change) letting their referring agent see their loan
+// status. Buyer-initiated, always editable. Same safe-by-design no-op if unset.
+export interface BuyerConsentRequest {
+  to: string;            // the buyer's email
+  buyerName?: string | null;
+  agentName?: string | null;   // the referring agent
+  companyName?: string | null; // the lender / company
+  link: string;          // the buyer's private /consent/<token> page
+}
+
+export async function sendBuyerConsentRequest(d: BuyerConsentRequest): Promise<{ sent: boolean; reason?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!key || !from) return { sent: false, reason: "email not configured (RESEND_API_KEY / RESEND_FROM)" };
+  if (!d.to) return { sent: false, reason: "no buyer email" };
+
+  const hi = d.buyerName ? `Hi ${escapeHtml(d.buyerName.split(" ")[0])},` : "Hi,";
+  const agent = d.agentName ? escapeHtml(d.agentName) : "your agent";
+  const company = d.companyName ? escapeHtml(d.companyName) : "your loan officer";
+  const safeLink = escapeHtml(d.link);
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
+    <h2 style="color:#1F3864;margin:0 0 8px;">Share your loan progress with ${agent}?</h2>
+    <p>${hi}</p>
+    <p><strong>${agent}</strong> referred you to <strong>${company}</strong>. If you'd like, you can let
+       ${agent} see your <strong>loan progress</strong> — simple stages like <em>In process</em> and
+       <em>Closed</em>. They will <strong>never</strong> see your finances, credit, income, or loan
+       details — those stay between you and ${company}.</p>
+    <p>It's completely optional, and you can turn it on or off anytime.</p>
+    <p style="margin:16px 0;">
+      <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Choose your sharing setting</a>
+    </p>
+    <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
+    <p style="font-size:12px;color:#6b7280;">Bookmark this link — it's your personal setting and you can
+       come back to change it whenever you want.</p>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from, to: d.to, subject: `Share your loan progress with ${d.agentName ?? "your agent"}?`, html }),
+    });
+    if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, reason: (e as Error).message };
+  }
+}
+
 function renderHtml(d: BuyerEstimateEmail): string {
   const greeting = d.buyerName ? `Hi ${escapeHtml(d.buyerName.split(" ")[0])},` : "Hi there,";
 

@@ -591,13 +591,8 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
               I agree to be contacted by phone, text, or email about my inquiry. Consent is not a condition of purchase.
             </label>
             )}
-            {!editingContact && agentName && (
-            <label className="consent">
-              <input type="checkbox" checked={agentShareConsent}
-                onChange={(e) => setAgentShareConsent(e.target.checked)} />
-              I authorize {agentName} to receive updates on my loan status. (Optional — no financial details are shared.)
-            </label>
-            )}
+            {/* Agent status-sharing consent is now buyer-initiated after connecting,
+                via a private consent link emailed to the buyer — not a checkbox here. */}
             {!editingContact && (<>
             {applyUrl && (
               <button className="leadbtn" onClick={() => submitLead("apply")} disabled={leadSubmitting}

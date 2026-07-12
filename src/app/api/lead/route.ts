@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { sendBuyerEstimateEmail, sendLoLeadAlert, sendAgentLeadAlert, type EstimateEmailProduct } from "@/lib/email";
+import { sendBuyerEstimateEmail, sendLoLeadAlert, sendAgentLeadAlert, sendBuyerConsentRequest, type EstimateEmailProduct } from "@/lib/email";
 import { emitLeadCreated } from "@/lib/leadEvent";
 import { getResolvedLOForLead } from "@/lib/loanOfficer";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
@@ -55,6 +55,7 @@ export async function POST(req: Request) {
   // Generate the id server-side and insert directly (no read-back: the anon
   // buyer role has INSERT but no SELECT on leads by design).
   const leadId = randomUUID();
+  const consentToken = randomUUID();
   const supabase = createSupabaseServer();
   const { error } = await supabase.from("leads").insert({
     id: leadId,
@@ -62,8 +63,10 @@ export async function POST(req: Request) {
     quote_id: quoteId ?? null,
     agent_id: agentId ?? null,
     assigned_lo_id: resolvedLO?.id ?? null,
-    // Only meaningful when the buyer came through an agent link.
-    agent_status_consent: agentId ? !!agentStatusConsent : false,
+    consent_token: consentToken,
+    // Status-sharing consent now starts OFF and is granted by the buyer via their
+    // own consent link (sent below) — not a signup checkbox.
+    agent_status_consent: false,
     idempotency_key: idempotencyKey ?? null,
     full_name: fullName ?? null,
     email: email ?? null,
@@ -214,6 +217,34 @@ export async function POST(req: Request) {
       }
     })(),
   );
+
+  // Buyer consent request — invite the buyer to (optionally) let their referring
+  // agent see their loan status, via their own private consent link. Only for
+  // agent-referred leads with a buyer email. Buyer-initiated + always editable.
+  if (agentId && email) {
+    sideEffects.push(
+      (async () => {
+        try {
+          const admin = createSupabaseAdmin();
+          const aRes = await admin.from("agents").select("name").eq("id", agentId).maybeSingle();
+          const tRes = await (supabase.from("tenants") as unknown as {
+            select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { lo_name?: string | null } | null }> } };
+          }).select("lo_name").eq("id", tenantId).maybeSingle();
+          const origin = new URL(req.url).origin;
+          const r = await sendBuyerConsentRequest({
+            to: email,
+            buyerName: fullName ?? null,
+            agentName: aRes.data?.name ?? null,
+            companyName: tRes.data?.lo_name ?? null,
+            link: `${origin}/consent/${consentToken}`,
+          });
+          if (!r.sent) console.log("[lead] consent request not sent:", r.reason);
+        } catch (e) {
+          console.log("[lead] consent request error:", (e as Error).message);
+        }
+      })(),
+    );
+  }
 
   // Lead-event webhook (vendor-neutral seam) → downstream flow (Power Automate /
   // own backend) → partner CRM. No-ops if LEAD_EVENT_WEBHOOK_URL is unset; skips

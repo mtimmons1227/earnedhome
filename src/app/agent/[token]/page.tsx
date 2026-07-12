@@ -2,6 +2,7 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { isAgentOwnerActive } from "@/lib/agents";
 import { agentStage, type AgentStage } from "@/lib/loSelect";
 import { AutoRefresh } from "./AutoRefresh";
+import { RequestAccessButton } from "./RequestAccessButton";
 
 export const dynamic = "force-dynamic";
 
@@ -55,14 +56,16 @@ export default async function AgentStatusPage({ params }: { params: { token: str
 
   const { data: leads } = await admin
     .from("leads")
-    .select("full_name, status, agent_status_consent, created_at")
+    .select("id, full_name, status, agent_status_consent, email, created_at")
     .eq("agent_id", agent.id)
     .order("created_at", { ascending: false });
 
   const rows = (leads ?? []) as {
+    id: string;
     full_name: string | null;
     status: string;
     agent_status_consent: boolean;
+    email: string | null;
     created_at: string;
   }[];
 
@@ -108,10 +111,14 @@ export default async function AgentStatusPage({ params }: { params: { token: str
                         {new Date(r.created_at).toLocaleDateString()}
                       </div>
                     </div>
-                    <span style={{ background: c.bg, color: c.fg, fontWeight: 700, fontSize: 13,
-                      borderRadius: 999, padding: "4px 12px", whiteSpace: "nowrap" }}>
-                      {stage}
-                    </span>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                      <span style={{ background: c.bg, color: c.fg, fontWeight: 700, fontSize: 13,
+                        borderRadius: 999, padding: "4px 12px", whiteSpace: "nowrap" }}>
+                        {stage}
+                      </span>
+                      <RequestAccessButton token={params.token} leadId={r.id}
+                        disabled={r.agent_status_consent} hasEmail={!!r.email} />
+                    </div>
                   </div>
                 );
               })}
