@@ -51,6 +51,7 @@ export type AgentStage = "Connected" | "In process" | "Closed" | "Inactive";
 export function agentStage(status: string, consent: boolean): AgentStage {
   if (!consent) return "Connected";
   switch (status) {
+    case "contacted":
     case "working":
       return "In process";
     case "closed":
@@ -58,7 +59,7 @@ export function agentStage(status: string, consent: boolean): AgentStage {
     case "lost":
       return "Inactive";
     default:
-      return "Connected"; // new / contacted
+      return "Connected"; // new
   }
 }
 

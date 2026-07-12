@@ -128,6 +128,8 @@ check("consent + working → 'In process'", agentStage("working", true) === "In 
 check("consent + closed → 'Closed'", agentStage("closed", true) === "Closed");
 check("consent + lost → 'Inactive'", agentStage("lost", true) === "Inactive");
 check("consent + new → 'Connected'", agentStage("new", true) === "Connected");
+check("consent + contacted (Initial contact) → 'In process'", agentStage("contacted", true) === "In process");
+check("no consent + contacted → 'Connected'", agentStage("contacted", false) === "Connected");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
