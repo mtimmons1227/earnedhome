@@ -185,9 +185,9 @@ export function LeadsTable({ initialLeads, initialNotes, isAdmin = false }: { in
                   <td style={{ ...th, color: l.agent_name ? undefined : "var(--muted)" }}>
                     {l.agent_name ?? "—"}
                     {l.agent_name && l.agent_active === false && (
-                      <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: "#b91c1c",
-                        border: "1px solid #fca5a5", background: "#fef2f2", borderRadius: 5, padding: "1px 5px",
-                        whiteSpace: "nowrap" }}>DISABLED</span>
+                      <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: "var(--muted)",
+                        border: "1px solid var(--line)", background: "#f3f4f6", borderRadius: 5, padding: "1px 5px",
+                        whiteSpace: "nowrap" }}>Off</span>
                     )}
                     {l.agent_name && (
                       <span

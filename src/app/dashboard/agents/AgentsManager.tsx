@@ -282,7 +282,7 @@ export function AgentsManager() {
                           {a.name}
                           {!a.active && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700,
                             color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 6,
-                            padding: "1px 6px" }}>SEAT OFF</span>}
+                            padding: "1px 6px" }}>Off</span>}
                         </div>
                         <div style={{ fontSize: 12, color: "var(--muted)" }}>
                           {[a.email, formatPhone(a.phone)].filter(Boolean).join(" · ") || "No contact info"}
