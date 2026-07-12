@@ -19,6 +19,15 @@ const stageColor: Record<AgentStage, { bg: string; fg: string }> = {
   Inactive: { bg: "#f3f4f6", fg: "#6b7280" },
 };
 
+// Pretty-print a US phone number (matches the dashboard/agents pages).
+function formatPhone(raw: string | null): string {
+  if (!raw) return "";
+  const d = raw.replace(/\D/g, "");
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  if (d.length === 11 && d[0] === "1") return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
+  return raw;
+}
+
 // Public, no-login agent status portal. The token in the URL is the credential —
 // unguessable and revocable (turning the agent off blocks it). Shows the buyers
 // this agent referred and a friendly stage. Loan progression only appears where
@@ -56,7 +65,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
 
   const { data: leads } = await admin
     .from("leads")
-    .select("id, full_name, status, agent_status_consent, email, created_at")
+    .select("id, full_name, status, agent_status_consent, email, phone, created_at")
     .eq("agent_id", agent.id)
     .order("created_at", { ascending: false });
 
@@ -66,6 +75,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
     status: string;
     agent_status_consent: boolean;
     email: string | null;
+    phone: string | null;
     created_at: string;
   }[];
 
@@ -105,9 +115,14 @@ export default async function AgentStatusPage({ params }: { params: { token: str
                   <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto",
                     alignItems: "center", gap: 10, border: "1px solid var(--line)",
                     borderRadius: 10, padding: "12px 14px" }}>
-                    <div>
+                    <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700 }}>{r.full_name || "A buyer"}</div>
-                      <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                      {(r.email || r.phone) && (
+                        <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2, wordBreak: "break-word" }}>
+                          {[r.email, formatPhone(r.phone)].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
+                      <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
                         {new Date(r.created_at).toLocaleDateString()}
                       </div>
                     </div>
