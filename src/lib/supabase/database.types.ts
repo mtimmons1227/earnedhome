@@ -21,8 +21,8 @@ export type Database = {
         Relationships: [];
       };
       app_users: {
-        Row: { id: string; tenant_id: string; role: Database["public"]["Enums"]["user_role"]; full_name: string | null; email: string | null; nmls: string | null; is_primary: boolean; active: boolean; invite_sent_at: string | null; created_at: string };
-        Insert: { id: string; tenant_id: string; role?: Database["public"]["Enums"]["user_role"]; full_name?: string | null; email?: string | null; nmls?: string | null; is_primary?: boolean; active?: boolean; invite_sent_at?: string | null; created_at?: string };
+        Row: { id: string; tenant_id: string; role: Database["public"]["Enums"]["user_role"]; full_name: string | null; email: string | null; nmls: string | null; phone: string | null; is_primary: boolean; active: boolean; invite_sent_at: string | null; created_at: string };
+        Insert: { id: string; tenant_id: string; role?: Database["public"]["Enums"]["user_role"]; full_name?: string | null; email?: string | null; nmls?: string | null; phone?: string | null; is_primary?: boolean; active?: boolean; invite_sent_at?: string | null; created_at?: string };
         Update: Partial<Database["public"]["Tables"]["app_users"]["Insert"]>;
         Relationships: [];
       };

@@ -12,7 +12,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
   if (gate.role !== "admin") return NextResponse.json({ error: "Admins only" }, { status: 403 });
 
-  let body: { fullName?: string; email?: string; nmls?: string | null; active?: boolean; isPrimary?: boolean };
+  let body: { fullName?: string; email?: string; nmls?: string | null; phone?: string | null; active?: boolean; isPrimary?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -24,11 +24,28 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   // Confirm the target LO is in the caller's tenant before mutating.
   const { data: target } = await admin
     .from("app_users")
-    .select("id, tenant_id, email")
+    .select("id, tenant_id, email, role, active")
     .eq("id", params.id)
     .maybeSingle();
   if (!target || target.tenant_id !== gate.tenantId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Lockout guard: turning off a user now blocks their dashboard access, so never
+  // let the tenant turn off its LAST active admin (no one could get back in).
+  if (body.active === false && target.role === "admin" && target.active) {
+    const { count } = await admin
+      .from("app_users")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", gate.tenantId)
+      .eq("role", "admin")
+      .eq("active", true);
+    if ((count ?? 0) <= 1) {
+      return NextResponse.json(
+        { error: "You can't turn off the last active broker admin." },
+        { status: 409 },
+      );
+    }
   }
 
   const patch: Record<string, unknown> = {};
@@ -36,6 +53,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const newEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : undefined;
   if (newEmail !== undefined) patch.email = newEmail;
   if (body.nmls !== undefined) patch.nmls = (body.nmls ?? "")?.toString().trim() || null;
+  if (body.phone !== undefined) patch.phone = (body.phone ?? "")?.toString().trim() || null;
   if (typeof body.active === "boolean") patch.active = body.active;
   if (typeof body.isPrimary === "boolean") patch.is_primary = body.isPrimary;
 
@@ -65,7 +83,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     .from("app_users")
     .update(patch)
     .eq("id", params.id)
-    .select("id, full_name, email, nmls, role, is_primary, active, created_at")
+    .select("id, full_name, email, nmls, phone, role, is_primary, active, created_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

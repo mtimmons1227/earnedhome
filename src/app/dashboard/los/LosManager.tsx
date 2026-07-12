@@ -7,6 +7,7 @@ interface LO {
   full_name: string | null;
   email: string | null;
   nmls: string | null;
+  phone: string | null;
   role: string;
   is_primary: boolean;
   active: boolean;
@@ -23,6 +24,7 @@ export function LosManager() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [nmls, setNmls] = useState("");
+  const [phone, setPhone] = useState("");
   const [adding, setAdding] = useState(false);
 
   // inline edit
@@ -30,6 +32,7 @@ export function LosManager() {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editNmls, setEditNmls] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
   // send sign-in link
@@ -87,13 +90,14 @@ export function LosManager() {
       const res = await fetch("/api/admin/los", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ fullName: name, email, nmls }),
+        body: JSON.stringify({ fullName: name, email, nmls, phone }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "Could not add loan officer");
       setName("");
       setEmail("");
       setNmls("");
+      setPhone("");
       await load();
     } catch (e) {
       setErr((e as Error).message);
@@ -123,10 +127,11 @@ export function LosManager() {
     setEditName(lo.full_name ?? "");
     setEditEmail(lo.email ?? "");
     setEditNmls(lo.nmls ?? "");
+    setEditPhone(lo.phone ?? "");
   }
   async function saveEdit(id: string) {
     setSavingEdit(true);
-    await patch(id, { fullName: editName, email: editEmail, nmls: editNmls });
+    await patch(id, { fullName: editName, email: editEmail, nmls: editNmls, phone: editPhone });
     setSavingEdit(false);
     setEditingId(null);
   }
@@ -155,6 +160,10 @@ export function LosManager() {
           <label style={fieldLabel}>NMLS
             <input value={nmls} onChange={(e) => setNmls(e.target.value)}
               placeholder="1234567" style={input} />
+          </label>
+          <label style={fieldLabel}>Phone
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel"
+              placeholder="(555) 555-1234" style={input} />
           </label>
           <button className="leadbtn" type="submit" disabled={adding || !name.trim() || !email.trim()}
             style={{ height: 40 }}>{adding ? "Adding…" : "Add loan officer"}</button>
@@ -188,6 +197,9 @@ export function LosManager() {
                       <label style={fieldLabel}>NMLS
                         <input value={editNmls} onChange={(e) => setEditNmls(e.target.value)} style={input} />
                       </label>
+                      <label style={fieldLabel}>Phone
+                        <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} type="tel" style={input} />
+                      </label>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button style={smallBtn} onClick={() => saveEdit(lo.id)} disabled={savingEdit}>
@@ -206,7 +218,7 @@ export function LosManager() {
                         {!lo.active && <span style={badgeOff}>Off</span>}
                       </div>
                       <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 2 }}>
-                        {lo.email}{lo.nmls ? ` · NMLS ${lo.nmls}` : ""}
+                        {lo.email}{lo.nmls ? ` · NMLS ${lo.nmls}` : ""}{lo.phone ? ` · ${lo.phone}` : ""}
                       </div>
                       {lo.invite_sent_at && (
                         <div style={{ color: "#15803d", fontSize: 12, marginTop: 2 }}>

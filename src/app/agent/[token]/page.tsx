@@ -1,4 +1,5 @@
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { isAgentOwnerActive } from "@/lib/agents";
 import { agentStage, type AgentStage } from "@/lib/loSelect";
 import { AutoRefresh } from "./AutoRefresh";
 
@@ -30,7 +31,10 @@ export default async function AgentStatusPage({ params }: { params: { token: str
     .eq("status_token", params.token)
     .maybeSingle();
 
-  if (!agent || !agent.active) {
+  // A turned-off LO revokes their agents' status portals too.
+  const ownerActive = agent ? await isAgentOwnerActive(agent.id) : true;
+
+  if (!agent || !agent.active || !ownerActive) {
     return (
       <main style={{ maxWidth: 520, margin: "12vh auto", padding: 24, textAlign: "center" }}>
         <div className="panel">

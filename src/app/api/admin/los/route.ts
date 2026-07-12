@@ -14,7 +14,7 @@ export async function GET() {
   const admin = createSupabaseAdmin();
   const { data, error } = await admin
     .from("app_users")
-    .select("id, full_name, email, nmls, role, is_primary, active, invite_sent_at, created_at")
+    .select("id, full_name, email, nmls, phone, role, is_primary, active, invite_sent_at, created_at")
     .eq("tenant_id", gate.tenantId)
     .in("role", ["lo", "admin"])
     .order("is_primary", { ascending: false })
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
   if (gate.role !== "admin") return NextResponse.json({ error: "Admins only" }, { status: 403 });
 
-  let body: { fullName?: string; email?: string; nmls?: string };
+  let body: { fullName?: string; email?: string; nmls?: string; phone?: string };
   try {
     body = await req.json();
   } catch {
@@ -41,6 +41,7 @@ export async function POST(req: Request) {
   const fullName = (body.fullName ?? "").trim();
   const email = (body.email ?? "").trim().toLowerCase();
   const nmls = (body.nmls ?? "").trim() || null;
+  const phone = (body.phone ?? "").trim() || null;
   if (!fullName) return NextResponse.json({ error: "Name is required" }, { status: 400 });
   if (!email) return NextResponse.json({ error: "Email is required" }, { status: 400 });
 
@@ -79,10 +80,11 @@ export async function POST(req: Request) {
       full_name: fullName,
       email,
       nmls,
+      phone,
       is_primary: false,
       active: true,
     })
-    .select("id, full_name, email, nmls, role, is_primary, active, invite_sent_at, created_at")
+    .select("id, full_name, email, nmls, phone, role, is_primary, active, invite_sent_at, created_at")
     .single();
 
   if (error) {

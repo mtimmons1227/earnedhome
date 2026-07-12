@@ -39,3 +39,15 @@ export async function getAgentBySlug(
     .maybeSingle();
   return (data as AgentRow | null) ?? null;
 }
+
+// Whether the agent's owning loan officer is still active. Turning an LO off is a
+// full deactivation: their agents' buyer links + status portals are revoked too.
+// Returns true when the agent has no owning LO on record (nothing to gate on).
+export async function isAgentOwnerActive(agentId: string): Promise<boolean> {
+  const admin = createSupabaseAdmin();
+  const { data: a } = await admin.from("agents").select("lo_id").eq("id", agentId).maybeSingle();
+  const loId = (a as { lo_id?: string | null } | null)?.lo_id ?? null;
+  if (!loId) return true;
+  const { data: lo } = await admin.from("app_users").select("active").eq("id", loId).maybeSingle();
+  return (lo as { active?: boolean } | null)?.active !== false;
+}

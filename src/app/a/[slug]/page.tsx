@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { getTenantForHost, slugFromHost } from "@/lib/tenant";
-import { getAgentBySlug } from "@/lib/agents";
+import { getAgentBySlug, isAgentOwnerActive } from "@/lib/agents";
 import { getResolvedLOForLead } from "@/lib/loanOfficer";
 import { displayIdentity } from "@/lib/loSelect";
 import { BrandHeader } from "@/components/BrandHeader";
@@ -32,6 +32,8 @@ export default async function AgentPage({ params }: { params: { slug: string } }
   }
 
   const agent = await getAgentBySlug(tenant.id, params.slug);
+  // A turned-off LO revokes their agents' links too (full deactivation).
+  const ownerActive = agent ? await isAgentOwnerActive(agent.id) : true;
 
   const b = tenant.branding;
   const themeVars = {
@@ -43,7 +45,7 @@ export default async function AgentPage({ params }: { params: { slug: string } }
   // Revoked seat: the slug exists but the agent is turned off. Block the link
   // with a graceful message instead of running a (mis-attributed) estimate, and
   // point the buyer at the lender's main page so they're never fully stranded.
-  if (agent && !agent.active) {
+  if (agent && (!agent.active || !ownerActive)) {
     return (
       <div style={themeVars}>
         <BrandHeader tenant={tenant} />

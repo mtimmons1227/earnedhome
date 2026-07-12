@@ -30,6 +30,9 @@ export default function LoginPage() {
     } else if (params.get("timeout") === "1") {
       setMode("signin");
       setInfo("You were signed out after 15 minutes of inactivity. Please sign in again.");
+    } else if (params.get("disabled") === "1") {
+      setMode("signin");
+      setError("This account has been turned off. Please contact your broker administrator.");
     }
   }, []);
 
