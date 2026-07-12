@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createSupabaseBrowser } from "@/lib/supabase/client";
 
-// Auto sign-off after a period of inactivity (security for a lender tool that
-// shows borrower data). Watches for real user activity; after IDLE_MS with none,
-// it shows a 1-minute "Still there?" warning, and if still idle, signs the user
-// out and returns them to the login page. Any activity (or the button) resets it.
+// Auto sign-off after inactivity — now app-wide. It only arms when there is a
+// signed-in session, so anonymous buyers on the public pages are never affected;
+// a signed-in staff member is watched everywhere (including "View site"). After
+// IDLE_MS with no activity it shows a 1-minute "Still there?" warning, then signs
+// out. Any activity (or the button) resets it.
 const IDLE_MS = 15 * 60 * 1000; // 15 minutes of inactivity
 const WARN_MS = 60 * 1000; // show the warning for the final minute
 
 export function IdleSignout() {
+  const [enabled, setEnabled] = useState(false);
   const [warning, setWarning] = useState(false);
   const [remaining, setRemaining] = useState(60);
   const lastActivity = useRef(Date.now());
@@ -20,19 +23,38 @@ export function IdleSignout() {
     warningRef.current = warning;
   }, [warning]);
 
+  // Arm only for a signed-in session; disarm on sign-out. Never touches buyers.
   useEffect(() => {
+    const supabase = createSupabaseBrowser();
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) setEnabled(!!data.session);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setEnabled(!!session);
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    lastActivity.current = Date.now();
+    setWarning(false);
+
     async function signOut() {
       if (signingOut.current) return;
       signingOut.current = true;
       try {
         await fetch("/auth/signout", { method: "POST" });
       } catch {
-        /* fall through to redirect regardless */
+        /* redirect regardless */
       }
       window.location.href = "/login?timeout=1";
     }
 
-    // Any genuine activity resets the idle clock (and dismisses the warning).
     const bump = () => {
       lastActivity.current = Date.now();
       if (warningRef.current) setWarning(false);
@@ -54,14 +76,14 @@ export function IdleSignout() {
       clearInterval(id);
       events.forEach((e) => window.removeEventListener(e, bump));
     };
-  }, []);
+  }, [enabled]);
 
   function stay() {
     lastActivity.current = Date.now();
     setWarning(false);
   }
 
-  if (!warning) return null;
+  if (!enabled || !warning) return null;
 
   return (
     <div

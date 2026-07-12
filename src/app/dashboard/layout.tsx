@@ -1,14 +1,9 @@
 import type { ReactNode } from "react";
-import { IdleSignout } from "./IdleSignout";
 
-// Wraps every /dashboard/* page. Mounts the idle auto sign-off watcher so any
-// signed-in staff session (leads, agents, LOs, workbook) auto-locks after
-// inactivity. Individual pages still enforce their own auth redirects.
+// The idle auto sign-off now lives app-wide in the root layout (src/app/layout.tsx),
+// gated on a signed-in session, so it covers every page a staff member visits
+// (including "View site") without affecting anonymous buyers. This layout is a
+// simple pass-through.
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <IdleSignout />
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }
