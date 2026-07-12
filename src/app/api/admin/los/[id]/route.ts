@@ -24,7 +24,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   // Confirm the target LO is in the caller's tenant before mutating.
   const { data: target } = await admin
     .from("app_users")
-    .select("id, tenant_id")
+    .select("id, tenant_id, email")
     .eq("id", params.id)
     .maybeSingle();
   if (!target || target.tenant_id !== gate.tenantId) {
@@ -33,10 +33,28 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const patch: Record<string, unknown> = {};
   if (typeof body.fullName === "string") patch.full_name = body.fullName.trim();
-  if (typeof body.email === "string") patch.email = body.email.trim().toLowerCase();
+  const newEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : undefined;
+  if (newEmail !== undefined) patch.email = newEmail;
   if (body.nmls !== undefined) patch.nmls = (body.nmls ?? "")?.toString().trim() || null;
   if (typeof body.active === "boolean") patch.active = body.active;
   if (typeof body.isPrimary === "boolean") patch.is_primary = body.isPrimary;
+
+  // Keep the auth login email in sync with the record. Without this the record
+  // shows the new address but the sign-in link (a recovery link keyed on the
+  // auth email) targets the OLD address — Supabase returns "user not found" and
+  // no email is ever sent.
+  if (newEmail !== undefined && newEmail !== target.email) {
+    const { error: authErr } = await admin.auth.admin.updateUserById(params.id, {
+      email: newEmail,
+      email_confirm: true,
+    });
+    if (authErr) {
+      return NextResponse.json(
+        { error: `Could not update the login email: ${authErr.message}` },
+        { status: 500 },
+      );
+    }
+  }
 
   // Enforce one primary per tenant.
   if (body.isPrimary === true) {
