@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { DashHeader, BackToDashboard } from "../DashHeader";
+import { DashHeader, BackToDashboard, roleLabel } from "../DashHeader";
 import { LosManager } from "./LosManager";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export default async function LosPage() {
 
   const { data: appUser } = await supabase
     .from("app_users")
-    .select("tenant_id, role")
+    .select("tenant_id, role, full_name")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -26,7 +26,8 @@ export default async function LosPage() {
 
   return (
     <div>
-      <DashHeader title="Loan Officers" subtitle="Add & manage LOs under this broker">
+      <DashHeader title="Loan Officers" subtitle="Add & manage LOs under this broker"
+        user={{ name: appUser.full_name ?? user.email ?? "", role: roleLabel(appUser.role) }}>
         <BackToDashboard />
       </DashHeader>
 

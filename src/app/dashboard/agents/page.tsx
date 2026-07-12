@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { DashHeader, BackToDashboard } from "../DashHeader";
+import { DashHeader, BackToDashboard, roleLabel } from "../DashHeader";
 import { AgentsManager } from "./AgentsManager";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,8 @@ export default async function AgentsPage() {
 
   return (
     <div>
-      <DashHeader title="Agents" subtitle="Realtor partners & share links">
+      <DashHeader title="Agents" subtitle="Realtor partners & share links"
+        user={{ name: appUser.full_name ?? user.email ?? "", role: roleLabel(appUser.role) }}>
         <BackToDashboard />
       </DashHeader>
 

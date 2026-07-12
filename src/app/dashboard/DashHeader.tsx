@@ -6,10 +6,12 @@ import type { ReactNode } from "react";
 export function DashHeader({
   title,
   subtitle,
+  user,
   children,
 }: {
   title: string;
   subtitle?: string;
+  user?: { name: string; role: string };
   children?: ReactNode;
 }) {
   return (
@@ -22,9 +24,22 @@ export function DashHeader({
           {subtitle && <div className="eh-tag">{subtitle}</div>}
         </div>
       </div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{children}</div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        {user && (
+          <span style={{ color: "#dbe4f0", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+            marginRight: 4, opacity: 0.95 }}>
+            Signed in: {user.name} · {user.role}
+          </span>
+        )}
+        {children}
+      </div>
     </header>
   );
+}
+
+// "lo" -> "LO"; other roles title-cased (Admin, Staff).
+export function roleLabel(role: string): string {
+  return role === "lo" ? "LO" : role.charAt(0).toUpperCase() + role.slice(1);
 }
 
 // The single, consistent back-to-dashboard control used on every sub-page.
