@@ -7,7 +7,7 @@
 html,body{margin:0}
 body{font-family:var(--font);background:var(--bg);color:var(--text);padding-bottom:84px}
 
-.eh-header{background:var(--primary);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px}
+.eh-header{background:var(--primary);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;row-gap:10px}
 .eh-header img{height:42px;width:auto;max-width:230px;display:block}
 .eh-badge{height:36px;width:36px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex:0 0 auto;color:#fff}
 .navbtn{color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:8px 12px;font-weight:600;font-size:14px;text-decoration:none;background:transparent;cursor:pointer;display:inline-block;line-height:1.2;white-space:nowrap}
