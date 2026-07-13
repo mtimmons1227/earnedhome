@@ -110,7 +110,7 @@ export default async function DashboardPage() {
         {/* Row 1 — volume (counts), left→right down the funnel */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
           gap: 12, marginBottom: 12 }}>
-          <Metric label="Quotes run" value={String(quotesRun ?? 0)} />
+          {appUser.role === "admin" && <Metric label="Quotes run" value={String(quotesRun ?? 0)} />}
           <Metric label="Total leads" value={String(rows.length)} />
           <Metric label="New (unworked)" value={String(newLeads)} />
           <Metric label="Leads this week" value={String(leadsThisWeek)} />
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
         {/* Row 2 — conversion rates (%) */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
           gap: 12, marginBottom: 16 }}>
-          <Metric label="Quote → lead" value={`${conversion}%`} />
+          {appUser.role === "admin" && <Metric label="Quote → lead" value={`${conversion}%`} />}
           <Metric label="Lead → Closed" value={`${leadToClosed}%`} />
           <Metric label="Close rate (this month)" value={`${closedRateMonth}%`} />
         </div>
