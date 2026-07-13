@@ -249,7 +249,8 @@ export interface LoLoginInvite {
   to: string;            // the LO's email
   loName?: string | null;
   companyName?: string | null; // the broker, e.g. "R Parry Financial"
-  link: string;          // the set-password / recovery action link
+  link: string;          // the ONE-TIME set-password / recovery action link
+  loginLink: string;     // the PERMANENT sign-in page URL (to bookmark)
 }
 
 export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boolean; reason?: string }> {
@@ -260,18 +261,32 @@ export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boole
 
   const hi = d.loName ? `Hi ${escapeHtml(d.loName.split(" ")[0])},` : "Hi,";
   const safeLink = escapeHtml(d.link);
+  const safeLogin = escapeHtml(d.loginLink);
   const company = d.companyName ? escapeHtml(d.companyName) : "your team";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
     <h2 style="color:#1F3864;margin:0 0 8px;">Set up your EarnedHome sign-in</h2>
     <p>${hi}</p>
-    <p>You've been added as a loan officer on <strong>${company}</strong>'s EarnedHome dashboard.
-       Click below to set your password and sign in — you'll see your own leads, agents, and pipeline.</p>
-    <p style="margin:16px 0;">
+    <p>You've been added as a loan officer on <strong>${company}</strong>'s EarnedHome dashboard —
+       you'll see your own leads, agents, and pipeline. There are two links below; here's what each does.</p>
+
+    <h3 style="color:#1F3864;margin:20px 0 4px;font-size:15px;">1. First time only — set your password</h3>
+    <p style="margin:0 0 10px;">Click this button once to create your password. It's a <strong>single-use link that expires</strong>, so it's only for your very first sign-in.</p>
+    <p style="margin:6px 0;">
       <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Set password &amp; sign in</a>
     </p>
-    <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
-    <p style="font-size:12px;color:#6b7280;">For security this link expires — if it doesn't work, use “Forgot password?” on the sign-in page.</p>
+    <p style="font-size:12px;color:#6b7280;word-break:break-all;">${safeLink}</p>
+
+    <h3 style="color:#1F3864;margin:22px 0 4px;font-size:15px;">2. Every time after — your sign-in page</h3>
+    <p style="margin:0 0 6px;">Once your password is set, always sign in here using your email and password:</p>
+    <p style="margin:6px 0;">
+      <a href="${safeLogin}" style="color:#1F3864;font-weight:600;">${safeLogin}</a>
+    </p>
+    <p style="font-size:13px;color:#374151;background:#EAF1F8;border-radius:6px;padding:10px 12px;">
+      <strong>Please save this sign-in link to your bookmarks / favorites now.</strong>
+      From your first sign-in onward, this is the page you'll use. Don't reuse the "Set password" button above — it's one-time only and will stop working.</p>
+
+    <p style="font-size:12px;color:#6b7280;margin-top:14px;">Forgot your password later? Use “Forgot password?” on the sign-in page and we'll email you a reset link.</p>
   </div>`;
 
   try {
