@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { siteOrigin } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,10 @@ export const dynamic = "force-dynamic";
 // POST — not on a GET/prefetch of the confirm page — it survives email-security
 // link scanners. Mirrors the verifyOtp path in /auth/callback.
 export async function POST(req: NextRequest) {
-  const { origin } = new URL(req.url);
+  // Canonical host (per env), NOT req.url — on Netlify req.url resolves to the
+  // per-deploy permalink, which would redirect the user off the clean domain and
+  // drop the just-set session cookie ("couldn't verify your reset link").
+  const origin = siteOrigin(new URL(req.url).origin);
   const form = await req.formData();
   const tokenHash = String(form.get("token_hash") ?? "");
   const type = (String(form.get("type") ?? "recovery") as EmailOtpType);
