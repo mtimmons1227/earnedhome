@@ -210,6 +210,11 @@ export function LosManager() {
                         <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} type="tel" style={input} />
                       </label>
                     </div>
+                    <p style={{ fontSize: 12, color: "#8a5a00", background: "#FFF8E1",
+                      border: "1px solid #FCE8A6", borderRadius: 6, padding: "6px 10px", margin: "8px 0 0" }}>
+                      Heads up: changing the email also changes this loan officer’s <strong>sign‑in (login) email</strong>.
+                      They’ll use the new address to log in and to reset their password. Their leads and history are unaffected.
+                    </p>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button style={smallBtn} onClick={() => saveEdit(lo.id)} disabled={savingEdit}>
                         {savingEdit ? "Saving…" : "Save"}
