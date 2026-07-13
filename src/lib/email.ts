@@ -302,6 +302,92 @@ export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boole
   }
 }
 
+// "Reset your EarnedHome password" — emailed when someone uses "Forgot password?".
+// Uses the same own-domain /auth/confirm flow as the LO invite (beats Safe Links,
+// sends from the verified domain, respects the Supabase redirect allow-list).
+export interface PasswordResetEmail {
+  to: string;
+  loName?: string | null;
+  companyName?: string | null;
+  link: string;              // /auth/confirm?token_hash=...&type=recovery&next=/reset-password
+}
+
+export async function sendPasswordResetEmail(d: PasswordResetEmail): Promise<{ sent: boolean; reason?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!key || !from) return { sent: false, reason: "email not configured (RESEND_API_KEY / RESEND_FROM)" };
+  if (!d.to) return { sent: false, reason: "no email" };
+
+  const hi = d.loName ? `Hi ${escapeHtml(d.loName.split(" ")[0])},` : "Hi,";
+  const safeLink = escapeHtml(d.link);
+  const company = d.companyName ? escapeHtml(d.companyName) : "EarnedHome";
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
+    <h2 style="color:#1F3864;margin:0 0 8px;">Reset your EarnedHome password</h2>
+    <p>${hi}</p>
+    <p>We received a request to reset the password for your <strong>${company}</strong> EarnedHome sign-in.
+       Click below to choose a new password.</p>
+    <p style="margin:16px 0;">
+      <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Reset password</a>
+    </p>
+    <p style="font-size:12px;color:#6b7280;word-break:break-all;">${safeLink}</p>
+    <p style="font-size:12px;color:#6b7280;">This link is single-use and expires shortly. If you didn't request this,
+       you can safely ignore this email — your password won't change.</p>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from, to: d.to, subject: "Reset your EarnedHome password", html }),
+    });
+    if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, reason: (e as Error).message };
+  }
+}
+
+// "Your EarnedHome password was changed" — a security notice sent right after a
+// successful password reset. Acts as a tripwire: if it wasn't the owner, they
+// find out and can act. Best-effort (a send failure never blocks the reset).
+export interface PasswordChangedEmail {
+  to: string;
+  loName?: string | null;
+  companyName?: string | null;
+}
+
+export async function sendPasswordChangedEmail(d: PasswordChangedEmail): Promise<{ sent: boolean; reason?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!key || !from) return { sent: false, reason: "email not configured (RESEND_API_KEY / RESEND_FROM)" };
+  if (!d.to) return { sent: false, reason: "no email" };
+
+  const hi = d.loName ? `Hi ${escapeHtml(d.loName.split(" ")[0])},` : "Hi,";
+  const company = d.companyName ? escapeHtml(d.companyName) : "EarnedHome";
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
+    <h2 style="color:#1F3864;margin:0 0 8px;">Your EarnedHome password was changed</h2>
+    <p>${hi}</p>
+    <p>The password for your <strong>${company}</strong> EarnedHome sign-in was just changed. If this was you, no action is needed.</p>
+    <p style="background:#FFF8E1;border:1px solid #FCE8A6;border-radius:6px;padding:10px 12px;font-size:14px;">
+      <strong>If this wasn't you</strong>, contact your broker administrator right away, then use
+      <strong>Forgot password?</strong> on the sign-in page to reset it and lock the account back down.</p>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from, to: d.to, subject: "Your EarnedHome password was changed", html }),
+    });
+    if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, reason: (e as Error).message };
+  }
+}
+
 // "Share your loan progress with your agent?" — emailed to the buyer so they can
 // grant or decline (and later change) letting their referring agent see their loan
 // status. Buyer-initiated, always editable. Same safe-by-design no-op if unset.

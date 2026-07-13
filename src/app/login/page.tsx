@@ -56,15 +56,19 @@ export default function LoginPage() {
     setError(null);
     setInfo(null);
     setBusy(true);
-    const supabase = createSupabaseBrowser();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
-    });
-    setBusy(false);
-    if (error) {
-      setError(error.message);
-      return;
+    // Branded reset flow: our API generates a recovery link and emails it via
+    // Resend (own-domain /auth/confirm page). Always show the same generic
+    // message regardless of outcome, so we never reveal if an account exists.
+    try {
+      await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch {
+      /* ignore — generic message below */
     }
+    setBusy(false);
     setInfo(
       "If that email has an account, a password reset link is on its way. Check your inbox (and spam).",
     );
@@ -94,10 +98,8 @@ export default function LoginPage() {
                 {busy ? "Signing in…" : "Sign in"}
               </button>
             </form>
-            {process.env.NEXT_PUBLIC_ENABLE_PASSWORD_RESET === "true" && (
-              <button type="button" onClick={() => { setMode("reset"); setError(null); setInfo(null); }}
-                style={linkBtn}>Forgot password?</button>
-            )}
+            <button type="button" onClick={() => { setMode("reset"); setError(null); setInfo(null); }}
+              style={linkBtn}>Forgot password?</button>
           </>
         ) : (
           <>
