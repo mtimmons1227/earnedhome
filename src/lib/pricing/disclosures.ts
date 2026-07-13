@@ -22,4 +22,4 @@ export const RPARRY_DISCLOSURES: string[] = [
   "This potential mortgage loan rate/product/parameters quote is not a credit decision or a commitment to lend. All loan applications are subject to credit and property approval and normal underwriting qualifications. Rates and product availability may vary based on the state or region in which the property is located, your debt ratio, credit history, income and asset structure, property condition, your number of other financed properties, and other factors. Additional rates and programs are available. Consult your tax advisor regarding the deductibility of interest. Some restrictions may apply.",
   "Any nontraditional mortgage products or reduced-documentation mortgage loans (for example, limited-documentation, reduced-documentation, or no-documentation loans) may have higher interest rates, more points, or more fees than products requiring full documentation.",
   "R Parry Financial LLC — licensed Mortgage Loan Originator, NMLS ID #1924318. Richard Parry McHargue — NMLS ID #927662. Equal Housing Lender. Loan programs are subject to change without notice; all loans are subject to credit approval.",
-];
+]
