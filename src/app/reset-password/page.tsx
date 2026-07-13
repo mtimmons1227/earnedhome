@@ -62,6 +62,14 @@ export default function ResetPasswordPage() {
     // Forgot-password flow: update the password, then end the temporary recovery
     // session and send them back to sign in with the NEW password (don't auto-login).
     setDone(true);
+    // Security notice: email the owner that their password changed (tripwire).
+    // Do this BEFORE signing out, so the server route still sees the session.
+    // Best-effort — never block the reset on it.
+    try {
+      await fetch("/api/auth/password-changed", { method: "POST" });
+    } catch {
+      /* best-effort */
+    }
     await supabase.auth.signOut();
     setTimeout(() => {
       router.push("/login?reset=success");
