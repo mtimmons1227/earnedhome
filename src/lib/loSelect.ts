@@ -48,8 +48,7 @@ export function pickLO(rows: LORow[]): ResolvedLO | null {
 // only ever sees "Connected" — never loan progression (borrower NPI stays with
 // the LO). WITH consent, the internal lead status maps to a friendly milestone.
 export type AgentStage = "Connected" | "In process" | "Closed" | "Inactive";
-export function agentStage(status: string, consent: boolean): AgentStage {
-  if (!consent) return "Connected";
+export function agentStage(status: string): AgentStage {
   switch (status) {
     case "contacted":
     case "working":
