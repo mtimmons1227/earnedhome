@@ -48,11 +48,15 @@ export async function PATCH(
     patch.lo_id = body.loId;
   }
 
-  const { data, error } = await admin
+  // Loan officers can only modify agents they own; admins can modify any agent
+  // in the tenant. (Service role bypasses RLS, so enforce ownership here.)
+  let upd = admin
     .from("agents")
     .update(patch)
     .eq("id", params.id)
-    .eq("tenant_id", gate.tenantId)
+    .eq("tenant_id", gate.tenantId);
+  if (gate.role !== "admin") upd = upd.eq("lo_id", gate.userId);
+  const { data, error } = await upd
     .select("id, name, email, phone, slug, active, lo_id")
     .maybeSingle();
 

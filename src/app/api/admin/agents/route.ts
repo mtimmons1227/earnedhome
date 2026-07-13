@@ -11,11 +11,15 @@ export async function GET() {
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
 
   const admin = createSupabaseAdmin();
-  const { data, error } = await admin
+  // Admins see all of the tenant's agents; a loan officer sees only the agents
+  // they own. (This route uses the service role, which bypasses RLS, so the
+  // per-LO scope must be applied here in code.)
+  let q = admin
     .from("agents")
     .select("id, name, email, phone, slug, active, status_token, invite_sent_at, created_at, lo_id, lo:app_users!lo_id ( full_name )")
-    .eq("tenant_id", gate.tenantId)
-    .order("created_at", { ascending: false });
+    .eq("tenant_id", gate.tenantId);
+  if (gate.role !== "admin") q = q.eq("lo_id", gate.userId);
+  const { data, error } = await q.order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   // Flatten the owning-LO name so the UI can show/reassign it.
