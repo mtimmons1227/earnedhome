@@ -32,6 +32,7 @@ function formatPhoneUS(p: string | null | undefined): string {
 interface Props {
   tenantId: string;
   loName: string;
+  loNmls?: string | null;
   nmls: string | null;
   applyUrl?: string | null;
   loPhone?: string | null;
@@ -40,7 +41,7 @@ interface Props {
   agentName?: string | null;
 }
 
-export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, bookingUrl, agentId, agentName }: Props) {
+export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPhone, bookingUrl, agentId, agentName }: Props) {
   // form state (display strings for currency fields)
   const [homePrice, setHomePrice] = useState("0");
   const [downAmt, setDownAmt] = useState("0");
@@ -75,6 +76,7 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
   const [leadEmail, setLeadEmail] = useState("");
   const [leadPhone, setLeadPhone] = useState("");
   const [tcpa, setTcpa] = useState(false);
+  const [agentShareConsent, setAgentShareConsent] = useState(false);
   const [leadMsg, setLeadMsg] = useState<string | null>(null);
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadDone, setLeadDone] = useState(false);
@@ -200,6 +202,7 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
           loPhone: loPhone ?? null,
           bookingUrl: bookingUrl ?? null,
           agentId: agentId ?? null,
+          agentStatusConsent: agentId ? agentShareConsent : false,
           action,
           quoteId,
           idempotencyKey: requestKey,
@@ -293,6 +296,7 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
     setLeadEmail("");
     setLeadPhone("");
     setTcpa(false);
+    setAgentShareConsent(false);
     setTerm(30);
   }
 
@@ -466,7 +470,7 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
                 ))}</div>
               )}
               {agentName && <div className="route">Your agent: {agentName}</div>}
-              <div className="route">Your loan officer: {loName}</div>
+              <div className="route">Your loan officer: {loName}{loNmls ? ` · NMLS ${loNmls}` : ""}</div>
               {!leadDone ? (
                 <button className="leadbtn" onClick={() => setShowLeadModal(true)}
                   style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -587,6 +591,8 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
               I agree to be contacted by phone, text, or email about my inquiry. Consent is not a condition of purchase.
             </label>
             )}
+            {/* Agent status-sharing consent is now buyer-initiated after connecting,
+                via a private consent link emailed to the buyer — not a checkbox here. */}
             {!editingContact && (<>
             {applyUrl && (
               <button className="leadbtn" onClick={() => submitLead("apply")} disabled={leadSubmitting}

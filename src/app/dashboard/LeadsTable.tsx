@@ -12,6 +12,7 @@ export interface LeadRow {
   phone: string | null;
   status: LeadStatus;
   consent_tcpa: boolean;
+  agent_status_consent: boolean;
   consent_text: string | null;
   consent_at: string | null;
   source: string | null;
@@ -20,6 +21,7 @@ export interface LeadRow {
   closed_at: string | null;
   agent_name: string | null;
   agent_active: boolean | null;
+  assigned_lo_name: string | null;
   quote: { inputs: Record<string, unknown> | null; outputs: PricingQuote | null; rates_as_of: string | null } | null;
 }
 
@@ -33,7 +35,7 @@ const STATUS_LABELS: Record<LeadStatus, string> = {
 export interface LeadNote { authorName: string; body: string; created_at: string; }
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 
-export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadRow[]; initialNotes: Record<string, LeadNote[]> }) {
+export function LeadsTable({ initialLeads, initialNotes, isAdmin = false }: { initialLeads: LeadRow[]; initialNotes: Record<string, LeadNote[]>; isAdmin?: boolean }) {
   const [leads, setLeads] = useState<LeadRow[]>(initialLeads);
   const [notesByLead, setNotesByLead] = useState<Record<string, LeadNote[]>>(initialNotes);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -41,7 +43,11 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [noteMsg, setNoteMsg] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<FilterValue>("active");
+  const [loFilter, setLoFilter] = useState<string>("all");
   const router = useRouter();
+
+  // The broker's roll-up filter: distinct LOs across the leads (admin view only).
+  const loNames = Array.from(new Set(leads.map((l) => l.assigned_lo_name).filter(Boolean))) as string[];
 
   async function patch(id: string, body: Record<string, unknown>): Promise<boolean> {
     setSavingId(id);
@@ -99,12 +105,17 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
 
   const th = { padding: "8px 10px" } as const;
 
-  const visible =
+  const byStatus =
     filter === "all"
       ? leads
       : filter === "active"
         ? leads.filter((l) => ACTIVE_STATUSES.includes(l.status))
         : leads.filter((l) => l.status === filter);
+  const visible =
+    isAdmin && loFilter !== "all"
+      ? byStatus.filter((l) => (l.assigned_lo_name ?? "—") === loFilter)
+      : byStatus;
+  const colCount = isAdmin ? 9 : 8;
 
   return (
     <div className="panel" style={{ overflowX: "auto" }}>
@@ -113,30 +124,44 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
         <div style={{ fontSize: 13, color: "var(--muted)" }}>
           Showing {visible.length} of {leads.length}
         </div>
-        <label style={{ fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
-          View:
-          <select value={filter} onChange={(e) => setFilter(e.target.value as FilterValue)}
-            style={{ padding: "6px 8px", fontSize: 13 }}>
-            <option value="active">Active</option>
-            <option value="all">All</option>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-            ))}
-          </select>
-        </label>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          {isAdmin && loNames.length > 0 && (
+            <label style={{ fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+              LO:
+              <select value={loFilter} onChange={(e) => setLoFilter(e.target.value)}
+                style={{ padding: "6px 8px", fontSize: 13 }}>
+                <option value="all">All LOs</option>
+                {loNames.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label style={{ fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+            View:
+            <select value={filter} onChange={(e) => setFilter(e.target.value as FilterValue)}
+              style={{ padding: "6px 8px", fontSize: 13 }}>
+              <option value="active">Active</option>
+              <option value="all">All</option>
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
         <thead>
           <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
             <th style={{ ...th, width: 24 }}></th>
-            <th style={th}>Date</th><th style={th}>Name</th><th style={th}>Agent</th><th style={th}>Email</th>
+            <th style={th}>Date</th><th style={th}>Name</th><th style={th}>Agent</th>{isAdmin && <th style={th}>LO</th>}<th style={th}>Email</th>
             <th style={th}>Phone</th><th style={th}>Consent</th><th style={th}>Status</th>
           </tr>
         </thead>
         <tbody>
           {visible.length === 0 && (
             <tr>
-              <td colSpan={8} style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+              <td colSpan={colCount} style={{ padding: 16, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
                 No leads in this view.{" "}
                 <button onClick={() => setFilter("all")}
                   style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: 600,
@@ -160,11 +185,29 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
                   <td style={{ ...th, color: l.agent_name ? undefined : "var(--muted)" }}>
                     {l.agent_name ?? "—"}
                     {l.agent_name && l.agent_active === false && (
-                      <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: "#b91c1c",
-                        border: "1px solid #fca5a5", background: "#fef2f2", borderRadius: 5, padding: "1px 5px",
-                        whiteSpace: "nowrap" }}>DISABLED</span>
+                      <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: "var(--muted)",
+                        border: "1px solid var(--line)", background: "#f3f4f6", borderRadius: 5, padding: "1px 5px",
+                        whiteSpace: "nowrap" }}>Off</span>
+                    )}
+                    {l.agent_name && (
+                      <span
+                        title={l.agent_status_consent
+                          ? "Buyer authorized this agent to see loan-status updates"
+                          : "Buyer did NOT authorize status sharing — the agent only sees “Connected”"}
+                        style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap",
+                          borderRadius: 5, padding: "1px 5px",
+                          color: l.agent_status_consent ? "#15803d" : "#6b7280",
+                          border: `1px solid ${l.agent_status_consent ? "#86efac" : "#d1d5db"}`,
+                          background: l.agent_status_consent ? "#f0fdf4" : "#f3f4f6" }}>
+                        Updates: {l.agent_status_consent ? "Yes" : "No"}
+                      </span>
                     )}
                   </td>
+                  {isAdmin && (
+                    <td style={{ ...th, color: l.assigned_lo_name ? undefined : "var(--muted)" }}>
+                      {l.assigned_lo_name ?? "—"}
+                    </td>
+                  )}
                   <td style={th}>{l.email ?? "—"}</td>
                   <td style={{ ...th, whiteSpace: "nowrap" }}>{l.phone ?? "—"}</td>
                   <td style={th}>{l.consent_tcpa ? "✓" : "—"}</td>
@@ -178,14 +221,19 @@ export function LeadsTable({ initialLeads, initialNotes }: { initialLeads: LeadR
                 </tr>
                 {isOpen && (
                   <tr>
-                    <td colSpan={8} style={{ padding: 0 }}>
+                    <td colSpan={colCount} style={{ padding: 0 }}>
                       <div style={{ background: "#f7f9fc", border: "1px solid var(--line)", borderRadius: 10, margin: "0 10px 12px", padding: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                         <div>
                           <div style={{ fontWeight: 700, color: "var(--primary)", marginBottom: 6 }}>Buyer & consent</div>
                           <Field k="Name" v={l.full_name} /><Field k="Email" v={l.email} /><Field k="Phone" v={l.phone} />
                           <Field k="Source" v={l.source} />
                           <Field k="Agent" v={l.agent_name ? `${l.agent_name}${l.agent_active === false ? " (disabled)" : ""}` : null} />
-                          <Field k="Consent" v={l.consent_tcpa ? "Yes" : "No"} />
+                          <Field k="Consent (TCPA)" v={l.consent_tcpa ? "Yes" : "No"} />
+                          {l.agent_name && (
+                            <Field k="Agent updates" v={l.agent_status_consent
+                              ? "Yes — buyer authorized status sharing"
+                              : "No — agent sees only “Connected”"} />
+                          )}
                           {l.consent_at && <Field k="Consent at" v={new Date(l.consent_at).toLocaleString()} />}
                           {l.consent_text && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6, fontStyle: "italic" }}>&ldquo;{l.consent_text}&rdquo;</div>}
                         </div>

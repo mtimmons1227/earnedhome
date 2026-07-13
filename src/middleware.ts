@@ -6,6 +6,14 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   res.headers.set("x-tenant-slug", slugFromHost(req.headers.get("host")));
 
+  // The public agent status portal must always reflect the current lead status.
+  // Without this, browsers serve a cached copy (and restore it from the
+  // back/forward cache on reopen/reload), so the agent sees a stale page until a
+  // hard refresh. `no-store` disables both the disk cache and bfcache for it.
+  if (req.nextUrl.pathname.startsWith("/agent/") || req.nextUrl.pathname.startsWith("/consent/")) {
+    res.headers.set("Cache-Control", "no-store, max-age=0, must-revalidate");
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,

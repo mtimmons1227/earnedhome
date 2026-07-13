@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { DashHeader, BackToDashboard, roleLabel } from "../DashHeader";
 import { AgentsManager } from "./AgentsManager";
 
 export const dynamic = "force-dynamic";
@@ -22,22 +23,12 @@ export default async function AgentsPage() {
     redirect("/dashboard");
   }
 
-  const { data: tenant } = await supabase
-    .from("tenants").select("name").eq("id", appUser.tenant_id).maybeSingle();
-
   return (
     <div>
-      <header className="eh-header" style={{ justifyContent: "space-between" }}>
-        <div>
-          <div className="eh-brand">{tenant?.name ?? "EarnedHome"} — Agents</div>
-          <div className="eh-tag">Realtor partners &amp; share links</div>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <a href="/dashboard" style={{ color: "#fff",
-            border: "1px solid rgba(255,255,255,.5)", borderRadius: 8, padding: "8px 12px",
-            fontWeight: 600, textDecoration: "none" }}>← Leads</a>
-        </div>
-      </header>
+      <DashHeader title="Agents" subtitle="Realtor partners & share links"
+        user={{ name: appUser.full_name ?? user.email ?? "", role: roleLabel(appUser.role) }}>
+        <BackToDashboard />
+      </DashHeader>
 
       <main>
         <AgentsManager />

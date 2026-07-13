@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { sendBuyerEstimateEmail, sendLoLeadAlert, sendAgentLeadAlert, type EstimateEmailProduct } from "@/lib/email";
+import { sendBuyerEstimateEmail, sendLoLeadAlert, sendAgentLeadAlert, sendBuyerConsentRequest, type EstimateEmailProduct } from "@/lib/email";
 import { emitLeadCreated } from "@/lib/leadEvent";
+import { getResolvedLOForLead } from "@/lib/loanOfficer";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 interface QuoteSummary {
   ratesAsOf: string;
@@ -23,6 +25,7 @@ export async function POST(req: Request) {
     fullName?: string; email?: string;
     phone?: string; consentTcpa?: boolean; consentText?: string;
     quoteId?: string | null; idempotencyKey?: string | null; agentId?: string | null;
+    agentStatusConsent?: boolean; // buyer authorizes sharing loan status with their agent
     quoteSummary?: QuoteSummary | null;
     action?: string | null; // "apply" | "call" | "book" | "reach-out"
   };
@@ -34,7 +37,7 @@ export async function POST(req: Request) {
 
   const {
     tenantId, loName, loPhone, bookingUrl, fullName, email, phone, consentTcpa, consentText,
-    quoteId, idempotencyKey, quoteSummary, action, agentId,
+    quoteId, idempotencyKey, quoteSummary, action, agentId, agentStatusConsent,
   } = body;
   if (!tenantId) {
     return NextResponse.json({ error: "Missing tenantId" }, { status: 400 });
@@ -44,15 +47,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "TCPA consent required" }, { status: 422 });
   }
 
+  // Resolve which loan officer this lead belongs to (Phase II). If the buyer came
+  // through an agent link, the lead is routed to that agent's LO; otherwise to the
+  // tenant's default (primary) LO. Stored as assigned_lo_id (routed_to unchanged).
+  const resolvedLO = await getResolvedLOForLead(tenantId, agentId);
+
   // Generate the id server-side and insert directly (no read-back: the anon
   // buyer role has INSERT but no SELECT on leads by design).
   const leadId = randomUUID();
+  const consentToken = randomUUID();
   const supabase = createSupabaseServer();
   const { error } = await supabase.from("leads").insert({
     id: leadId,
     tenant_id: tenantId,
     quote_id: quoteId ?? null,
     agent_id: agentId ?? null,
+    assigned_lo_id: resolvedLO?.id ?? null,
+    consent_token: consentToken,
+    // Status-sharing consent now starts OFF and is granted by the buyer via their
+    // own consent link (sent below) — not a signup checkbox.
+    agent_status_consent: false,
     idempotency_key: idempotencyKey ?? null,
     full_name: fullName ?? null,
     email: email ?? null,
@@ -131,10 +145,14 @@ export async function POST(req: Request) {
     (async () => {
       try {
         // Attribution: the realtor agent who ran the estimate, if any.
+        // Use the service-role client: the `agents` table's read policy is
+        // authenticated-only, and this runs as the anonymous buyer — so the anon
+        // client would return null and the agent copy would silently never send.
         let agentName: string | null = null;
         let agentEmail: string | null = null;
         if (agentId) {
-          const aRes = await supabase.from("agents").select("name, email").eq("id", agentId).maybeSingle();
+          const admin = createSupabaseAdmin();
+          const aRes = await admin.from("agents").select("name, email").eq("id", agentId).maybeSingle();
           agentName = aRes.data?.name ?? null;
           agentEmail = aRes.data?.email ?? null;
         }
@@ -142,12 +160,17 @@ export async function POST(req: Request) {
         const tRes = await (supabase.from("tenants") as unknown as {
           select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { notify_email?: string | null; lo_name?: string | null } | null }> } };
         }).select("notify_email, lo_name").eq("id", tenantId).maybeSingle();
-        const loDisplay = tRes.data?.lo_name ?? loName ?? "your loan officer";
-        // Per-environment override: the DB notify_email is shared across all
-        // Netlify contexts (one Supabase project). Setting LEAD_NOTIFY_OVERRIDE
-        // on the QA / local contexts routes test alerts to a test inbox while
-        // Production (no override) uses the real DB value (the LO).
-        const notify = process.env.LEAD_NOTIFY_OVERRIDE || tRes.data?.notify_email || null;
+        const loDisplay = resolvedLO?.full_name ?? tRes.data?.lo_name ?? loName ?? "your loan officer";
+        // Phase II — route the alert to the ASSIGNED loan officer's own inbox.
+        // The lead belongs to a specific LO (the agent's LO for an agent lead,
+        // otherwise the tenant's primary LO), so that LO — not the broker-level
+        // notify_email — should get the alert. Fall back to the tenant notify_email
+        // only when the resolved LO has no email on file.
+        //   LEAD_NOTIFY_OVERRIDE — a per-environment TEST hook: when set (QA/local)
+        //   ALL alerts go to one test inbox; unset in Production so each real LO
+        //   gets their own alerts.
+        const notify =
+          process.env.LEAD_NOTIFY_OVERRIDE || resolvedLO?.email || tRes.data?.notify_email || null;
 
         // The loan officer's alert (names the agent it came through).
         if (notify) {
@@ -194,6 +217,34 @@ export async function POST(req: Request) {
       }
     })(),
   );
+
+  // Buyer consent request — invite the buyer to (optionally) let their referring
+  // agent see their loan status, via their own private consent link. Only for
+  // agent-referred leads with a buyer email. Buyer-initiated + always editable.
+  if (agentId && email) {
+    sideEffects.push(
+      (async () => {
+        try {
+          const admin = createSupabaseAdmin();
+          const aRes = await admin.from("agents").select("name").eq("id", agentId).maybeSingle();
+          const tRes = await (supabase.from("tenants") as unknown as {
+            select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { lo_name?: string | null } | null }> } };
+          }).select("lo_name").eq("id", tenantId).maybeSingle();
+          const origin = new URL(req.url).origin;
+          const r = await sendBuyerConsentRequest({
+            to: email,
+            buyerName: fullName ?? null,
+            agentName: aRes.data?.name ?? null,
+            companyName: tRes.data?.lo_name ?? null,
+            link: `${origin}/consent/${consentToken}`,
+          });
+          if (!r.sent) console.log("[lead] consent request not sent:", r.reason);
+        } catch (e) {
+          console.log("[lead] consent request error:", (e as Error).message);
+        }
+      })(),
+    );
+  }
 
   // Lead-event webhook (vendor-neutral seam) → downstream flow (Power Automate /
   // own backend) → partner CRM. No-ops if LEAD_EVENT_WEBHOOK_URL is unset; skips

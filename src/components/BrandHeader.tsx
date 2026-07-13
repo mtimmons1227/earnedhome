@@ -11,7 +11,8 @@ export function BrandHeader({ tenant }: { tenant: Tenant }) {
         <div className="eh-badge">{b.initials}</div>
       )}
       <div>
-        <div className="eh-brand">{tenant.name}</div>
+        {/* The logo already contains the wordmark, so skip the duplicate name when a logo is set. */}
+        {!b.logo_url && <div className="eh-brand">{tenant.name}</div>}
         <div className="eh-tag">{b.tag}</div>
       </div>
     </header>

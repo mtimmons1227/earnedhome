@@ -187,7 +187,8 @@ export interface AgentLinkInvite {
   to: string;            // agent.email
   agentName?: string | null;
   loName: string;        // the lender, e.g. "R Parry Financial"
-  link: string;          // the agent's /a/<slug> URL
+  link: string;          // the agent's /a/<slug> share URL
+  statusLink?: string | null; // the agent's private /agent/<token> status portal URL
 }
 
 export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: boolean; reason?: string }> {
@@ -198,19 +199,35 @@ export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: b
 
   const hi = d.agentName ? `Hi ${escapeHtml(d.agentName.split(" ")[0])},` : "Hi,";
   const safeLink = escapeHtml(d.link);
+  const safeStatus = d.statusLink ? escapeHtml(d.statusLink) : null;
+  const statusBlock = safeStatus
+    ? `
+    <div style="margin:22px 0 6px;border-top:1px solid #eee;padding-top:18px;">
+      <h3 style="color:#1F3864;margin:0 0 6px;font-size:16px;">2) Track your buyers</h3>
+      <p style="margin:0 0 12px;">This private link shows the status of the buyers you referred
+         (connected, in process, closed). <strong>Bookmark it — and keep it private</strong>
+         (don't forward it; it shows your buyers' status).</p>
+      <p style="margin:0 0 8px;">
+        <a href="${safeStatus}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">See my buyers' status</a>
+      </p>
+      <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeStatus}</p>
+    </div>`
+    : "";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
-    <h2 style="color:#1F3864;margin:0 0 8px;">Here's your EarnedHome link</h2>
+    <h2 style="color:#1F3864;margin:0 0 8px;">Your EarnedHome links</h2>
     <p>${hi}</p>
-    <p>This is your personal EarnedHome link. Keep it handy on your phone or tablet when you're
-       out showing homes — you and your buyer can run real monthly-payment numbers together, right
-       there at the property, so they can picture the true cost before they fall for a home.</p>
-    <p>Every buyer who runs the numbers from your link is automatically tied to you, and you'll get
-       a copy of the lead — while <strong>${escapeHtml(d.loName)}</strong> handles the financing.</p>
-    <p style="margin:16px 0;">
-      <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Open your link</a>
+    <p><strong>Bookmark both links below</strong> — they're how you'll use EarnedHome (no login needed).</p>
+    <h3 style="color:#1F3864;margin:18px 0 6px;font-size:16px;">1) Run buyers' numbers</h3>
+    <p style="margin:0 0 12px;">Keep this link handy on your phone or tablet when you're out showing homes —
+       you and your buyer can run real monthly-payment numbers together at the property. Every buyer who
+       runs the numbers from it is automatically tied to you, and you'll get a copy of the lead —
+       while <strong>${escapeHtml(d.loName)}</strong> handles the financing. Share this one with your buyers.</p>
+    <p style="margin:0 0 8px;">
+      <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Open my estimate link</a>
     </p>
     <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
+    ${statusBlock}
   </div>`;
 
   try {
@@ -218,6 +235,101 @@ export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: b
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
       body: JSON.stringify({ from, to: d.to, subject: "Your EarnedHome estimate link", html }),
+    });
+    if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, reason: (e as Error).message };
+  }
+}
+
+// "Set up your EarnedHome sign-in" — emailed to a loan officer so they can set
+// their password and access their dashboard. Same safe-by-design no-op if unset.
+export interface LoLoginInvite {
+  to: string;            // the LO's email
+  loName?: string | null;
+  companyName?: string | null; // the broker, e.g. "R Parry Financial"
+  link: string;          // the set-password / recovery action link
+}
+
+export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boolean; reason?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!key || !from) return { sent: false, reason: "email not configured (RESEND_API_KEY / RESEND_FROM)" };
+  if (!d.to) return { sent: false, reason: "no LO email" };
+
+  const hi = d.loName ? `Hi ${escapeHtml(d.loName.split(" ")[0])},` : "Hi,";
+  const safeLink = escapeHtml(d.link);
+  const company = d.companyName ? escapeHtml(d.companyName) : "your team";
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
+    <h2 style="color:#1F3864;margin:0 0 8px;">Set up your EarnedHome sign-in</h2>
+    <p>${hi}</p>
+    <p>You've been added as a loan officer on <strong>${company}</strong>'s EarnedHome dashboard.
+       Click below to set your password and sign in — you'll see your own leads, agents, and pipeline.</p>
+    <p style="margin:16px 0;">
+      <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Set password &amp; sign in</a>
+    </p>
+    <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
+    <p style="font-size:12px;color:#6b7280;">For security this link expires — if it doesn't work, use “Forgot password?” on the sign-in page.</p>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from, to: d.to, subject: "Set up your EarnedHome sign-in", html }),
+    });
+    if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, reason: (e as Error).message };
+  }
+}
+
+// "Share your loan progress with your agent?" — emailed to the buyer so they can
+// grant or decline (and later change) letting their referring agent see their loan
+// status. Buyer-initiated, always editable. Same safe-by-design no-op if unset.
+export interface BuyerConsentRequest {
+  to: string;            // the buyer's email
+  buyerName?: string | null;
+  agentName?: string | null;   // the referring agent
+  companyName?: string | null; // the lender / company
+  link: string;          // the buyer's private /consent/<token> page
+}
+
+export async function sendBuyerConsentRequest(d: BuyerConsentRequest): Promise<{ sent: boolean; reason?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!key || !from) return { sent: false, reason: "email not configured (RESEND_API_KEY / RESEND_FROM)" };
+  if (!d.to) return { sent: false, reason: "no buyer email" };
+
+  const hi = d.buyerName ? `Hi ${escapeHtml(d.buyerName.split(" ")[0])},` : "Hi,";
+  const agent = d.agentName ? escapeHtml(d.agentName) : "your agent";
+  const company = d.companyName ? escapeHtml(d.companyName) : "your loan officer";
+  const safeLink = escapeHtml(d.link);
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
+    <h2 style="color:#1F3864;margin:0 0 8px;">Share your loan progress with ${agent}?</h2>
+    <p>${hi}</p>
+    <p><strong>${agent}</strong> referred you to <strong>${company}</strong>. If you'd like, you can let
+       ${agent} see your <strong>loan progress</strong> — simple stages like <em>In process</em> and
+       <em>Closed</em>. They will <strong>never</strong> see your finances, credit, income, or loan
+       details — those stay between you and ${company}.</p>
+    <p>It's completely optional, and you can turn it on or off anytime.</p>
+    <p style="margin:16px 0;">
+      <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Choose your sharing setting</a>
+    </p>
+    <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
+    <p style="font-size:12px;color:#6b7280;">Bookmark this link — it's your personal setting and you can
+       come back to change it whenever you want.</p>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from, to: d.to, subject: `Share your loan progress with ${d.agentName ?? "your agent"}?`, html }),
     });
     if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
     return { sent: true };

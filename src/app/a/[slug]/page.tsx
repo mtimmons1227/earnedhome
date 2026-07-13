@@ -1,6 +1,8 @@
 import { headers } from "next/headers";
 import { getTenantForHost, slugFromHost } from "@/lib/tenant";
-import { getAgentBySlug } from "@/lib/agents";
+import { getAgentBySlug, isAgentOwnerActive } from "@/lib/agents";
+import { getResolvedLOForLead } from "@/lib/loanOfficer";
+import { displayIdentity } from "@/lib/loSelect";
 import { BrandHeader } from "@/components/BrandHeader";
 import { PathfinderTool } from "@/components/PathfinderTool";
 
@@ -30,6 +32,8 @@ export default async function AgentPage({ params }: { params: { slug: string } }
   }
 
   const agent = await getAgentBySlug(tenant.id, params.slug);
+  // A turned-off LO revokes their agents' links too (full deactivation).
+  const ownerActive = agent ? await isAgentOwnerActive(agent.id) : true;
 
   const b = tenant.branding;
   const themeVars = {
@@ -41,7 +45,7 @@ export default async function AgentPage({ params }: { params: { slug: string } }
   // Revoked seat: the slug exists but the agent is turned off. Block the link
   // with a graceful message instead of running a (mis-attributed) estimate, and
   // point the buyer at the lender's main page so they're never fully stranded.
-  if (agent && !agent.active) {
+  if (agent && (!agent.active || !ownerActive)) {
     return (
       <div style={themeVars}>
         <BrandHeader tenant={tenant} />
@@ -58,13 +62,24 @@ export default async function AgentPage({ params }: { params: { slug: string } }
     );
   }
 
+  // Show the agent's own LO as the loan officer (matches where the lead routes),
+  // falling back to the tenant's primary/company when the agent has no LO.
+  const resolvedLO = await getResolvedLOForLead(tenant.id, agent?.id ?? null);
+  const identity = displayIdentity({
+    resolved: resolvedLO,
+    tenantLoName: tenant.lo_name,
+    tenantNmls: tenant.nmls,
+    companyNmls: tenant.branding.company_nmls ?? null,
+  });
+
   return (
     <div style={themeVars}>
       <BrandHeader tenant={tenant} />
       <PathfinderTool
         tenantId={tenant.id}
-        loName={tenant.lo_name ?? "your loan officer"}
-        nmls={tenant.nmls}
+        loName={identity.loName}
+        loNmls={identity.loNmls}
+        nmls={identity.companyNmls}
         applyUrl={tenant.apply_url}
         loPhone={tenant.lo_phone}
         bookingUrl={tenant.booking_url}

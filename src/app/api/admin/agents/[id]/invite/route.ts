@@ -27,7 +27,7 @@ export async function POST(
   const admin = createSupabaseAdmin();
   const { data: agent } = await admin
     .from("agents")
-    .select("name, email, slug")
+    .select("name, email, slug, status_token")
     .eq("id", params.id)
     .eq("tenant_id", gate.tenantId)
     .maybeSingle();
@@ -44,6 +44,7 @@ export async function POST(
     agentName: agent.name,
     loName: (tenant?.lo_name as string | null) ?? "your loan officer",
     link: `${origin}/a/${agent.slug}`,
+    statusLink: agent.status_token ? `${origin}/agent/${agent.status_token}` : null,
   });
 
   if (!r.sent) return NextResponse.json({ error: r.reason ?? "Could not send" }, { status: 502 });
