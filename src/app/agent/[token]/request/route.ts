@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendBuyerConsentRequest } from "@/lib/email";
 import { isAgentOwnerActive } from "@/lib/agents";
+import { siteOrigin } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   if (lead.agent_status_consent) return NextResponse.json({ error: "Already sharing" }, { status: 409 });
   if (!lead.email) return NextResponse.json({ error: "No buyer email on file" }, { status: 422 });
 
-  const { origin } = new URL(req.url);
+  const origin = siteOrigin(new URL(req.url).origin);
   const { data: tenant } = await admin.from("tenants").select("lo_name").eq("id", lead.tenant_id).maybeSingle();
 
   const r = await sendBuyerConsentRequest({

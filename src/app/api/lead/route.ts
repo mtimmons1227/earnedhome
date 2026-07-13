@@ -5,6 +5,7 @@ import { sendBuyerEstimateEmail, sendLoLeadAlert, sendAgentLeadAlert, sendBuyerC
 import { emitLeadCreated } from "@/lib/leadEvent";
 import { getResolvedLOForLead } from "@/lib/loanOfficer";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { siteOrigin } from "@/lib/site";
 
 interface QuoteSummary {
   ratesAsOf: string;
@@ -230,7 +231,7 @@ export async function POST(req: Request) {
           const tRes = await (supabase.from("tenants") as unknown as {
             select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { lo_name?: string | null } | null }> } };
           }).select("lo_name").eq("id", tenantId).maybeSingle();
-          const origin = new URL(req.url).origin;
+          const origin = siteOrigin(new URL(req.url).origin);
           const r = await sendBuyerConsentRequest({
             to: email,
             buyerName: fullName ?? null,
