@@ -48,6 +48,7 @@ export async function POST(
     loName: (tenant?.lo_name as string | null) ?? "your loan officer",
     link: `${origin}/a/${agent.slug}`,
     statusLink: agent.status_token ? `${origin}/agent/${agent.status_token}` : null,
+    guideUrl: `${origin}/manuals/EarnedHome-Referral-Partner-Guide.pdf`,
   });
 
   if (!r.sent) return NextResponse.json({ error: r.reason ?? "Could not send" }, { status: 502 });

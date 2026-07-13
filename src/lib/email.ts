@@ -189,6 +189,7 @@ export interface AgentLinkInvite {
   loName: string;        // the lender, e.g. "R Parry Financial"
   link: string;          // the agent's /a/<slug> share URL
   statusLink?: string | null; // the agent's private /agent/<token> status portal URL
+  guideUrl?: string | null;   // link to the Referral Partner Guide (PDF)
 }
 
 export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: boolean; reason?: string }> {
@@ -213,6 +214,13 @@ export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: b
       <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeStatus}</p>
     </div>`
     : "";
+  const safeGuide = d.guideUrl ? escapeHtml(d.guideUrl) : null;
+  const guideBlock = safeGuide
+    ? `
+    <p style="margin:22px 0 4px;border-top:1px solid #eee;padding-top:16px;">
+      <a href="${safeGuide}" style="color:#1F3864;font-weight:600;">📘 Download your Referral Partner guide (PDF)</a>
+    </p>`
+    : "";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
     <h2 style="color:#1F3864;margin:0 0 8px;">Your EarnedHome links</h2>
@@ -228,6 +236,7 @@ export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: b
     </p>
     <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
     ${statusBlock}
+    ${guideBlock}
   </div>`;
 
   try {
@@ -251,6 +260,8 @@ export interface LoLoginInvite {
   companyName?: string | null; // the broker, e.g. "R Parry Financial"
   link: string;          // the ONE-TIME set-password / recovery action link
   loginLink: string;     // the PERMANENT sign-in page URL (to bookmark)
+  guideUrl?: string | null;   // link to the role-appropriate manual (PDF)
+  guideLabel?: string | null; // e.g. "the Loan Officer Manual" / "the Broker Administrator Manual"
 }
 
 export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boolean; reason?: string }> {
@@ -263,6 +274,14 @@ export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boole
   const safeLink = escapeHtml(d.link);
   const safeLogin = escapeHtml(d.loginLink);
   const company = d.companyName ? escapeHtml(d.companyName) : "your team";
+  const safeGuide = d.guideUrl ? escapeHtml(d.guideUrl) : null;
+  const guideLabel = d.guideLabel ? escapeHtml(d.guideLabel) : "your EarnedHome guide";
+  const guideBlock = safeGuide
+    ? `
+    <p style="margin:18px 0 4px;border-top:1px solid #eee;padding-top:16px;">
+      <a href="${safeGuide}" style="color:#1F3864;font-weight:600;">📘 Download ${guideLabel} (PDF)</a>
+    </p>`
+    : "";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
     <h2 style="color:#1F3864;margin:0 0 8px;">Set up your EarnedHome sign-in</h2>
@@ -287,6 +306,7 @@ export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boole
       From your first sign-in onward, this is the page you'll use. Don't reuse the "Set password" button above — it's one-time only and will stop working.</p>
 
     <p style="font-size:12px;color:#6b7280;margin-top:14px;">Forgot your password later? Use “Forgot password?” on the sign-in page and we'll email you a reset link.</p>
+    ${guideBlock}
   </div>`;
 
   try {

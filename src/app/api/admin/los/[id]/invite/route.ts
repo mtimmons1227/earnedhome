@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const admin = createSupabaseAdmin();
   const { data: lo } = await admin
     .from("app_users")
-    .select("full_name, email")
+    .select("full_name, email, role")
     .eq("id", params.id)
     .eq("tenant_id", gate.tenantId)
     .maybeSingle();
@@ -57,12 +57,22 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const { data: tenant } = await admin
     .from("tenants").select("lo_name").eq("id", gate.tenantId).maybeSingle();
 
+  // Attach the role-appropriate manual: a broker admin gets the Broker manual,
+  // a regular loan officer gets the LO manual.
+  const isAdmin = (lo as { role?: string }).role === "admin";
+  const guideUrl = isAdmin
+    ? `${origin}/manuals/EarnedHome-Broker-Administrator-Manual.pdf`
+    : `${origin}/manuals/EarnedHome-Loan-Officer-Manual.pdf`;
+  const guideLabel = isAdmin ? "the Broker Administrator Manual" : "the Loan Officer Manual";
+
   const r = await sendLoLoginInvite({
     to: lo.email,
     loName: lo.full_name as string | null,
     companyName: (tenant?.lo_name as string | null) ?? null,
     link,
     loginLink: `${origin}/login`,
+    guideUrl,
+    guideLabel,
   });
   if (!r.sent) return NextResponse.json({ error: r.reason ?? "Could not send" }, { status: 502 });
 
