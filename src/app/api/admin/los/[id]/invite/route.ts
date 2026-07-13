@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireTenantAdmin } from "@/lib/auth-admin";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { sendLoLoginInvite } from "@/lib/email";
+import { siteOrigin } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const origin = (body.origin ?? "").replace(/\/+$/, "");
+  const origin = siteOrigin(body.origin);
   if (!origin) return NextResponse.json({ error: "Missing origin" }, { status: 400 });
 
   const admin = createSupabaseAdmin();
@@ -61,6 +62,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     loName: lo.full_name as string | null,
     companyName: (tenant?.lo_name as string | null) ?? null,
     link,
+    loginLink: `${origin}/login`,
   });
   if (!r.sent) return NextResponse.json({ error: r.reason ?? "Could not send" }, { status: 502 });
 
