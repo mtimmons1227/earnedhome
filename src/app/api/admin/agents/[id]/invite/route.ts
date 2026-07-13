@@ -25,12 +25,14 @@ export async function POST(
   if (!origin) return NextResponse.json({ error: "Missing origin" }, { status: 400 });
 
   const admin = createSupabaseAdmin();
-  const { data: agent } = await admin
+  // A loan officer can only email links for agents they own; admins, any agent.
+  let aq = admin
     .from("agents")
     .select("name, email, slug, status_token")
     .eq("id", params.id)
-    .eq("tenant_id", gate.tenantId)
-    .maybeSingle();
+    .eq("tenant_id", gate.tenantId);
+  if (gate.role !== "admin") aq = aq.eq("lo_id", gate.userId);
+  const { data: agent } = await aq.maybeSingle();
 
   if (!agent) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!agent.email) return NextResponse.json({ error: "This agent has no email on file" }, { status: 422 });
