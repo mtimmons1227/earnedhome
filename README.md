@@ -2,7 +2,7 @@
 
 **A homebuyer mortgage-readiness platform.** A buyer enters their scenario and gets real, lender-backed payment options — Conventional, FHA, and VA, including Jumbo variants — with a full monthly-payment and cash-to-close breakdown, plus plain-language education on **how to lower their payment**, then connects to a loan officer. The thesis is in the name: buyers should arrive *educated* and mortgage-*ready*, not just handed a number. Multi-tenant and white-label: each lending partner runs a branded instance.
 
-> **Note for reviewers:** This is the public overview of a production project built with a lending partner. Partner identity, pricing logic, credentials, and proprietary workbook internals are intentionally **not** included here. The pricing model itself is the partner's IP and lives outside this repository. Engineering decisions and the full SDLC are documented in [`docs/sdlc/`](docs/sdlc/README.md).
+> **Note for reviewers:** This is the public overview of a production project built with a lending partner. Partner identity, pricing logic, credentials, and proprietary workbook internals are intentionally **not** included here. The pricing model itself is the partner's IP and lives outside this repository. Start with the **documentation index** at [`docs/README.md`](docs/README.md); engineering decisions and the full SDLC are in [`docs/sdlc/`](docs/sdlc/README.md), and current build status is in [`docs/SESSION_HANDOFF.md`](docs/SESSION_HANDOFF.md).
 
 ---
 

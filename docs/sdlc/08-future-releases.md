@@ -8,7 +8,9 @@ Capture what is planned but **not yet in the codebase**, where each future item 
 > **Honesty rule.** When describing EarnedHome (resume, pitch, demo), claim only what's in "What is built today." Everything below is **roadmap** — describe it as planned, not delivered, until it ships and is verified. (Full ledger: [`../ROADMAP_PHASE_2_3.md`](../ROADMAP_PHASE_2_3.md).)
 
 ## What is built today (Phase 1A) — for contrast
-Live Graph pricing engine (6 products incl. Jumbo/VA) — now **batched (~7s → ~2s)**; buyer Pathfinder tool with **loan-eligibility edit checks** (jumbo/VA tiers, greyed-out ineligible cards) and a **Property Type** input; lead capture with TCPA consent; the loan-officer dashboard (leads, status, attributed notes thread, filter); the admin Rate Workbook tool; **flag-gated forgot-password (loan-officer only)**; multi-tenant Supabase + RLS; and a two-environment deploy (QA/prod). See [`../INFRASTRUCTURE.md`](../INFRASTRUCTURE.md).
+Live Graph pricing engine (6 products incl. Jumbo/VA) — now **batched (~7s → ~2s)**; buyer Pathfinder tool with **loan-eligibility edit checks** (jumbo/VA tiers, greyed-out ineligible cards) and a **Property Type** input; lead capture with TCPA consent; **transactional emails now sending** (buyer estimate + LO alert + agent copy, via Resend on a verified domain); **buyer "Update my info"** self-correct; the loan-officer dashboard (leads, status, attributed notes thread, filter, **Agent column**); the admin Rate Workbook tool; **flag-gated forgot-password (loan-officer only)**; **Phase 1A agent (realtor) attribution** (per-agent `/a/<slug>` links, dashboard Agents page with give/revoke seats, blocked revoked links); multi-tenant Supabase + RLS; and a two-environment deploy (QA/prod, connect flow live in Prod). See [`../INFRASTRUCTURE.md`](../INFRASTRUCTURE.md).
+
+> **Shipped 2026-07-06:** agent attribution (Phase 1A) — on QA; connect flow + emails — promoted to Prod. See [`../SESSION_HANDOFF.md`](../SESSION_HANDOFF.md) for current state.
 
 ---
 
@@ -30,29 +32,29 @@ Live Graph pricing engine (6 products incl. Jumbo/VA) — now **batched (~7s →
 - **Plan:** use the AI layer (#1) to generate plain-language explanations of the buyer's own scenario.
 - **Guardrails:** general/educational, reviewed, no steering/advice.
 
-### 4. Lead fan-out automation from `/api/lead` — *not built*
-- **Today:** `/api/lead` is a clean Supabase insert + a logged event. No webhook, LO notification, CRM push, or follow-up (the LO email/SMS is a `// TODO`).
-- **Plan:** add lead-handoff automation — either **in-code** (Resend email + Twilio SMS in the route) or **Power Automate** (the route or a Supabase DB webhook POSTs to an HTTP-triggered flow that notifies the LO, adds to CRM, sends follow-ups, logs the referral).
-- **Plugs in at:** `src/app/api/lead/route.ts` and/or a Supabase DB webhook.
-- **Decision pending:** in-code (simplest) vs. Power Automate (non-dev-editable M365/CRM fan-out).
+### 4. Lead fan-out automation from `/api/lead` — *partially shipped*
+- **Shipped (2026-06/07):** `/api/lead` now sends the **buyer estimate email + LO lead alert + realtor agent copy** (Resend), all awaited before the serverless function freezes. A **vendor-neutral lead-event seam** (`emitLeadCreated` → `LEAD_EVENT_WEBHOOK_URL`) is wired and dormant until a tenant sets a CRM (`tenant_integrations`).
+- **Still planned:** the downstream **Power Automate / Logic Apps** flow (CRM push, SMS, follow-up sequences). The in-code notifications (email) are done; the M365/CRM fan-out is the remaining piece.
+- **Plugs in at:** `src/lib/leadEvent.ts` + `src/app/api/lead/route.ts`; a Logic App consuming the webhook.
 
 ### 5. Multi-loan-officer routing — *proposed (Phase 2)*
 - **Today:** one loan officer per white-label; the buyer UI shows a single `tenants.lo_name` string and `leads.routed_to` is free text.
 - **Plan:** support N loan officers per tenant; promote `app_users` (role `lo`) to the source of truth; add a `lo_routing` strategy (`default` → `community` → `round_robin` → `buyer_choice`); link each lead to a specific LO via `assigned_lo_id`; drive NMLS in disclosures from the resolved LO. Full spec: [`../specs/multi-loan-officer-routing.md`](../specs/multi-loan-officer-routing.md).
 - **Phasing:** 2a default LO → 2b community routing → 2c round-robin / buyer-choice.
+- **Related, already built (2026-07-06):** **agent (realtor) attribution** — a *different axis*. This tags which **realtor** referred a buyer *under* a single LO (per-agent `/a/<slug>` links, seat give/revoke), not routing among **multiple loan officers**. See [`../specs/agent-distribution-attribution.md`](../specs/agent-distribution-attribution.md).
 
 ### 6. Performance instrumentation & benchmark — ✅ *shipped (June 24–25)*
 - **Batching:** `quote.meta` telemetry + `/$batch` cut a quote from **~6–9s to ~2s** on QA (~90 round-trips → ~6). Real, measured — cite this, not any unmeasured "throughput lift."
 - **Block reads (done):** the `EH_Out` reference tab + `GRAPH_OUTPUT_MODE=grid` reads the whole output block in one call → **~1s, ~3 Graph round-trips**, numbers verified to the dollar. Flag-gated; on QA. Specs: [`../specs/graph-block-reads.md`](../specs/graph-block-reads.md), [`../specs/eh-out-tab-spec.md`](../specs/eh-out-tab-spec.md).
 - Full latency story: **~7s → ~2s (batching) → ~1s (block reads).**
 
-### 7. White-label scaling — *foundation built; scaling work planned*
-- **Today:** multi-tenant by host with per-tenant branding + RLS is built (one shared Supabase + Netlify). Workbook identity is still a **global env var** (one engine), and onboarding a builder is manual.
-- **Plan:** move per-tenant workbook drive/item ids into the `tenants` row; an "onboard a builder" admin flow; custom-domain + redirect-allowlist automation; per-LO eligibility overlays; decide auth-email branding. Full model + phased checklist: [`../WHITE_LABEL_ARCHITECTURE.md`](../WHITE_LABEL_ARCHITECTURE.md).
+### 7. White-label scaling — *foundation built; onboarding scripted; pricing/disclosures per-tenant planned*
+- **Today:** multi-tenant by host with per-tenant branding + RLS is built (one shared Supabase + Netlify). Onboarding is now a **scripted clone** — a `_template` tenant + fill-in-the-blanks SQL ([`../TENANT_ONBOARDING.md`](../TENANT_ONBOARDING.md), [`../TENANT_TEMPLATE_AND_CLONE.md`](../TENANT_TEMPLATE_AND_CLONE.md), [`../TENANT_ONBOARDING_CHECKLIST.md`](../TENANT_ONBOARDING_CHECKLIST.md)). Workbook identity is still a **global env var** (one engine), and disclosures are a **shared code module**.
+- **Plan (two blockers before a 2nd live LO):** (1) **Per-tenant pricing** — move workbook drive/item ids onto the `tenants` row so each LO reads their own ratesheet. Spec ready: [`../specs/per-tenant-pricing.md`](../specs/per-tenant-pricing.md). (2) **Per-tenant disclosures** — move lender disclosures out of shared code into tenant data. Then: a **super-admin Tenants page** (form wrapper on the clone script), custom-domain automation, per-LO eligibility overlays. Full model: [`../WHITE_LABEL_ARCHITECTURE.md`](../WHITE_LABEL_ARCHITECTURE.md).
 
-### 8. Buyer estimate email + resume ("magic") link — *not built*
-- **Today:** the buyer gets no email; the estimate isn't reopenable.
-- **Plan:** on lead submit, email the buyer their estimate summary + disclosures (Resend) and a tokenized **resume link** to reopen a read-only saved estimate (~30-day, no PII in the URL). Researched; parked until forgot-password is finished. Spec: [`../specs/buyer-email-resume-link.md`](../specs/buyer-email-resume-link.md).
+### 8. Buyer estimate email + resume ("magic") link — *email shipped; resume link not built*
+- **Shipped (2026-07):** on lead submit the buyer gets their estimate summary + disclosures + a **"Book a time" / call CTA** (Resend, sending on QA). An in-session **"Update my info"** button lets a just-connected buyer correct their contact info on the same lead.
+- **Still planned — resume link:** a tokenized `/r/<token>` to reopen a read-only saved estimate weeks later (~30-day, no PII in the URL), for the "come back and change my mind" case beyond the same session. Spec: [`../specs/buyer-email-resume-link.md`](../specs/buyer-email-resume-link.md).
 
 ### 9. AI layer — generative + predictive — *not built (Phase II/III)*
 - Beyond items #1–3 (AI layer, readiness plan, scenario explanations): **LO copilot** (internal generative — draft follow-ups, summarize a lead + their quote, daily pipeline digest; LO reviews → **lowest risk, start here**); **predictive lead scoring & prioritization** (outreach triage); **readiness / qualification score**; **re-engagement timing**; and a **constrained buyer education assistant** (RAG over compliance-approved content, guardrailed, hands off to the LO — a free-form chatbot is deliberately out of scope).
@@ -77,6 +79,7 @@ The current engine prices every quote by driving **one shared Excel workbook** t
   1. **Shared cache** (Redis/KV) keyed on `inputs + ratesAsOf`, replacing the per-instance `Map` — absorbs repeat scenarios across all instances.
   2. **Cross-instance serialization** (a global queue/lock, or a single dedicated pricing worker) so the shared workbook is **never** hit concurrently — closes the correctness gap as an interim measure.
   3. **The real fix — swap the engine to native code.** Port the workbook's pricing formulas into a code `PricingAdapter` (or a small pricing service) behind the **existing `stub` / `graph` adapter interface**, so the app doesn't change. This removes the single-workbook bottleneck entirely, enables **true parallel** pricing, and gives **predictable sub-second** latency (no Graph round-trips). Keep the workbook as Richard's **source of truth for rate inputs** (exported/synced into the engine), not the per-request calculator.
+  - **Update (2026-07-08): the workbook is fully DECODED.** Reverse-engineered to a rate/price ladder + LLPA deltas + `PMT` + PMI/MIP/VA factor tables — all standard mortgage math + lookups. Design + build plan: [`../specs/native-pricing-engine.md`](../specs/native-pricing-engine.md). Ready to build the code engine, validated to the penny against the workbook's own cached values.
 
 - **Pilot reality:** at R Parry pilot concurrency (a handful of buyers at a time) the current engine is fine. This item is the **scale gate** — do the engine swap before onboarding many tenants or marketing-driven traffic spikes.
 

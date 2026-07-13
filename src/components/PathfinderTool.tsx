@@ -20,16 +20,28 @@ const CREDIT_BANDS: CreditBand[] = [
 const OCCUPANCIES: Occupancy[] = ["Primary", "Second Home", "Investment"];
 const PROPERTY_TYPES: PropertyType[] = ["Single Family", "2-4 Unit", "Condo", "Manufactured"];
 
+// Format a US 10-digit phone as (XXX) XXX-XXXX; leave anything else as-is.
+function formatPhoneUS(p: string | null | undefined): string {
+  if (!p) return "";
+  const d = p.replace(/\D/g, "");
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  if (d.length === 11 && d[0] === "1") return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
+  return p;
+}
+
 interface Props {
   tenantId: string;
   loName: string;
+  loNmls?: string | null;
   nmls: string | null;
   applyUrl?: string | null;
   loPhone?: string | null;
   bookingUrl?: string | null;
+  agentId?: string | null;
+  agentName?: string | null;
 }
 
-export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, bookingUrl }: Props) {
+export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPhone, bookingUrl, agentId, agentName }: Props) {
   // form state (display strings for currency fields)
   const [homePrice, setHomePrice] = useState("0");
   const [downAmt, setDownAmt] = useState("0");
@@ -64,9 +76,12 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
   const [leadEmail, setLeadEmail] = useState("");
   const [leadPhone, setLeadPhone] = useState("");
   const [tcpa, setTcpa] = useState(false);
+  const [agentShareConsent, setAgentShareConsent] = useState(false);
   const [leadMsg, setLeadMsg] = useState<string | null>(null);
   const [leadSubmitting, setLeadSubmitting] = useState(false);
   const [leadDone, setLeadDone] = useState(false);
+  const [leadId, setLeadId] = useState<string | null>(null); // set on submit; lets the buyer edit their own record
+  const [editingContact, setEditingContact] = useState(false); // reusing the modal to correct contact info after connecting
 
   // keep $ and % in sync off home price
   function onPrice(v: string) {
@@ -155,6 +170,14 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
 
   async function submitLead(action: "apply" | "call" | "book" | "reach-out" = "reach-out") {
     if (leadSubmitting || leadDone) return; // guard double-clicks / resubmits
+    if (!leadName.trim() || !leadEmail.trim() || !leadPhone.trim()) {
+      setLeadMsg("Please enter your name, email, and phone.");
+      return;
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(leadEmail.trim())) {
+      setLeadMsg("Please enter a valid email address.");
+      return;
+    }
     if (!tcpa) {
       setLeadMsg("Please agree to be contacted before connecting.");
       return;
@@ -176,6 +199,10 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
         body: JSON.stringify({
           tenantId,
           loName,
+          loPhone: loPhone ?? null,
+          bookingUrl: bookingUrl ?? null,
+          agentId: agentId ?? null,
+          agentStatusConsent: agentId ? agentShareConsent : false,
           action,
           quoteId,
           idempotencyKey: requestKey,
@@ -198,6 +225,8 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
         }),
       });
       if (!res.ok) throw new Error();
+      const data = await res.json().catch(() => ({} as { leadId?: string }));
+      if (data.leadId) setLeadId(data.leadId); // remember our record so the buyer can edit their info
       setLeadDone(true);
       setShowLeadModal(false);
       setLeadMsg(`Thanks — you're connected with ${loName}.`);
@@ -219,6 +248,37 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
     }
   }
 
+  // Correct the contact info on the lead we already created (same record, no
+  // duplicate). Used by the "Update my info" button after connecting.
+  async function updateContact() {
+    if (!leadId || leadSubmitting) return;
+    if (!leadName.trim() || !leadEmail.trim() || !leadPhone.trim()) {
+      setLeadMsg("Please enter your name, email, and phone.");
+      return;
+    }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(leadEmail.trim())) {
+      setLeadMsg("Please enter a valid email address.");
+      return;
+    }
+    setLeadSubmitting(true);
+    setLeadMsg(null);
+    try {
+      const res = await fetch("/api/lead/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ leadId, fullName: leadName, email: leadEmail, phone: leadPhone }),
+      });
+      if (!res.ok) throw new Error();
+      setEditingContact(false);
+      setShowLeadModal(false);
+      setLeadMsg("Your contact info was updated.");
+    } catch {
+      setLeadMsg("Couldn't update your info — please try again.");
+    } finally {
+      setLeadSubmitting(false);
+    }
+  }
+
   // Clear everything back to a fresh start: results, the lead form, and consent.
   function resetAll() {
     setQuote(null);
@@ -228,12 +288,15 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
     setErrors([]);
     setShowLeadModal(false);
     setLeadDone(false);
+    setLeadId(null);
+    setEditingContact(false);
     setLeadSubmitting(false);
     setLeadMsg(null);
     setLeadName("");
     setLeadEmail("");
     setLeadPhone("");
     setTcpa(false);
+    setAgentShareConsent(false);
     setTerm(30);
   }
 
@@ -406,7 +469,8 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
                   <Card key={p.product} p={p} reason={elig.eligible ? undefined : elig.reason} />
                 ))}</div>
               )}
-              <div className="route">Your loan officer: {loName}</div>
+              {agentName && <div className="route">Your agent: {agentName}</div>}
+              <div className="route">Your loan officer: {loName}{loNmls ? ` · NMLS ${loNmls}` : ""}</div>
               {!leadDone ? (
                 <button className="leadbtn" onClick={() => setShowLeadModal(true)}
                   style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -420,18 +484,32 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
                     justifyContent: "center", fontWeight: 700 }}>✓</div>
                   <div>
                     <div style={{ fontWeight: 700, color: "var(--primary)" }}>
-                      You&apos;re connected with {loName}
+                      You&apos;re connected with {loName}{loPhone ? ` ${formatPhoneUS(loPhone)}` : ""}
                     </div>
                     <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
                       {leadName ? `Thanks, ${leadName.split(" ")[0]}. ` : "Thanks. "}
                       A loan officer will reach out shortly about your{" "}
                       {money(quote.cashToClose)} cash-to-close scenario.
                     </div>
-                    <button onClick={resetAll} style={{ marginTop: 10, background: "transparent",
-                      border: "1px solid var(--line)", color: "var(--primary)", padding: "8px 12px",
-                      borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                      Start over
-                    </button>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
+                      If you booked a meeting, you can reschedule or cancel anytime using the
+                      Calendly confirmation email that was sent to you.
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                      {leadId && (
+                        <button onClick={() => { setEditingContact(true); setLeadMsg(null); setShowLeadModal(true); }}
+                          style={{ background: "transparent", border: "1px solid var(--line)",
+                            color: "var(--primary)", padding: "8px 12px", borderRadius: 8, fontWeight: 600,
+                            cursor: "pointer", fontSize: 13 }}>
+                          Update my info
+                        </button>
+                      )}
+                      <button onClick={resetAll} style={{ background: "transparent",
+                        border: "1px solid var(--line)", color: "var(--primary)", padding: "8px 12px",
+                        borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                        Start over
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -479,30 +557,43 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
       </div>
 
       {showLeadModal && quote && (
-        <div onClick={() => setShowLeadModal(false)}
+        <div onClick={() => { setShowLeadModal(false); setEditingContact(false); }}
           style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 1000,
             display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()}
             style={{ background: "#fff", borderRadius: 16, maxWidth: 440, width: "100%",
               padding: "24px 24px 20px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", position: "relative" }}>
-            <button onClick={() => setShowLeadModal(false)} aria-label="Close"
+            <button onClick={() => { setShowLeadModal(false); setEditingContact(false); }} aria-label="Close"
               style={{ position: "absolute", top: 12, right: 16, background: "none", border: 0,
                 fontSize: 26, lineHeight: 1, color: "var(--muted)", cursor: "pointer" }}>×</button>
             <div style={{ fontWeight: 700, fontSize: 18, color: "var(--primary)", marginBottom: 4 }}>
-              Connect with {loName}
+              {editingContact ? "Update your info" : `Connect with ${loName}`}
             </div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-              Share your info, then choose how you&apos;d like to connect with {loName}.
+              {editingContact
+                ? "Change your name, email, or phone below, then save."
+                : `Share your info, then choose how you'd like to connect with ${loName}.`}
             </div>
-            <input placeholder="Full name" value={leadName} onChange={(e) => setLeadName(e.target.value)} />
+            <input placeholder="Full name *" required value={leadName} onChange={(e) => setLeadName(e.target.value)} />
             <div className="spacer" />
-            <input placeholder="Email" type="email" inputMode="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} />
+            <input placeholder="Email *" type="email" inputMode="email" required value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} />
             <div className="spacer" />
-            <input placeholder="Phone" type="tel" inputMode="tel" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} />
+            <input placeholder="Phone *" type="tel" inputMode="tel" required value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} />
+            {editingContact && (
+              <button className="leadbtn" onClick={updateContact} disabled={leadSubmitting}
+                style={{ width: "100%" }}>
+                {leadSubmitting ? "Saving…" : "Save changes"}
+              </button>
+            )}
+            {!editingContact && (
             <label className="consent">
               <input type="checkbox" checked={tcpa} onChange={(e) => setTcpa(e.target.checked)} />
               I agree to be contacted by phone, text, or email about my inquiry. Consent is not a condition of purchase.
             </label>
+            )}
+            {/* Agent status-sharing consent is now buyer-initiated after connecting,
+                via a private consent link emailed to the buyer — not a checkbox here. */}
+            {!editingContact && (<>
             {applyUrl && (
               <button className="leadbtn" onClick={() => submitLead("apply")} disabled={leadSubmitting}
                 style={{ width: "100%" }}>
@@ -530,6 +621,7 @@ export function PathfinderTool({ tenantId, loName, nmls, applyUrl, loPhone, book
                 : { width: "100%" }}>
               {leadSubmitting ? "Connecting…" : `Have ${loName} reach out`}
             </button>
+            </>)}
             {leadMsg && <div className="hint" style={{ marginTop: 8 }}>{leadMsg}</div>}
           </div>
         </div>

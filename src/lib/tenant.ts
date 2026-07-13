@@ -7,6 +7,7 @@ export interface TenantBranding {
   initials: string;
   tag: string;
   logo_url?: string;
+  company_nmls?: string | null; // broker/company NMLS (e.g. R Parry 1924318)
 }
 
 export interface Tenant {

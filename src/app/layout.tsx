@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { IdleSignout } from "./IdleSignout";
 
 export const metadata: Metadata = {
   title: "EarnedHome Pathfinder — Get Payments",
@@ -16,7 +17,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           content="width=device-width, initial-scale=1.0, viewport-fit=cover"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <IdleSignout />
+        {children}
+      </body>
     </html>
   );
 }

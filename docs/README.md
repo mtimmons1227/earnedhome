@@ -30,8 +30,30 @@ Start with [`sdlc/README.md`](sdlc/README.md) for the index and current status, 
 ### `artifacts/` — reference docs & deliverables
 The [artifact index](artifacts/README.md) maps each SDLC phase to its supporting documents — the named-range mapping, architecture and stack docs, compliance logs, partner deliverables, and the compiled SDLC Word document. Reference docs are kept as Markdown here (searchable/editable); polished client deliverables stay as Word.
 
-### Other in-repo docs
-Deeper technical references that the phase docs link to: [`ARCHITECTURE.md`](ARCHITECTURE.md), [`PRICING_ENGINE.md`](PRICING_ENGINE.md), [`ENVIRONMENT_ARCHITECTURE.md`](ENVIRONMENT_ARCHITECTURE.md), [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md), [`HOW_TO_DEPLOY.md`](HOW_TO_DEPLOY.md), [`RUNBOOK_connect_graph_engine.md`](RUNBOOK_connect_graph_engine.md), [`CHANGE_SIGNOFF_LOG.md`](CHANGE_SIGNOFF_LOG.md), [`ROADMAP_PHASE_2_3.md`](ROADMAP_PHASE_2_3.md), and the feature specs in [`specs/`](specs/).
+### Operational & release
+| Doc | Purpose |
+|---|---|
+| [`SESSION_HANDOFF.md`](SESSION_HANDOFF.md) | **Start here** — current build state (QA vs Prod), what shipped, open items, next steps. |
+| [`PRODUCTION_GO_LIVE.md`](PRODUCTION_GO_LIVE.md) | Consolidated go-live runbook. |
+| [`RELEASE_MANIFEST_QA.md`](RELEASE_MANIFEST_QA.md) | What's on QA awaiting Production + the sign-off / config checklist. |
+| [`CHANGE_SIGNOFF_LOG.md`](CHANGE_SIGNOFF_LOG.md) | Running log of changes needing Richard's / counsel's sign-off. |
+| [`HOW_TO_DEPLOY.md`](HOW_TO_DEPLOY.md) | Deploy procedure. |
+| [`QA_PROD_DB_SPLIT.md`](QA_PROD_DB_SPLIT.md) | Split QA/Prod databases before real buyers (final environment isolation). |
+| [`MICROSOFT_TENANT_MIGRATION.md`](MICROSOFT_TENANT_MIGRATION.md) | Move workbook + Graph app from Incryptable → EarnedHome M365 at go-live. |
+| [`RUNBOOK_connect_graph_engine.md`](RUNBOOK_connect_graph_engine.md) | Connecting the Graph pricing engine. |
+
+### Tenant onboarding
+| Doc | Purpose |
+|---|---|
+| [`TENANT_ONBOARDING.md`](TENANT_ONBOARDING.md) | **The run script** — clone a tenant in 3 SQL blocks + 1 manual step. |
+| [`TENANT_ONBOARDING_CHECKLIST.md`](TENANT_ONBOARDING_CHECKLIST.md) | Full reference checklist (what every tenant needs). |
+| [`TENANT_TEMPLATE_AND_CLONE.md`](TENANT_TEMPLATE_AND_CLONE.md) | The template-tenant + clone approach, explained. |
+
+### Architecture & technical
+[`ARCHITECTURE.md`](ARCHITECTURE.md) · [`PRICING_ENGINE.md`](PRICING_ENGINE.md) · [`ENVIRONMENT_ARCHITECTURE.md`](ENVIRONMENT_ARCHITECTURE.md) · [`INFRASTRUCTURE.md`](INFRASTRUCTURE.md) · [`WHITE_LABEL_ARCHITECTURE.md`](WHITE_LABEL_ARCHITECTURE.md)
+
+### Roadmap, specs & testing
+[`ROADMAP_PHASE_2_3.md`](ROADMAP_PHASE_2_3.md) · feature specs in [`specs/`](specs/) (connect flow, eligibility, agent attribution, per-tenant pricing, **native pricing engine**, workbook swap, multi-LO routing, …) · QA scripts: [`AGENT_ATTRIBUTION_QA_TEST.md`](AGENT_ATTRIBUTION_QA_TEST.md), [`sdlc/05a-qa-test-plan.md`](sdlc/05a-qa-test-plan.md) · partner testing: [`RICHARD_TEST_GUIDE_2026-07-06.md`](RICHARD_TEST_GUIDE_2026-07-06.md).
 
 ## The standard, in one line
 **Markdown is the source of truth; Word is the polished output generated from it.** Edit the Markdown; regenerate Word deliverables when you need something to hand off.

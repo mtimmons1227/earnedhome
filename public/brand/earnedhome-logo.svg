@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="430" viewBox="0 0 1560 430">
+  <!-- MARK: house outline -->
+  <g fill="none" stroke="#173B5E" stroke-width="18" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M52 195 L214 60 L376 195"/>
+    <path d="M74 182 L74 372 L354 372 L354 182"/>
+    <path d="M318 122 L318 82 L352 82 L352 152"/>
+  </g>
+  <!-- path swoosh under the house -->
+  <path d="M64 374 Q214 420 364 358" fill="none" stroke="#1BA88C" stroke-width="15" stroke-linecap="round"/>
+  <!-- location pin (hollow via evenodd) -->
+  <path fill="#1BA88C" fill-rule="evenodd"
+    d="M168 150 C138 150 114 174 114 205 C114 246 168 302 168 302 C168 302 222 246 222 205 C222 174 198 150 168 150 Z
+       M168 183 a24 24 0 1 0 0.01 0 Z"/>
+  <!-- upward path arrow (growth) -->
+  <path d="M150 322 Q226 302 272 236 Q302 193 330 146" fill="none" stroke="#1BA88C" stroke-width="21" stroke-linecap="round"/>
+  <path d="M296 150 L338 138 L344 182" fill="none" stroke="#1BA88C" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- WORDMARK -->
+  <text x="446" y="238" font-family="DejaVu Sans, Arial, sans-serif" font-size="152" font-weight="bold" fill="#173B5E">Earned<tspan fill="#1BA88C">Home</tspan></text>
+  <text x="452" y="322" font-family="DejaVu Sans, Arial, sans-serif" font-size="50" letter-spacing="7" fill="#7C8CA1">Your Path to Home.</text>
+</svg>
