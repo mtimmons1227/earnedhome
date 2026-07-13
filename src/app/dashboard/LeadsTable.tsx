@@ -189,19 +189,6 @@ export function LeadsTable({ initialLeads, initialNotes, isAdmin = false }: { in
                         border: "1px solid var(--line)", background: "#f3f4f6", borderRadius: 5, padding: "1px 5px",
                         whiteSpace: "nowrap" }}>Off</span>
                     )}
-                    {l.agent_name && (
-                      <span
-                        title={l.agent_status_consent
-                          ? "Buyer authorized this agent to see loan-status updates"
-                          : "Buyer did NOT authorize status sharing — the agent only sees “Connected”"}
-                        style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap",
-                          borderRadius: 5, padding: "1px 5px",
-                          color: l.agent_status_consent ? "#15803d" : "#6b7280",
-                          border: `1px solid ${l.agent_status_consent ? "#86efac" : "#d1d5db"}`,
-                          background: l.agent_status_consent ? "#f0fdf4" : "#f3f4f6" }}>
-                        Updates: {l.agent_status_consent ? "Yes" : "No"}
-                      </span>
-                    )}
                   </td>
                   {isAdmin && (
                     <td style={{ ...th, color: l.assigned_lo_name ? undefined : "var(--muted)" }}>
@@ -229,11 +216,6 @@ export function LeadsTable({ initialLeads, initialNotes, isAdmin = false }: { in
                           <Field k="Source" v={l.source} />
                           <Field k="Agent" v={l.agent_name ? `${l.agent_name}${l.agent_active === false ? " (disabled)" : ""}` : null} />
                           <Field k="Consent (TCPA)" v={l.consent_tcpa ? "Yes" : "No"} />
-                          {l.agent_name && (
-                            <Field k="Agent updates" v={l.agent_status_consent
-                              ? "Yes — buyer authorized status sharing"
-                              : "No — agent sees only “Connected”"} />
-                          )}
                           {l.consent_at && <Field k="Consent at" v={new Date(l.consent_at).toLocaleString()} />}
                           {l.consent_text && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6, fontStyle: "italic" }}>&ldquo;{l.consent_text}&rdquo;</div>}
                         </div>

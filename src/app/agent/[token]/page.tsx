@@ -2,7 +2,6 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { isAgentOwnerActive } from "@/lib/agents";
 import { agentStage, type AgentStage } from "@/lib/loSelect";
 import { AutoRefresh } from "./AutoRefresh";
-import { RequestAccessButton } from "./RequestAccessButton";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +64,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
 
   const { data: leads } = await admin
     .from("leads")
-    .select("id, full_name, status, agent_status_consent, email, phone, created_at")
+    .select("id, full_name, status, email, phone, created_at")
     .eq("agent_id", agent.id)
     .order("created_at", { ascending: false });
 
@@ -73,7 +72,6 @@ export default async function AgentStatusPage({ params }: { params: { token: str
     id: string;
     full_name: string | null;
     status: string;
-    agent_status_consent: boolean;
     email: string | null;
     phone: string | null;
     created_at: string;
@@ -100,8 +98,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
       <main style={{ maxWidth: 760, margin: "0 auto", padding: 16 }}>
         <div className="panel">
           <p className="hint" style={{ marginTop: 0 }}>
-            Buyers who ran their numbers from your link. Detailed loan status appears only where the
-            buyer authorized it — otherwise you’ll see “Connected.” For specifics, contact {company}.
+            Buyers who ran their numbers from your link, with their current stage. For loan specifics, contact {company}.
           </p>
 
           {rows.length === 0 ? (
@@ -109,7 +106,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
           ) : (
             <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
               {rows.map((r, i) => {
-                const stage = agentStage(r.status, r.agent_status_consent);
+                const stage = agentStage(r.status);
                 const c = stageColor[stage];
                 return (
                   <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto",
@@ -131,8 +128,6 @@ export default async function AgentStatusPage({ params }: { params: { token: str
                         borderRadius: 999, padding: "4px 12px", whiteSpace: "nowrap" }}>
                         {stage}
                       </span>
-                      <RequestAccessButton token={params.token} leadId={r.id}
-                        disabled={r.agent_status_consent} hasEmail={!!r.email} />
                     </div>
                   </div>
                 );
@@ -142,7 +137,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
         </div>
 
         <p style={{ textAlign: "center", color: "var(--muted)", fontSize: 12, marginTop: 8 }}>
-          Status shown with the buyer’s consent. This page shows no financial, credit, or loan
+          This page shows only a high-level stage — no financial, credit, or loan
           details — those stay between the buyer and {company}.
         </p>
       </main>

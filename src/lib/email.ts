@@ -217,9 +217,11 @@ export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: b
   const safeGuide = d.guideUrl ? escapeHtml(d.guideUrl) : null;
   const guideBlock = safeGuide
     ? `
-    <p style="margin:22px 0 4px;border-top:1px solid #eee;padding-top:16px;">
-      <a href="${safeGuide}" style="color:#1F3864;font-weight:600;">📘 Download your Referral Partner guide (PDF)</a>
-    </p>`
+    <div style="margin:24px 0 4px;border:1px solid #FCE8A6;background:#FFF8E1;border-radius:8px;padding:14px 16px;">
+      <p style="margin:0 0 6px;font-weight:700;color:#8a5a00;font-size:15px;">📘 Your Referral Partner guide — save it for later</p>
+      <p style="margin:0 0 12px;font-size:14px;color:#374151;">A quick step-by-step on running numbers with buyers and tracking your referrals. <strong>Download and save it now</strong> so it's handy when you need it.</p>
+      <a href="${safeGuide}" style="background:#1F3864;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:700;display:inline-block;">⬇&nbsp; Download the guide (PDF)</a>
+    </div>`
     : "";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
@@ -278,9 +280,11 @@ export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boole
   const guideLabel = d.guideLabel ? escapeHtml(d.guideLabel) : "your EarnedHome guide";
   const guideBlock = safeGuide
     ? `
-    <p style="margin:18px 0 4px;border-top:1px solid #eee;padding-top:16px;">
-      <a href="${safeGuide}" style="color:#1F3864;font-weight:600;">📘 Download ${guideLabel} (PDF)</a>
-    </p>`
+    <div style="margin:22px 0 4px;border:1px solid #FCE8A6;background:#FFF8E1;border-radius:8px;padding:14px 16px;">
+      <p style="margin:0 0 6px;font-weight:700;color:#8a5a00;font-size:15px;">📘 Your EarnedHome guide — save it for later</p>
+      <p style="margin:0 0 12px;font-size:14px;color:#374151;">We've included ${guideLabel} (PDF). It walks you through everything step by step — <strong>download and save it now</strong> so you can review it whenever you like.</p>
+      <a href="${safeGuide}" style="background:#1F3864;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:700;display:inline-block;">⬇&nbsp; Download the guide (PDF)</a>
+    </div>`
     : "";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">

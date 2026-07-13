@@ -122,14 +122,11 @@ check("null when neither resolves", preferAgentLO(null, null) === null);
 // --- agentStage (agent status portal — consent-gated) ---
 console.log("\nagentStage — what a referral agent may see");
 
-check("no consent → always 'Connected' even if closed", agentStage("closed", false) === "Connected");
-check("no consent → 'Connected' even if working", agentStage("working", false) === "Connected");
-check("consent + working → 'In process'", agentStage("working", true) === "In process");
-check("consent + closed → 'Closed'", agentStage("closed", true) === "Closed");
-check("consent + lost → 'Inactive'", agentStage("lost", true) === "Inactive");
-check("consent + new → 'Connected'", agentStage("new", true) === "Connected");
-check("consent + contacted (Initial contact) → 'In process'", agentStage("contacted", true) === "In process");
-check("no consent + contacted → 'Connected'", agentStage("contacted", false) === "Connected");
+check("working → 'In process'", agentStage("working") === "In process");
+check("contacted (Initial contact) → 'In process'", agentStage("contacted") === "In process");
+check("closed → 'Closed'", agentStage("closed") === "Closed");
+check("lost → 'Inactive'", agentStage("lost") === "Inactive");
+check("new → 'Connected'", agentStage("new") === "Connected");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
