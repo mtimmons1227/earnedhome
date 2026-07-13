@@ -61,6 +61,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     loName: lo.full_name as string | null,
     companyName: (tenant?.lo_name as string | null) ?? null,
     link,
+    loginLink: `${origin}/login`,
   });
   if (!r.sent) return NextResponse.json({ error: r.reason ?? "Could not send" }, { status: 502 });
 
