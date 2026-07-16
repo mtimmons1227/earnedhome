@@ -9,12 +9,14 @@ export interface BuyerRow {
   name: string;
   subtitle: string;
   stage: AgentStage;
-  shareId: string | null; // the share link to disable, when the buyer came via one
+  shareId: string | null;   // the buyer's link, when they came via one
+  shareActive: boolean;     // whether that link is currently on
 }
 export interface InviteRow {
   id: string;
   name: string;
   email: string | null;
+  active: boolean;
 }
 
 const stageColor: Record<AgentStage, { bg: string; fg: string }> = {
@@ -25,8 +27,8 @@ const stageColor: Record<AgentStage, { bg: string; fg: string }> = {
 };
 
 // The agent's whole workspace (no login — the token in the URL is the key):
-// invite a buyer, and see the buyers you've referred with a plain status.
-// Deliberately lighter than the LO dashboard — an agent has just two jobs.
+// invite a buyer, see the buyers you've referred with a plain status, and turn
+// any buyer's link on or off. Deliberately lighter than the LO dashboard.
 export function AgentActions({ token, buyers, invites }: { token: string; buyers: BuyerRow[]; invites: InviteRow[] }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -60,18 +62,18 @@ export function AgentActions({ token, buyers, invites }: { token: string; buyers
     }
   }
 
-  async function turnOff(shareId: string) {
+  async function toggle(shareId: string, active: boolean) {
     setBusy(true);
     setMsg(null);
     try {
-      const res = await fetch(`/api/agent/${token}/disable`, {
+      const res = await fetch(`/api/agent/${token}/toggle`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ shareId }),
+        body: JSON.stringify({ shareId, active }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        setMsg(j.error ?? "Could not turn it off.");
+        setMsg(j.error ?? "Could not update that link.");
         return;
       }
       router.refresh();
@@ -111,31 +113,27 @@ export function AgentActions({ token, buyers, invites }: { token: string; buyers
             {buyers.map((b) => {
               const c = stageColor[b.stage];
               return (
-                <div key={b.id} style={rowStyle}>
+                <div key={b.id} style={rowStyle(b.shareId != null && !b.shareActive)}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 600 }}>{b.name}</div>
                     {b.subtitle && <div style={subStyle}>{b.subtitle}</div>}
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                     <span style={{ ...pillStyle, background: c.bg, color: c.fg }}>{b.stage}</span>
                     {b.shareId && (
-                      <button type="button" onClick={() => turnOff(b.shareId as string)} disabled={busy} style={turnOffStyle}>
-                        Turn off
-                      </button>
+                      <ToggleButton active={b.shareActive} busy={busy} onClick={() => toggle(b.shareId as string, !b.shareActive)} />
                     )}
                   </div>
                 </div>
               );
             })}
             {invites.map((iv) => (
-              <div key={iv.id} style={rowStyle}>
+              <div key={iv.id} style={rowStyle(!iv.active)}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 600 }}>{iv.name || iv.email || "A buyer"}</div>
-                  <div style={subStyle}>Invited · waiting to run numbers</div>
+                  <div style={subStyle}>{iv.active ? "Invited · waiting to run numbers" : "Invited · turned off"}</div>
                 </div>
-                <button type="button" onClick={() => turnOff(iv.id)} disabled={busy} style={turnOffStyle}>
-                  Turn off
-                </button>
+                <ToggleButton active={iv.active} busy={busy} onClick={() => toggle(iv.id, !iv.active)} />
               </div>
             ))}
           </div>
@@ -145,10 +143,28 @@ export function AgentActions({ token, buyers, invites }: { token: string; buyers
   );
 }
 
-const rowStyle: React.CSSProperties = {
+function ToggleButton({ active, busy, onClick }: { active: boolean; busy: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      style={{
+        fontSize: 12, fontWeight: 600, cursor: "pointer", borderRadius: 6, padding: "4px 12px",
+        border: active ? "1px solid #f0b4b4" : "1px solid var(--line)",
+        background: active ? "#fdecec" : "#ffffff",
+        color: active ? "#b91c1c" : "var(--primary)",
+      }}
+    >
+      {active ? "Turn off" : "Turn on"}
+    </button>
+  );
+}
+
+const rowStyle = (off: boolean): React.CSSProperties => ({
   display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: 10,
   border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px",
-};
+  opacity: off ? 0.6 : 1,
+});
 const subStyle: React.CSSProperties = { color: "var(--muted)", fontSize: 12, marginTop: 2, wordBreak: "break-word" };
 const pillStyle: React.CSSProperties = { fontWeight: 700, fontSize: 13, borderRadius: 999, padding: "4px 12px", whiteSpace: "nowrap" };
-const turnOffStyle: React.CSSProperties = { fontSize: 13, color: "var(--muted)", background: "none", border: "none", padding: "4px 6px", cursor: "pointer" };

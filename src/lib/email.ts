@@ -97,7 +97,7 @@ export async function sendBuyerEstimateEmail(data: BuyerEstimateEmail): Promise<
         from,
         to: data.to,
         subject: "Your home payment estimate",
-        html: renderHtml(data) + shareSection(data.shareUrl),
+        html: renderHtml(data),
       }),
     });
     if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
@@ -579,6 +579,7 @@ function renderHtml(d: BuyerEstimateEmail): string {
     </table>
     <p style="font-size:12px;color:#6b7280;margin:0 0 4px;">Cash to close and payment are estimates per loan option above.</p>
     ${ctaHtml}
+    ${shareSection(d.shareUrl)}
     <div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#6b7280;line-height:1.5;">
       ${disc}
     </div>

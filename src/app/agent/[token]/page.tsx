@@ -1,6 +1,6 @@
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { isAgentOwnerActive } from "@/lib/agents";
-import { listPendingInvites, listActiveAgentShares } from "@/lib/shareLinks";
+import { listAllAgentShares } from "@/lib/shareLinks";
 import { agentStage } from "@/lib/loSelect";
 import { AutoRefresh } from "./AutoRefresh";
 import { AgentActions } from "./AgentActions";
@@ -72,22 +72,28 @@ export default async function AgentStatusPage({ params }: { params: { token: str
     created_at: string;
   }[];
 
-  // Map each converted buyer's lead → the (active) share link that can be turned
-  // off, so the agent can disable any buyer's link right from the status list.
-  const shares = await listActiveAgentShares(agent.id);
-  const shareByLead = new Map<string, string>();
-  for (const s of shares) if (s.lead_id) shareByLead.set(s.lead_id, s.id);
+  // All of the agent's share links (active + turned-off) so every buyer can be
+  // toggled on/off from the status list, and turned-off ones stay visible.
+  const shares = await listAllAgentShares(agent.id);
+  const shareByLead = new Map<string, { id: string; active: boolean }>();
+  for (const s of shares) if (s.lead_id) shareByLead.set(s.lead_id, { id: s.id, active: s.active });
 
-  // Buyers who've run their numbers (with a friendly stage) + invites still waiting.
-  const buyers = rows.map((r) => ({
-    id: r.id,
-    name: r.full_name || "A buyer",
-    subtitle: [r.email, formatPhone(r.phone), new Date(r.created_at).toLocaleDateString()].filter(Boolean).join(" · "),
-    stage: agentStage(r.status),
-    shareId: shareByLead.get(r.id) ?? null,
-  }));
-  const pending = await listPendingInvites(agent.id);
-  const invites = pending.map((p) => ({ id: p.id, name: p.recipient_name ?? "", email: p.recipient_email }));
+  // Buyers who've run their numbers (with a friendly stage + on/off toggle).
+  const buyers = rows.map((r) => {
+    const sh = shareByLead.get(r.id);
+    return {
+      id: r.id,
+      name: r.full_name || "A buyer",
+      subtitle: [r.email, formatPhone(r.phone), new Date(r.created_at).toLocaleDateString()].filter(Boolean).join(" · "),
+      stage: agentStage(r.status),
+      shareId: sh?.id ?? null,
+      shareActive: sh?.active ?? true,
+    };
+  });
+  // Invites that haven't converted yet — kept even when turned off, so they can be turned back on.
+  const invites = shares
+    .filter((s) => !s.lead_id && s.kind === "agent_invite")
+    .map((s) => ({ id: s.id, name: s.recipient_name ?? "", email: s.recipient_email, active: s.active }));
 
   const company = (tenant?.lo_name as string | null) ?? (tenant?.name as string | null) ?? "your loan officer";
   const b = (tenant?.branding ?? {}) as Branding;

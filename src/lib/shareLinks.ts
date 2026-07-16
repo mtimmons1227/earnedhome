@@ -72,16 +72,28 @@ export async function createAgentInvite(args: {
   return (data as ShareLinkRow | null) ?? null;
 }
 
-// Soft-disable a share link the agent owns. Scoped to agent_id so one agent can
-// never switch off another agent's links. Returns true on success.
-export async function disableShareLinkForAgent(shareId: string, agentId: string): Promise<boolean> {
+// Toggle a share link on/off. Scoped to agent_id so one agent can never touch
+// another agent's links. Returns true on success.
+export async function setShareActiveForAgent(shareId: string, agentId: string, active: boolean): Promise<boolean> {
   const admin = createSupabaseAdmin();
   const { error } = await admin
     .from("share_links")
-    .update({ active: false })
+    .update({ active })
     .eq("id", shareId)
     .eq("agent_id", agentId);
   return !error;
+}
+
+// All of the agent's share links (active AND turned-off), so the portal can show
+// a real on/off toggle on every buyer and keep turned-off ones visible.
+export async function listAllAgentShares(agentId: string): Promise<ShareLinkRow[]> {
+  const admin = createSupabaseAdmin();
+  const { data } = await admin
+    .from("share_links")
+    .select("*")
+    .eq("agent_id", agentId)
+    .order("created_at", { ascending: false });
+  return (data as ShareLinkRow[] | null) ?? [];
 }
 
 // All of an agent's ACTIVE share links (invites + referrals), so the portal can
