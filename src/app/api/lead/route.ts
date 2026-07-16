@@ -134,7 +134,7 @@ export async function POST(req: Request) {
   if (email && quoteSummary) {
     try {
       const ref = await createBuyerReferral(leadId);
-      if (ref) buyerShareUrl = `${siteOrigin(new URL(req.url).origin)}/r/${ref.token}`;
+      if (ref) buyerShareUrl = `${siteOrigin(new URL(req.url).origin)}/share/${ref.token}`;
     } catch {
       /* best-effort */
     }

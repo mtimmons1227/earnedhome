@@ -316,6 +316,51 @@ export async function sendBuyerInviteEmail(d: BuyerInviteEmail): Promise<{ sent:
   }
 }
 
+// Buyer-initiated "email a friend" — the buyer typed a friend's address and we
+// send that friend the estimate link. A single, buyer-driven referral (not a
+// marketing list); the friend can forward it to anyone. No-op if Resend unset.
+export interface ReferralToFriendEmail {
+  to: string;                // the friend's email
+  friendName?: string | null;
+  loName: string;            // financing by …
+  link: string;              // /r/<token> estimate link
+}
+
+export async function sendReferralToFriendEmail(d: ReferralToFriendEmail): Promise<{ sent: boolean; reason?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!key || !from) return { sent: false, reason: "email not configured (RESEND_API_KEY / RESEND_FROM)" };
+  if (!d.to) return { sent: false, reason: "no friend email" };
+
+  const hi = d.friendName ? `Hi ${escapeHtml(d.friendName.split(" ")[0])},` : "Hi,";
+  const safeLink = escapeHtml(d.link);
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
+    <h2 style="color:#1F3864;margin:0 0 8px;">A friend thought you'd want to see this</h2>
+    <p>${hi}</p>
+    <p>Someone you know just used EarnedHome to see what they can afford — and thought you might
+       want to run your own numbers too. It takes about a minute — no credit pull, no obligation.</p>
+    <p style="margin:16px 0 8px;">
+      <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">See what I can afford</a>
+    </p>
+    <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
+    <p style="font-size:13px;color:#6b7280;margin-top:18px;">Financing by ${escapeHtml(d.loName)}. This is an
+       estimate for educational purposes only — not a loan approval or a commitment to lend. Feel free to forward it to anyone.</p>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from, to: d.to, subject: "A friend thought you'd want to see this", html }),
+    });
+    if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, reason: (e as Error).message };
+  }
+}
+
 // "Set up your EarnedHome sign-in" — emailed to a loan officer so they can set
 // their password and access their dashboard. Same safe-by-design no-op if unset.
 export interface LoLoginInvite {
