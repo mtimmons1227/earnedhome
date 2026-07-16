@@ -5,7 +5,8 @@ import { sendBuyerEstimateEmail, sendLoLeadAlert, sendAgentLeadAlert, type Estim
 import { emitLeadCreated } from "@/lib/leadEvent";
 import { getResolvedLOForLead } from "@/lib/loanOfficer";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { getActiveShareByToken, attachLeadToShare } from "@/lib/shareLinks";
+import { getActiveShareByToken, attachLeadToShare, createBuyerReferral } from "@/lib/shareLinks";
+import { siteOrigin } from "@/lib/site";
 
 interface QuoteSummary {
   ratesAsOf: string;
@@ -126,6 +127,19 @@ export async function POST(req: Request) {
     })(),
   );
 
+  // Flow B — the buyer's own "share with a friend" link, created here so it can
+  // ride along in the estimate email (the buyer can forward it anytime, without
+  // re-running their numbers). Best-effort: the email still sends without it.
+  let buyerShareUrl: string | null = null;
+  if (email && quoteSummary) {
+    try {
+      const ref = await createBuyerReferral(leadId);
+      if (ref) buyerShareUrl = `${siteOrigin(new URL(req.url).origin)}/r/${ref.token}`;
+    } catch {
+      /* best-effort */
+    }
+  }
+
   // Buyer estimate email. No-ops if Resend isn't configured.
   if (email && quoteSummary) {
     sideEffects.push(
@@ -145,6 +159,7 @@ export async function POST(req: Request) {
         cashToClose: quoteSummary.cashToClose,
         products: quoteSummary.products ?? [],
         disclosures: quoteSummary.disclosures ?? [],
+        shareUrl: buyerShareUrl,
       })
         .then((r) => { if (!r.sent) console.log("[lead] buyer estimate email not sent:", r.reason); })
         .catch((e) => console.log("[lead] buyer estimate email error:", (e as Error).message)),
