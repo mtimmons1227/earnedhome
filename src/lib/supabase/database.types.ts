@@ -33,8 +33,8 @@ export type Database = {
         Relationships: [];
       };
       leads: {
-        Row: { id: string; tenant_id: string; community_id: string | null; quote_id: string | null; agent_id: string | null; assigned_lo_id: string | null; idempotency_key: string | null; full_name: string | null; email: string | null; phone: string | null; consent_tcpa: boolean; consent_text: string | null; consent_at: string | null; agent_status_consent: boolean; consent_token: string; agent_status_consent_at: string | null; agent_status_consent_source: string | null; source: string | null; routed_to: string | null; status: Database["public"]["Enums"]["lead_status"]; closed_at: string | null; created_at: string };
-        Insert: { id?: string; tenant_id: string; community_id?: string | null; quote_id?: string | null; agent_id?: string | null; assigned_lo_id?: string | null; idempotency_key?: string | null; full_name?: string | null; email?: string | null; phone?: string | null; consent_tcpa?: boolean; consent_text?: string | null; consent_at?: string | null; agent_status_consent?: boolean; consent_token?: string; agent_status_consent_at?: string | null; agent_status_consent_source?: string | null; source?: string | null; routed_to?: string | null; status?: Database["public"]["Enums"]["lead_status"]; closed_at?: string | null; created_at?: string };
+        Row: { id: string; tenant_id: string; community_id: string | null; quote_id: string | null; agent_id: string | null; assigned_lo_id: string | null; idempotency_key: string | null; full_name: string | null; email: string | null; phone: string | null; consent_tcpa: boolean; consent_text: string | null; consent_at: string | null; agent_status_consent: boolean; consent_token: string; agent_status_consent_at: string | null; agent_status_consent_source: string | null; source: string | null; routed_to: string | null; status: Database["public"]["Enums"]["lead_status"]; closed_at: string | null; referred_by: string | null; created_at: string };
+        Insert: { id?: string; tenant_id: string; community_id?: string | null; quote_id?: string | null; agent_id?: string | null; assigned_lo_id?: string | null; idempotency_key?: string | null; full_name?: string | null; email?: string | null; phone?: string | null; consent_tcpa?: boolean; consent_text?: string | null; consent_at?: string | null; agent_status_consent?: boolean; consent_token?: string; agent_status_consent_at?: string | null; agent_status_consent_source?: string | null; source?: string | null; routed_to?: string | null; status?: Database["public"]["Enums"]["lead_status"]; closed_at?: string | null; referred_by?: string | null; created_at?: string };
         Update: Partial<Database["public"]["Tables"]["leads"]["Insert"]>;
         Relationships: [];
       };
@@ -48,6 +48,12 @@ export type Database = {
         Row: { id: string; tenant_id: string; lo_id: string | null; name: string; email: string | null; phone: string | null; slug: string; active: boolean; status_token: string; invite_sent_at: string | null; created_at: string; updated_at: string };
         Insert: { id?: string; tenant_id: string; lo_id?: string | null; name: string; email?: string | null; phone?: string | null; slug: string; active?: boolean; status_token?: string; invite_sent_at?: string | null; created_at?: string; updated_at?: string };
         Update: Partial<Database["public"]["Tables"]["agents"]["Insert"]>;
+        Relationships: [];
+      };
+      share_links: {
+        Row: { id: string; tenant_id: string; agent_id: string | null; lo_id: string | null; kind: string; recipient_name: string | null; recipient_email: string | null; token: string; active: boolean; referrer_lead_id: string | null; lead_id: string | null; suggested_agent_name: string | null; suggested_agent_email: string | null; created_at: string; sent_at: string | null };
+        Insert: { id?: string; tenant_id: string; agent_id?: string | null; lo_id?: string | null; kind: string; recipient_name?: string | null; recipient_email?: string | null; token?: string; active?: boolean; referrer_lead_id?: string | null; lead_id?: string | null; suggested_agent_name?: string | null; suggested_agent_email?: string | null; created_at?: string; sent_at?: string | null };
+        Update: Partial<Database["public"]["Tables"]["share_links"]["Insert"]>;
         Relationships: [];
       };
     };

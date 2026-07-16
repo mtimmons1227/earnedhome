@@ -13,7 +13,14 @@ export const dynamic = "force-dynamic";
 // the lead). If the slug is unknown or the seat has been revoked (agent
 // deactivated), we fall back to a normal, unattributed estimate so the buyer's
 // experience is never broken.
-export default async function AgentPage({ params }: { params: { slug: string } }) {
+export default async function AgentPage({
+  params,
+  searchParams,
+}: {
+  params: { slug: string };
+  searchParams?: { st?: string };
+}) {
+  const shareToken = typeof searchParams?.st === "string" ? searchParams.st : null;
   const h = headers();
   const host = h.get("host");
   const tenant = await getTenantForHost(host);
@@ -85,6 +92,7 @@ export default async function AgentPage({ params }: { params: { slug: string } }
         bookingUrl={tenant.booking_url}
         agentId={agent?.id ?? null}
         agentName={agent?.name ?? null}
+        shareToken={shareToken}
       />
     </div>
   );

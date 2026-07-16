@@ -5,6 +5,7 @@ import { sendBuyerEstimateEmail, sendLoLeadAlert, sendAgentLeadAlert, type Estim
 import { emitLeadCreated } from "@/lib/leadEvent";
 import { getResolvedLOForLead } from "@/lib/loanOfficer";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { getActiveShareByToken, attachLeadToShare } from "@/lib/shareLinks";
 
 interface QuoteSummary {
   ratesAsOf: string;
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
     phone?: string; consentTcpa?: boolean; consentText?: string;
     quoteId?: string | null; idempotencyKey?: string | null; agentId?: string | null;
     agentStatusConsent?: boolean; // buyer authorizes sharing loan status with their agent
+    shareToken?: string | null; // agent-invite / buyer-referral share link token
     quoteSummary?: QuoteSummary | null;
     action?: string | null; // "apply" | "call" | "book" | "reach-out"
   };
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
 
   const {
     tenantId, loName, loPhone, bookingUrl, fullName, email, phone, consentTcpa, consentText,
-    quoteId, idempotencyKey, quoteSummary, action, agentId, agentStatusConsent,
+    quoteId, idempotencyKey, quoteSummary, action, agentId, agentStatusConsent, shareToken,
   } = body;
   if (!tenantId) {
     return NextResponse.json({ error: "Missing tenantId" }, { status: 400 });
@@ -51,6 +53,10 @@ export async function POST(req: Request) {
   // through an agent link, the lead is routed to that agent's LO; otherwise to the
   // tenant's default (primary) LO. Stored as assigned_lo_id (routed_to unchanged).
   const resolvedLO = await getResolvedLOForLead(tenantId, agentId);
+
+  // If the buyer arrived via a share link (agent invite or buyer referral),
+  // resolve it so we can stamp source + referred_by and link the lead back.
+  const share = shareToken ? await getActiveShareByToken(shareToken) : null;
 
   // Generate the id server-side and insert directly (no read-back: the anon
   // buyer role has INSERT but no SELECT on leads by design).
@@ -74,7 +80,8 @@ export async function POST(req: Request) {
     consent_tcpa: true,
     consent_text: consentText ?? null,
     consent_at: new Date().toISOString(),
-    source: "pathfinder",
+    source: share?.kind ?? "pathfinder",
+    referred_by: share?.referrer_lead_id ?? null,
     routed_to: loName ?? null,
     status: "new",
   });
@@ -97,6 +104,12 @@ export async function POST(req: Request) {
   // returning so they reliably complete. Each is wrapped so a failure never
   // blocks lead capture (the lead is already saved above).
   const sideEffects: Promise<unknown>[] = [];
+
+  // Link this lead back to its share link (agent invite / buyer referral) so the
+  // agent's "invited" row flips to "connected" and the referral chain is recorded.
+  if (share && shareToken) {
+    sideEffects.push(attachLeadToShare(shareToken, leadId).catch(() => {}));
+  }
 
   // Event log
   sideEffects.push(

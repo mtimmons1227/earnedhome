@@ -1,7 +1,9 @@
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { isAgentOwnerActive } from "@/lib/agents";
+import { listPendingInvites } from "@/lib/shareLinks";
 import { agentStage, type AgentStage } from "@/lib/loSelect";
 import { AutoRefresh } from "./AutoRefresh";
+import { AgentActions } from "./AgentActions";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +79,15 @@ export default async function AgentStatusPage({ params }: { params: { token: str
     created_at: string;
   }[];
 
+  // Invites this agent has sent that haven't converted to a lead yet.
+  const pending = await listPendingInvites(agent.id);
+  const inviteRows = pending.map((p) => ({
+    id: p.id,
+    recipient_name: p.recipient_name,
+    recipient_email: p.recipient_email,
+    created_at: p.created_at,
+  }));
+
   const company = (tenant?.lo_name as string | null) ?? (tenant?.name as string | null) ?? "your loan officer";
   const b = (tenant?.branding ?? {}) as Branding;
   const themeVars = {
@@ -96,6 +107,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
       </header>
 
       <main style={{ maxWidth: 760, margin: "0 auto", padding: 16 }}>
+        <AgentActions token={params.token} invites={inviteRows} />
         <div className="panel">
           <p className="hint" style={{ marginTop: 0 }}>
             Buyers who ran their numbers from your link, with their current stage. For loan specifics, contact {company}.

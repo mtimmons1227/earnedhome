@@ -254,6 +254,53 @@ export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: b
   }
 }
 
+// "See what you can afford" — emailed to a buyer by their agent, carrying the
+// agent's estimate link (with a share token so the resulting lead links back to
+// the invite). Same safe-by-design no-op if Resend / email unset.
+export interface BuyerInviteEmail {
+  to: string;                 // buyer email
+  buyerName?: string | null;
+  agentName?: string | null;  // the referring agent
+  loName: string;             // financing by …
+  link: string;               // /a/<slug>?st=<token>
+}
+
+export async function sendBuyerInviteEmail(d: BuyerInviteEmail): Promise<{ sent: boolean; reason?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!key || !from) return { sent: false, reason: "email not configured (RESEND_API_KEY / RESEND_FROM)" };
+  if (!d.to) return { sent: false, reason: "no buyer email" };
+
+  const hi = d.buyerName ? `Hi ${escapeHtml(d.buyerName.split(" ")[0])},` : "Hi,";
+  const safeLink = escapeHtml(d.link);
+  const who = d.agentName ? escapeHtml(d.agentName) : "Your agent";
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
+    <h2 style="color:#1F3864;margin:0 0 8px;">See what you can afford</h2>
+    <p>${hi}</p>
+    <p>${who} put together a quick way for you to see real monthly-payment and
+       cash-to-close estimates — no credit pull, no obligation. It takes about a minute.</p>
+    <p style="margin:16px 0 8px;">
+      <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">Run my numbers</a>
+    </p>
+    <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
+    <p style="font-size:13px;color:#6b7280;margin-top:18px;">Financing by ${escapeHtml(d.loName)}.
+       This is an estimate for educational purposes only — not a loan approval or a commitment to lend.</p>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from, to: d.to, subject: "See what you can afford — a quick estimate", html }),
+    });
+    if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, reason: (e as Error).message };
+  }
+}
+
 // "Set up your EarnedHome sign-in" — emailed to a loan officer so they can set
 // their password and access their dashboard. Same safe-by-design no-op if unset.
 export interface LoLoginInvite {

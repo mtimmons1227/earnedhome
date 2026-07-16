@@ -39,9 +39,10 @@ interface Props {
   bookingUrl?: string | null;
   agentId?: string | null;
   agentName?: string | null;
+  shareToken?: string | null;
 }
 
-export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPhone, bookingUrl, agentId, agentName }: Props) {
+export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPhone, bookingUrl, agentId, agentName, shareToken }: Props) {
   // form state (display strings for currency fields)
   const [homePrice, setHomePrice] = useState("0");
   const [downAmt, setDownAmt] = useState("0");
@@ -203,6 +204,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
           bookingUrl: bookingUrl ?? null,
           agentId: agentId ?? null,
           agentStatusConsent: agentId ? agentShareConsent : false,
+          shareToken: shareToken ?? null,
           action,
           quoteId,
           idempotencyKey: requestKey,
