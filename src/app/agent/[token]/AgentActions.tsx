@@ -151,9 +151,9 @@ function ToggleButton({ active, busy, onClick }: { active: boolean; busy: boolea
       disabled={busy}
       style={{
         fontSize: 12, fontWeight: 600, cursor: "pointer", borderRadius: 6, padding: "4px 12px",
-        border: active ? "1px solid #f0b4b4" : "1px solid var(--line)",
-        background: active ? "#fdecec" : "#ffffff",
-        color: active ? "#b91c1c" : "var(--primary)",
+        border: active ? "1px solid #e6a1a1" : "1px solid #a9d8ba",
+        background: active ? "#fbe6e6" : "#e7f6ec",
+        color: active ? "#b91c1c" : "#15803d",
       }}
     >
       {active ? "Turn off" : "Turn on"}

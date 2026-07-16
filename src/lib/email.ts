@@ -78,7 +78,7 @@ function shareSection(shareUrl?: string | null): string {
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:18px 0 0;padding:16px;border:1px solid #dbe4ee;background:#f4f8fc;border-radius:10px;">
     <p style="margin:0 0 6px;font-weight:700;color:#1F3864;font-size:15px;">Know someone else house-hunting?</p>
     <p style="margin:0 0 12px;font-size:14px;color:#374151;">Share this with a friend or family member so they can see what they can afford too — same quick estimate, no obligation.</p>
-    <a href="${safe}" style="background:#1F3864;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:600;display:inline-block;">Share your estimate</a>
+    <a href="${safe}" style="background:#1F3864;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:600;display:inline-block;">Share with a friend</a>
     <p style="font-size:12px;color:#6b7280;word-break:break-all;margin:10px 0 0;">${safe}</p>
   </div>`;
 }
