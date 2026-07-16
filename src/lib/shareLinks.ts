@@ -121,3 +121,41 @@ export async function attachLeadToShare(token: string, leadId: string): Promise<
     .eq("token", token)
     .is("lead_id", null);
 }
+
+// Flow B: a buyer creates (or reuses) their own referral link from their lead.
+// The referral inherits the buyer's agent + LO so a friend who runs the numbers
+// lands in the same funnel, tagged buyer_referral with referred_by = this buyer.
+// One reusable link per buyer — friends become independent leads, so there's no
+// per-friend token to manage.
+export async function createBuyerReferral(referrerLeadId: string): Promise<ShareLinkRow | null> {
+  const admin = createSupabaseAdmin();
+  const { data: lead } = await admin
+    .from("leads")
+    .select("id, tenant_id, agent_id, assigned_lo_id")
+    .eq("id", referrerLeadId)
+    .maybeSingle();
+  const l = lead as { id: string; tenant_id: string; agent_id: string | null; assigned_lo_id: string | null } | null;
+  if (!l) return null;
+
+  const { data: existing } = await admin
+    .from("share_links")
+    .select("*")
+    .eq("referrer_lead_id", l.id)
+    .eq("kind", "buyer_referral")
+    .eq("active", true)
+    .maybeSingle();
+  if (existing) return existing as ShareLinkRow;
+
+  const { data } = await admin
+    .from("share_links")
+    .insert({
+      tenant_id: l.tenant_id,
+      agent_id: l.agent_id,
+      lo_id: l.assigned_lo_id,
+      kind: "buyer_referral",
+      referrer_lead_id: l.id,
+    })
+    .select("*")
+    .maybeSingle();
+  return (data as ShareLinkRow | null) ?? null;
+}

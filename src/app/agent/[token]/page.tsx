@@ -1,7 +1,7 @@
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { isAgentOwnerActive } from "@/lib/agents";
 import { listPendingInvites } from "@/lib/shareLinks";
-import { agentStage, type AgentStage } from "@/lib/loSelect";
+import { agentStage } from "@/lib/loSelect";
 import { AutoRefresh } from "./AutoRefresh";
 import { AgentActions } from "./AgentActions";
 
@@ -12,13 +12,6 @@ interface Branding {
   accent?: string;
   bg?: string;
 }
-
-const stageColor: Record<AgentStage, { bg: string; fg: string }> = {
-  Connected: { bg: "#eef2f7", fg: "#1F3864" },
-  "In process": { bg: "#e7f0fb", fg: "#1d4ed8" },
-  Closed: { bg: "#e8f5e9", fg: "#15803d" },
-  Inactive: { bg: "#f3f4f6", fg: "#6b7280" },
-};
 
 // Pretty-print a US phone number (matches the dashboard/agents pages).
 function formatPhone(raw: string | null): string {
@@ -79,14 +72,15 @@ export default async function AgentStatusPage({ params }: { params: { token: str
     created_at: string;
   }[];
 
-  // Invites this agent has sent that haven't converted to a lead yet.
-  const pending = await listPendingInvites(agent.id);
-  const inviteRows = pending.map((p) => ({
-    id: p.id,
-    recipient_name: p.recipient_name,
-    recipient_email: p.recipient_email,
-    created_at: p.created_at,
+  // Buyers who've run their numbers (with a friendly stage) + invites still waiting.
+  const buyers = rows.map((r) => ({
+    id: r.id,
+    name: r.full_name || "A buyer",
+    subtitle: [r.email, formatPhone(r.phone), new Date(r.created_at).toLocaleDateString()].filter(Boolean).join(" · "),
+    stage: agentStage(r.status),
   }));
+  const pending = await listPendingInvites(agent.id);
+  const invites = pending.map((p) => ({ id: p.id, name: p.recipient_name ?? "", email: p.recipient_email }));
 
   const company = (tenant?.lo_name as string | null) ?? (tenant?.name as string | null) ?? "your loan officer";
   const b = (tenant?.branding ?? {}) as Branding;
@@ -106,51 +100,11 @@ export default async function AgentStatusPage({ params }: { params: { token: str
         </div>
       </header>
 
-      <main style={{ maxWidth: 760, margin: "0 auto", padding: 16 }}>
-        <AgentActions token={params.token} invites={inviteRows} />
-        <div className="panel">
-          <p className="hint" style={{ marginTop: 0 }}>
-            Buyers who ran their numbers from your link, with their current stage. For loan specifics, contact {company}.
-          </p>
-
-          {rows.length === 0 ? (
-            <div className="hint">No buyers yet. Share your link and they’ll show up here.</div>
-          ) : (
-            <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-              {rows.map((r, i) => {
-                const stage = agentStage(r.status);
-                const c = stageColor[stage];
-                return (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto",
-                    alignItems: "center", gap: 10, border: "1px solid var(--line)",
-                    borderRadius: 10, padding: "12px 14px" }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700 }}>{r.full_name || "A buyer"}</div>
-                      {(r.email || r.phone) && (
-                        <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2, wordBreak: "break-word" }}>
-                          {[r.email, formatPhone(r.phone)].filter(Boolean).join(" · ")}
-                        </div>
-                      )}
-                      <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
-                        {new Date(r.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                      <span style={{ background: c.bg, color: c.fg, fontWeight: 700, fontSize: 13,
-                        borderRadius: 999, padding: "4px 12px", whiteSpace: "nowrap" }}>
-                        {stage}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <p style={{ textAlign: "center", color: "var(--muted)", fontSize: 12, marginTop: 8 }}>
-          This page shows only a high-level stage — no financial, credit, or loan
-          details — those stay between the buyer and {company}.
+      <main style={{ maxWidth: 620, margin: "0 auto", padding: 16 }}>
+        <AgentActions token={params.token} buyers={buyers} invites={invites} />
+        <p style={{ textAlign: "center", color: "var(--muted)", fontSize: 12, marginTop: 12 }}>
+          You see only a high-level stage — no financial, credit, or loan details.
+          Those stay between the buyer and {company}.
         </p>
       </main>
     </div>

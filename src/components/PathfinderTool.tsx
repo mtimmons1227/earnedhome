@@ -5,6 +5,7 @@ import type {
   CreditBand, Occupancy, PropertyType, PricingInput, PricingQuote, PricingProduct,
 } from "@/lib/pricing/types";
 import { evaluateEligibility, type Family } from "@/lib/eligibility";
+import { ShareWithFriend } from "./ShareWithFriend";
 
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
 const parseNum = (s: string) => +String(s).replace(/[^0-9.]/g, "") || 0;
@@ -512,6 +513,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
                         Start over
                       </button>
                     </div>
+                    {leadId && <ShareWithFriend leadId={leadId} />}
                   </div>
                 </div>
               )}
