@@ -84,6 +84,20 @@ export async function disableShareLinkForAgent(shareId: string, agentId: string)
   return !error;
 }
 
+// All of an agent's ACTIVE share links (invites + referrals), so the portal can
+// offer a "turn off" on any buyer — pending or already connected. Maps a
+// converted buyer's lead back to the share link that can be disabled.
+export async function listActiveAgentShares(agentId: string): Promise<{ id: string; lead_id: string | null }[]> {
+  const admin = createSupabaseAdmin();
+  const { data } = await admin
+    .from("share_links")
+    .select("id, lead_id")
+    .eq("agent_id", agentId)
+    .eq("active", true)
+    .order("created_at", { ascending: false });
+  return (data as { id: string; lead_id: string | null }[] | null) ?? [];
+}
+
 // The agent's invites that haven't converted to a lead yet ("pending / invited").
 export async function listPendingInvites(agentId: string): Promise<ShareLinkRow[]> {
   const admin = createSupabaseAdmin();

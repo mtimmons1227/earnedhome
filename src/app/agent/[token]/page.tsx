@@ -1,6 +1,6 @@
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { isAgentOwnerActive } from "@/lib/agents";
-import { listPendingInvites } from "@/lib/shareLinks";
+import { listPendingInvites, listActiveAgentShares } from "@/lib/shareLinks";
 import { agentStage } from "@/lib/loSelect";
 import { AutoRefresh } from "./AutoRefresh";
 import { AgentActions } from "./AgentActions";
@@ -72,12 +72,19 @@ export default async function AgentStatusPage({ params }: { params: { token: str
     created_at: string;
   }[];
 
+  // Map each converted buyer's lead → the (active) share link that can be turned
+  // off, so the agent can disable any buyer's link right from the status list.
+  const shares = await listActiveAgentShares(agent.id);
+  const shareByLead = new Map<string, string>();
+  for (const s of shares) if (s.lead_id) shareByLead.set(s.lead_id, s.id);
+
   // Buyers who've run their numbers (with a friendly stage) + invites still waiting.
   const buyers = rows.map((r) => ({
     id: r.id,
     name: r.full_name || "A buyer",
     subtitle: [r.email, formatPhone(r.phone), new Date(r.created_at).toLocaleDateString()].filter(Boolean).join(" · "),
     stage: agentStage(r.status),
+    shareId: shareByLead.get(r.id) ?? null,
   }));
   const pending = await listPendingInvites(agent.id);
   const invites = pending.map((p) => ({ id: p.id, name: p.recipient_name ?? "", email: p.recipient_email }));

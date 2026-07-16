@@ -9,6 +9,7 @@ export interface BuyerRow {
   name: string;
   subtitle: string;
   stage: AgentStage;
+  shareId: string | null; // the share link to disable, when the buyer came via one
 }
 export interface InviteRow {
   id: string;
@@ -115,7 +116,14 @@ export function AgentActions({ token, buyers, invites }: { token: string; buyers
                     <div style={{ fontWeight: 600 }}>{b.name}</div>
                     {b.subtitle && <div style={subStyle}>{b.subtitle}</div>}
                   </div>
-                  <span style={{ ...pillStyle, background: c.bg, color: c.fg }}>{b.stage}</span>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                    <span style={{ ...pillStyle, background: c.bg, color: c.fg }}>{b.stage}</span>
+                    {b.shareId && (
+                      <button type="button" onClick={() => turnOff(b.shareId as string)} disabled={busy} style={turnOffStyle}>
+                        Turn off
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
