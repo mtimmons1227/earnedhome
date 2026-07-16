@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAgentByStatusToken, disableShareLinkForAgent } from "@/lib/shareLinks";
+import { getAgentByStatusToken, setShareActiveForAgent } from "@/lib/shareLinks";
 
 // Agent disables one of THEIR buyer links (soft: share_links.active=false). The
 // scope check in disableShareLinkForAgent (eq agent_id) means an agent can only
@@ -18,7 +18,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
   }
   if (!body.shareId) return NextResponse.json({ error: "Missing shareId" }, { status: 422 });
 
-  const ok = await disableShareLinkForAgent(body.shareId, agent.id);
+  const ok = await setShareActiveForAgent(body.shareId, agent.id, false);
   if (!ok) return NextResponse.json({ error: "Could not disable that link" }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
