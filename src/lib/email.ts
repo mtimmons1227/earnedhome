@@ -65,6 +65,8 @@ export interface AgentLeadAlert {
   occupancy?: string;
   propertyType?: string;
   leadId?: string;
+  rootClientName?: string | null;   // the agent's own client at the top of the referral tree
+  referredByName?: string | null;   // the person who directly shared it with this buyer
 }
 
 const money = (n: number) => "$" + Math.round(n).toLocaleString("en-US");
@@ -172,11 +174,21 @@ export async function sendAgentLeadAlert(d: AgentLeadAlert): Promise<{ sent: boo
   if (use.length) rows.push(`<strong>Use:</strong> ${use.join(" · ")}`);
 
   const hi = d.agentName ? `Hi ${escapeHtml(d.agentName.split(" ")[0])},` : "Hi,";
+  // Referral framing: anchor on the agent's own client (root of the tree), and
+  // note the direct sharer when it's a deeper (friend-of-a-friend) referral.
+  const isReferral = !!d.rootClientName;
+  const root = d.rootClientName ? escapeHtml(d.rootClientName) : "";
+  const immediate = d.referredByName ? escapeHtml(d.referredByName) : "";
+  const heading = isReferral ? "A referral in your network — EarnedHome" : "Your buyer just signed up — EarnedHome";
+  const leadLine = isReferral
+    ? `<p><strong>${name}</strong> just ran the numbers and connected with <strong>${escapeHtml(d.loName)}</strong>.</p>
+       <p style="background:#eef3fb;border:1px solid #d6e2f3;border-radius:8px;padding:10px 12px;">This came from your client <strong>${root}</strong>'s referral network${immediate && immediate !== root ? ` — shared to them by <strong>${immediate}</strong>` : ""}.</p>`
+    : `<p>Your buyer <strong>${name}</strong> just ran the numbers and connected with <strong>${escapeHtml(d.loName)}</strong>.</p>`;
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
-    <h2 style="color:#1F3864;margin:0 0 8px;">Your buyer just signed up — EarnedHome</h2>
+    <h2 style="color:#1F3864;margin:0 0 8px;">${heading}</h2>
     <p>${hi}</p>
-    <p>Your buyer <strong>${name}</strong> just ran the numbers and connected with <strong>${escapeHtml(d.loName)}</strong>.</p>
+    ${leadLine}
     <div style="background:#f3f4f6;border-radius:8px;padding:12px 14px;margin:8px 0;font-size:14px;line-height:1.7;">
       ${rows.map((r) => `<div>${r}</div>`).join("")}
     </div>
@@ -187,7 +199,7 @@ export async function sendAgentLeadAlert(d: AgentLeadAlert): Promise<{ sent: boo
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ from, to: d.to, subject: `Your buyer ${name} just signed up`, html }),
+      body: JSON.stringify({ from, to: d.to, subject: isReferral ? `A referral in your network — ${name}` : `Your buyer ${name} just signed up`, html }),
     });
     if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
     return { sent: true };

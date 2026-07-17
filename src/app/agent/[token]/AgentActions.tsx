@@ -11,6 +11,8 @@ export interface BuyerRow {
   stage: AgentStage;
   shareId: string | null;   // the buyer's link, when they came via one
   shareActive: boolean;     // whether that link is currently on
+  shareEmail: string | null; // recipient email, when we can re-send the link
+  referralPath: string | null; // full lineage (root → … → sharer) when referred
 }
 export interface InviteRow {
   id: string;
@@ -82,6 +84,26 @@ export function AgentActions({ token, buyers, invites }: { token: string; buyers
     }
   }
 
+  async function resend(shareId: string) {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/agent/${token}/resend`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ shareId }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg(j.error ?? "Could not re-send the link.");
+        return;
+      }
+      setMsg(j.emailed ? "Link re-sent." : "Couldn’t send — email isn’t on in this environment yet.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const empty = buyers.length === 0 && invites.length === 0;
 
   return (
@@ -117,12 +139,20 @@ export function AgentActions({ token, buyers, invites }: { token: string; buyers
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 600 }}>{b.name}</div>
                     {b.subtitle && <div style={subStyle}>{b.subtitle}</div>}
+                    {b.referralPath && (
+                      <div style={{ ...subStyle, color: "var(--primary)" }}>Referral: {b.referralPath}</div>
+                    )}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                     <span style={{ ...pillStyle, background: c.bg, color: c.fg }}>{b.stage}</span>
-                    {b.shareId && (
-                      <ToggleButton active={b.shareActive} busy={busy} onClick={() => toggle(b.shareId as string, !b.shareActive)} />
-                    )}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {b.shareEmail && (
+                        <button type="button" onClick={() => resend(b.shareId as string)} disabled={busy} style={linkBtnStyle}>Email link</button>
+                      )}
+                      {b.shareId && (
+                        <ToggleButton active={b.shareActive} busy={busy} onClick={() => toggle(b.shareId as string, !b.shareActive)} />
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -133,7 +163,12 @@ export function AgentActions({ token, buyers, invites }: { token: string; buyers
                   <div style={{ fontWeight: 600 }}>{iv.name || iv.email || "A buyer"}</div>
                   <div style={subStyle}>{iv.active ? "Invited · waiting to run numbers" : "Invited · turned off"}</div>
                 </div>
-                <ToggleButton active={iv.active} busy={busy} onClick={() => toggle(iv.id, !iv.active)} />
+                <div style={{ display: "flex", gap: 6 }}>
+                  {iv.email && (
+                    <button type="button" onClick={() => resend(iv.id)} disabled={busy} style={linkBtnStyle}>Email link</button>
+                  )}
+                  <ToggleButton active={iv.active} busy={busy} onClick={() => toggle(iv.id, !iv.active)} />
+                </div>
               </div>
             ))}
           </div>
@@ -168,3 +203,4 @@ const rowStyle = (off: boolean): React.CSSProperties => ({
 });
 const subStyle: React.CSSProperties = { color: "var(--muted)", fontSize: 12, marginTop: 2, wordBreak: "break-word" };
 const pillStyle: React.CSSProperties = { fontWeight: 700, fontSize: 13, borderRadius: 999, padding: "4px 12px", whiteSpace: "nowrap" };
+const linkBtnStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, cursor: "pointer", borderRadius: 6, padding: "4px 12px", border: "1px solid var(--line)", background: "#ffffff", color: "var(--primary)" };

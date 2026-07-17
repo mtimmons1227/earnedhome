@@ -59,7 +59,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
 
   const { data: leads } = await admin
     .from("leads")
-    .select("id, full_name, status, email, phone, created_at")
+    .select("id, full_name, status, email, phone, created_at, referred_by")
     .eq("agent_id", agent.id)
     .order("created_at", { ascending: false });
 
@@ -70,13 +70,32 @@ export default async function AgentStatusPage({ params }: { params: { token: str
     email: string | null;
     phone: string | null;
     created_at: string;
+    referred_by: string | null;
   }[];
 
   // All of the agent's share links (active + turned-off) so every buyer can be
   // toggled on/off from the status list, and turned-off ones stay visible.
   const shares = await listAllAgentShares(agent.id);
-  const shareByLead = new Map<string, { id: string; active: boolean }>();
-  for (const s of shares) if (s.lead_id) shareByLead.set(s.lead_id, { id: s.id, active: s.active });
+  const shareByLead = new Map<string, { id: string; active: boolean; email: string | null }>();
+  for (const s of shares) if (s.lead_id) shareByLead.set(s.lead_id, { id: s.id, active: s.active, email: s.recipient_email });
+
+  // The referral lineage lives entirely within this agent's leads (referrals
+  // inherit the agent), so we can walk it in memory — no extra queries.
+  const nodeById = new Map<string, { name: string; referredBy: string | null }>();
+  for (const r of rows) nodeById.set(r.id, { name: r.full_name || "A buyer", referredBy: r.referred_by });
+  function referralPathFor(leadId: string): string | null {
+    const ancestors: string[] = [];
+    const seen = new Set<string>();
+    let cur: string | null = nodeById.get(leadId)?.referredBy ?? null;
+    while (cur && !seen.has(cur) && ancestors.length < 12) {
+      seen.add(cur);
+      const node = nodeById.get(cur);
+      if (!node) break;
+      ancestors.unshift(node.name); // build root → immediate
+      cur = node.referredBy;
+    }
+    return ancestors.length ? ancestors.join(" → ") : null;
+  }
 
   // Buyers who've run their numbers (with a friendly stage + on/off toggle).
   const buyers = rows.map((r) => {
@@ -88,6 +107,8 @@ export default async function AgentStatusPage({ params }: { params: { token: str
       stage: agentStage(r.status),
       shareId: sh?.id ?? null,
       shareActive: sh?.active ?? true,
+      shareEmail: sh?.email ?? null,
+      referralPath: referralPathFor(r.id),
     };
   });
   // Invites that haven't converted yet — kept even when turned off, so they can be turned back on.

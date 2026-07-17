@@ -123,6 +123,41 @@ export async function listPendingInvites(agentId: string): Promise<ShareLinkRow[
   return (data as ShareLinkRow[] | null) ?? [];
 }
 
+// Walk the referral chain up from a lead (its `referred_by` parent) to find the
+// direct sharer (immediate) and the agent's own client at the top (root). Guards
+// against cycles and runaway depth. Used to frame the agent's referral alert.
+export async function resolveReferralNames(immediateLeadId: string): Promise<{ immediateName: string | null; rootName: string | null }> {
+  const admin = createSupabaseAdmin();
+  let currentId: string | null = immediateLeadId;
+  let immediateName: string | null = null;
+  let rootName: string | null = null;
+  const seen = new Set<string>();
+  for (let i = 0; currentId && i < 12; i++) {
+    if (seen.has(currentId)) break;
+    seen.add(currentId);
+    const { data } = await admin.from("leads").select("full_name, referred_by").eq("id", currentId).maybeSingle();
+    const row = data as { full_name: string | null; referred_by: string | null } | null;
+    if (!row) break;
+    if (i === 0) immediateName = row.full_name ?? null;
+    rootName = row.full_name ?? rootName; // final value = the topmost we reach
+    if (!row.referred_by) break;          // reached the agent's direct client
+    currentId = row.referred_by;
+  }
+  return { immediateName, rootName };
+}
+
+// Fetch a single share link the agent owns (for re-sending its invite email).
+export async function getShareForAgent(shareId: string, agentId: string): Promise<ShareLinkRow | null> {
+  const admin = createSupabaseAdmin();
+  const { data } = await admin
+    .from("share_links")
+    .select("*")
+    .eq("id", shareId)
+    .eq("agent_id", agentId)
+    .maybeSingle();
+  return (data as ShareLinkRow | null) ?? null;
+}
+
 // Resolve an ACTIVE share link by token — used by the lead route to stamp
 // attribution (source / referred_by) and link the converted lead back. Returns
 // null when the token is unknown or the link has been disabled.

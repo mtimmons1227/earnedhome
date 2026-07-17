@@ -5,7 +5,7 @@ import { sendBuyerEstimateEmail, sendLoLeadAlert, sendAgentLeadAlert, type Estim
 import { emitLeadCreated } from "@/lib/leadEvent";
 import { getResolvedLOForLead } from "@/lib/loanOfficer";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { getActiveShareByToken, attachLeadToShare, createBuyerReferral } from "@/lib/shareLinks";
+import { getActiveShareByToken, attachLeadToShare, createBuyerReferral, resolveReferralNames } from "@/lib/shareLinks";
 import { siteOrigin } from "@/lib/site";
 
 interface QuoteSummary {
@@ -221,6 +221,16 @@ export async function POST(req: Request) {
           if (!r.sent) console.log("[lead] LO alert not sent:", r.reason);
         }
 
+        // Referral framing for the agent's copy: resolve the direct sharer and the
+        // agent's own client at the top of the referral tree (buyer_referral only).
+        let rootClientName: string | null = null;
+        let referredByName: string | null = null;
+        if (share?.referrer_lead_id) {
+          const rc = await resolveReferralNames(share.referrer_lead_id);
+          referredByName = rc.immediateName;
+          rootClientName = rc.rootName;
+        }
+
         // The agent's own copy ("your buyer just signed up").
         if (agentEmail) {
           const ar = await sendAgentLeadAlert({
@@ -237,6 +247,8 @@ export async function POST(req: Request) {
             occupancy: quoteSummary?.occupancy,
             propertyType: quoteSummary?.propertyType,
             leadId,
+            rootClientName,
+            referredByName,
           });
           if (!ar.sent) console.log("[lead] agent copy not sent:", ar.reason);
         }
