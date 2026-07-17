@@ -137,7 +137,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
       <main style={{ maxWidth: 620, margin: "0 auto", padding: 16 }}>
         <AgentActions token={params.token} buyers={buyers} invites={invites} />
         <p style={{ textAlign: "center", color: "var(--muted)", fontSize: 12, marginTop: 12 }}>
-          You see only a high-level stage — no financial, credit, or loan details.
+          These are the buyers you've referred — no financial, credit, or loan details.
           Those stay between the buyer and {company}.
         </p>
       </main>

@@ -133,7 +133,6 @@ export function AgentActions({ token, buyers, invites }: { token: string; buyers
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
             {buyers.map((b) => {
-              const c = stageColor[b.stage];
               return (
                 <div key={b.id} style={rowStyle(b.shareId != null && !b.shareActive)}>
                   <div style={{ minWidth: 0 }}>
@@ -144,7 +143,6 @@ export function AgentActions({ token, buyers, invites }: { token: string; buyers
                     )}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                    <span style={{ ...pillStyle, background: c.bg, color: c.fg }}>{b.stage}</span>
                     <div style={{ display: "flex", gap: 6 }}>
                       {b.shareEmail && (
                         <button type="button" onClick={() => resend(b.shareId as string)} disabled={busy} style={linkBtnStyle}>Email link</button>

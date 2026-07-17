@@ -281,6 +281,22 @@ export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: b
   }
 }
 
+// Shared "Financing by [LO], NMLS #… · [Company], NMLS #…. Equal Housing Lender."
+// footer so every emailed link carries a consistent originator + company
+// disclosure. Omits any piece that's blank (e.g. a test LO with no NMLS in QA).
+// NOTE: exact required wording should be confirmed by compliance counsel.
+function financingFooterHtml(d: { loName: string; loNmls?: string | null; companyName?: string | null; companyNmls?: string | null }): string {
+  let lo = escapeHtml(d.loName);
+  if (d.loNmls) lo += `, NMLS #${escapeHtml(d.loNmls)}`;
+  const parts = [lo];
+  if (d.companyName && d.companyName !== d.loName) {
+    let co = escapeHtml(d.companyName);
+    if (d.companyNmls) co += `, NMLS #${escapeHtml(d.companyNmls)}`;
+    parts.push(co);
+  }
+  return `<p style="font-size:13px;color:#6b7280;margin-top:18px;">Financing by ${parts.join(" · ")}. Equal Housing Lender. This is an estimate for educational purposes only — not a loan approval or a commitment to lend.</p>`;
+}
+
 // "See what you can afford" — emailed to a buyer by their agent, carrying the
 // agent's estimate link (with a share token so the resulting lead links back to
 // the invite). Same safe-by-design no-op if Resend / email unset.
@@ -288,7 +304,10 @@ export interface BuyerInviteEmail {
   to: string;                 // buyer email
   buyerName?: string | null;
   agentName?: string | null;  // the referring agent
-  loName: string;             // financing by …
+  loName: string;             // the loan officer (person)
+  loNmls?: string | null;     // the LO's individual NMLS
+  companyName?: string | null; // the broker/company, e.g. "R Parry Financial LLC"
+  companyNmls?: string | null; // the company NMLS
   link: string;               // /a/<slug>?st=<token>
 }
 
@@ -311,8 +330,7 @@ export async function sendBuyerInviteEmail(d: BuyerInviteEmail): Promise<{ sent:
       <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">Run my numbers</a>
     </p>
     <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
-    <p style="font-size:13px;color:#6b7280;margin-top:18px;">Financing by ${escapeHtml(d.loName)}.
-       This is an estimate for educational purposes only — not a loan approval or a commitment to lend.</p>
+    ${financingFooterHtml({ loName: d.loName, loNmls: d.loNmls, companyName: d.companyName, companyNmls: d.companyNmls })}
   </div>`;
 
   try {
@@ -334,7 +352,10 @@ export async function sendBuyerInviteEmail(d: BuyerInviteEmail): Promise<{ sent:
 export interface ReferralToFriendEmail {
   to: string;                // the friend's email
   friendName?: string | null;
-  loName: string;            // financing by …
+  loName: string;            // the loan officer (person)
+  loNmls?: string | null;
+  companyName?: string | null;
+  companyNmls?: string | null;
   link: string;              // /r/<token> estimate link
 }
 
@@ -356,8 +377,8 @@ export async function sendReferralToFriendEmail(d: ReferralToFriendEmail): Promi
       <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">See what I can afford</a>
     </p>
     <p style="font-size:13px;color:#6b7280;word-break:break-all;">${safeLink}</p>
-    <p style="font-size:13px;color:#6b7280;margin-top:18px;">Financing by ${escapeHtml(d.loName)}. This is an
-       estimate for educational purposes only — not a loan approval or a commitment to lend. Feel free to forward it to anyone.</p>
+    ${financingFooterHtml({ loName: d.loName, loNmls: d.loNmls, companyName: d.companyName, companyNmls: d.companyNmls })}
+    <p style="font-size:12px;color:#6b7280;">Feel free to forward this to anyone.</p>
   </div>`;
 
   try {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getActiveShareByToken } from "@/lib/shareLinks";
+import { getActiveShareByToken, getTenantIdentity } from "@/lib/shareLinks";
 import { getResolvedLOForLead } from "@/lib/loanOfficer";
 import { sendReferralToFriendEmail } from "@/lib/email";
 import { siteOrigin } from "@/lib/site";
@@ -31,8 +31,16 @@ export async function POST(req: Request) {
   const origin = siteOrigin(new URL(req.url).origin);
   const link = `${origin}/r/${share.token}`;
   const lo = await getResolvedLOForLead(share.tenant_id, share.agent_id);
-  const loName = lo?.full_name ?? "a loan officer";
+  const ident = await getTenantIdentity(share.tenant_id);
 
-  const r = await sendReferralToFriendEmail({ to: email, friendName: name, loName, link });
+  const r = await sendReferralToFriendEmail({
+    to: email,
+    friendName: name,
+    loName: lo?.full_name ?? "a loan officer",
+    loNmls: lo?.nmls ?? null,
+    companyName: ident.companyName,
+    companyNmls: ident.companyNmls,
+    link,
+  });
   return NextResponse.json({ ok: true, emailed: r.sent, reason: r.reason ?? null });
 }

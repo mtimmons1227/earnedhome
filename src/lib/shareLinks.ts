@@ -146,6 +146,17 @@ export async function resolveReferralNames(immediateLeadId: string): Promise<{ i
   return { immediateName, rootName };
 }
 
+// The company/broker display name + NMLS for a tenant, for the emailed
+// "Financing by …" disclosure footer. Company NMLS lives in branding.company_nmls
+// (falls back to the legacy tenant.nmls).
+export async function getTenantIdentity(tenantId: string): Promise<{ companyName: string | null; companyNmls: string | null }> {
+  const admin = createSupabaseAdmin();
+  const { data } = await admin.from("tenants").select("lo_name, nmls, branding").eq("id", tenantId).maybeSingle();
+  const t = data as { lo_name: string | null; nmls: string | null; branding: { company_nmls?: string | null } | null } | null;
+  if (!t) return { companyName: null, companyNmls: null };
+  return { companyName: t.lo_name ?? null, companyNmls: (t.branding?.company_nmls ?? t.nmls) ?? null };
+}
+
 // Fetch a single share link the agent owns (for re-sending its invite email).
 export async function getShareForAgent(shareId: string, agentId: string): Promise<ShareLinkRow | null> {
   const admin = createSupabaseAdmin();

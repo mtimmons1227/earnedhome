@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAgentByStatusToken, createAgentInvite } from "@/lib/shareLinks";
+import { getAgentByStatusToken, createAgentInvite, getTenantIdentity } from "@/lib/shareLinks";
 import { isAgentOwnerActive } from "@/lib/agents";
 import { getResolvedLOForLead } from "@/lib/loanOfficer";
 import { sendBuyerInviteEmail } from "@/lib/email";
@@ -42,8 +42,17 @@ export async function POST(req: Request, { params }: { params: { token: string }
   const link = `${origin}/a/${agent.slug}?st=${share.token}`;
 
   const lo = await getResolvedLOForLead(agent.tenant_id, agent.id);
-  const loName = lo?.full_name ?? "your loan officer";
+  const ident = await getTenantIdentity(agent.tenant_id);
 
-  const r = await sendBuyerInviteEmail({ to: email, buyerName: name, agentName: agent.name, loName, link });
+  const r = await sendBuyerInviteEmail({
+    to: email,
+    buyerName: name,
+    agentName: agent.name,
+    loName: lo?.full_name ?? "your loan officer",
+    loNmls: lo?.nmls ?? null,
+    companyName: ident.companyName,
+    companyNmls: ident.companyNmls,
+    link,
+  });
   return NextResponse.json({ ok: true, emailed: r.sent, reason: r.reason ?? null, shareId: share.id, link });
 }
