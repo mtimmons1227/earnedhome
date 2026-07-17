@@ -158,7 +158,8 @@ export function AgentActions({ token, buyers, invites }: { token: string; buyers
             {invites.map((iv) => (
               <div key={iv.id} style={rowStyle(!iv.active)}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>{iv.name || iv.email || "A buyer"}</div>
+                  <div style={{ fontWeight: 600 }}>{iv.name || "A buyer"}</div>
+                  {iv.email && <div style={subStyle}>{iv.email}</div>}
                   <div style={subStyle}>{iv.active ? "Invited · waiting to run numbers" : "Invited · turned off"}</div>
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
