@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getActiveShareByToken, getTenantIdentity } from "@/lib/shareLinks";
+import { getActiveShareByToken, getTenantIdentity, resolveReferralNames } from "@/lib/shareLinks";
 import { getResolvedLOForLead } from "@/lib/loanOfficer";
 import { sendReferralToFriendEmail } from "@/lib/email";
 import { siteOrigin } from "@/lib/site";
@@ -32,10 +32,14 @@ export async function POST(req: Request) {
   const link = `${origin}/r/${share.token}`;
   const lo = await getResolvedLOForLead(share.tenant_id, share.agent_id);
   const ident = await getTenantIdentity(share.tenant_id);
+  const referrerName = share.referrer_lead_id
+    ? (await resolveReferralNames(share.referrer_lead_id)).immediateName
+    : null;
 
   const r = await sendReferralToFriendEmail({
     to: email,
     friendName: name,
+    referrerName,
     loName: lo?.full_name ?? "a loan officer",
     loNmls: lo?.nmls ?? null,
     companyName: ident.companyName,

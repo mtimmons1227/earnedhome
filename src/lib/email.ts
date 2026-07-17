@@ -80,8 +80,10 @@ function shareSection(shareUrl?: string | null): string {
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:18px 0 0;padding:16px;border:1px solid #dbe4ee;background:#f4f8fc;border-radius:10px;">
     <p style="margin:0 0 6px;font-weight:700;color:#1F3864;font-size:15px;">Know someone else house-hunting?</p>
     <p style="margin:0 0 12px;font-size:14px;color:#374151;">Share this with a friend or family member so they can see what they can afford too — same quick estimate, no obligation.</p>
-    <a href="${safe}" style="background:#1F3864;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:600;display:inline-block;">Share with a friend</a>
-    <p style="font-size:12px;color:#6b7280;word-break:break-all;margin:10px 0 0;">${safe}</p>
+    <div style="text-align:center;">
+      <a href="${safe}" style="background:#1F3864;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:600;display:inline-block;">Share with a friend</a>
+      <p style="font-size:12px;color:#6b7280;word-break:break-all;margin:10px 0 0;">${safe}</p>
+    </div>
   </div>`;
 }
 
@@ -352,6 +354,7 @@ export async function sendBuyerInviteEmail(d: BuyerInviteEmail): Promise<{ sent:
 export interface ReferralToFriendEmail {
   to: string;                // the friend's email
   friendName?: string | null;
+  referrerName?: string | null; // the buyer who shared it (the sender)
   loName: string;            // the loan officer (person)
   loNmls?: string | null;
   companyName?: string | null;
@@ -367,9 +370,13 @@ export async function sendReferralToFriendEmail(d: ReferralToFriendEmail): Promi
 
   const hi = d.friendName ? `Hi ${escapeHtml(d.friendName.split(" ")[0])},` : "Hi,";
   const safeLink = escapeHtml(d.link);
+  const senderFirst = d.referrerName ? escapeHtml(d.referrerName.split(" ")[0]) : null;
+  const headline = senderFirst
+    ? `A friend, ${senderFirst}, thought you'd want to see this`
+    : "A friend thought you'd want to see this";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
-    <h2 style="color:#1F3864;margin:0 0 8px;">A friend thought you'd want to see this</h2>
+    <h2 style="color:#1F3864;margin:0 0 8px;">${headline}</h2>
     <p>${hi}</p>
     <p>Someone you know just used EarnedHome to see what they can afford — and thought you might
        want to run your own numbers too. It takes about a minute — no credit pull, no obligation.</p>
@@ -385,7 +392,7 @@ export async function sendReferralToFriendEmail(d: ReferralToFriendEmail): Promi
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ from, to: d.to, subject: "A friend thought you'd want to see this", html }),
+      body: JSON.stringify({ from, to: d.to, subject: headline, html }),
     });
     if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
     return { sent: true };
