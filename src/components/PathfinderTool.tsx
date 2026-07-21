@@ -365,9 +365,9 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
           <select value={occupancy} onChange={(e) => setOccupancy(e.target.value as Occupancy | "")}>
             {OCCUPANCIES.map((o) => <option key={o}>{o}</option>)}
           </select>
-          {occupancy === "Investment" && (
+          {(occupancy === "Investment" || occupancy === "Second Home") && (
             <div className="hint" style={{ marginTop: 4 }}>
-              FHA and VA loans aren&apos;t available for investment properties — you&apos;ll see conventional options.
+              FHA and VA loans are for primary residences only — for {occupancy === "Investment" ? "an investment property" : "a second home"} you&apos;ll see conventional options.
             </div>
           )}
           <label>Property Type</label>

@@ -98,8 +98,8 @@ function evalConventional(loan: number, ltv: number, credit: number, firstTime: 
 }
 
 function evalFha(loan: number, ltv: number, credit: number, occupancy: Occupancy): FamilyEligibility {
-  if (occupancy === "Investment")
-    return no("fha", "FHA loans aren't available for investment properties — they require the home to be your primary residence.");
+  if (occupancy !== "Primary")
+    return no("fha", "FHA loans require the home to be your primary residence — they aren't available for a second home or investment property.");
   if (loan > LIMITS.fhaMax)
     return no("fha", `FHA isn't available above ${money(LIMITS.fhaMax)} in this area.`);
   if (credit < LIMITS.minCredit)
@@ -111,8 +111,8 @@ function evalFha(loan: number, ltv: number, credit: number, occupancy: Occupancy
 
 // VA — shown only when Veteran is checked; 100% LTV (no down required).
 function evalVa(loan: number, credit: number, veteran: boolean, occupancy: Occupancy): FamilyEligibility {
-  if (occupancy === "Investment")
-    return no("va", "VA loans aren't available for investment properties — they require the home to be your primary residence.");
+  if (occupancy !== "Primary")
+    return no("va", "VA loans require the home to be your primary residence — they aren't available for a second home or investment property.");
   if (!veteran)
     return no("va", "VA loans require military/veteran eligibility.");
   if (loan > LIMITS.vaJumboTier2Max)
