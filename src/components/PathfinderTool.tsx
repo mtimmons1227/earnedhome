@@ -364,7 +364,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
           <label>How you&apos;ll use the home</label>
           <select value={occupancy} onChange={(e) => setOccupancy(e.target.value as Occupancy | "")}>
             {OCCUPANCIES.map((o) => (
-              <option key={o} value={o} disabled={veteran && o === "Investment"}>{o}</option>
+              <option key={o} value={o} disabled={veteran && o !== "Primary"}>{o}</option>
             ))}
           </select>
           {(occupancy === "Investment" || occupancy === "Second Home") && (
@@ -397,8 +397,8 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
           <div className="checks">
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <label style={{ margin: 0, opacity: occupancy === "Investment" ? 0.5 : 1 }}><input type="checkbox" checked={veteran}
-                  disabled={occupancy === "Investment"}
+                <label style={{ margin: 0, opacity: occupancy !== "Primary" ? 0.5 : 1 }}><input type="checkbox" checked={veteran}
+                  disabled={occupancy !== "Primary"}
                   onChange={(e) => setVeteran(e.target.checked)} /> Military / Veteran</label>
                 <button type="button" aria-label="What's this?"
                   onClick={() => setOpenTip(openTip === "vet" ? null : "vet")}
