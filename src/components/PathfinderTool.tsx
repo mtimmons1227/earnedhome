@@ -365,6 +365,11 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
           <select value={occupancy} onChange={(e) => setOccupancy(e.target.value as Occupancy | "")}>
             {OCCUPANCIES.map((o) => <option key={o}>{o}</option>)}
           </select>
+          {occupancy === "Investment" && (
+            <div className="hint" style={{ marginTop: 4 }}>
+              FHA and VA loans aren&apos;t available for investment properties — you&apos;ll see conventional options.
+            </div>
+          )}
           <label>Property Type</label>
           <select value={propertyType} onChange={(e) => setPropertyType(e.target.value as PropertyType)}>
             {PROPERTY_TYPES.map((t) => <option key={t}>{t}</option>)}

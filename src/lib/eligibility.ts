@@ -1,4 +1,4 @@
-import type { PricingInput } from "./pricing/types";
+import type { PricingInput, Occupancy } from "./pricing/types";
 
 // Loan eligibility rules for Phase 1A, from R Parry's 2026 lending-criteria matrix.
 // LIMITS are on the LOAN AMOUNT (home price − down payment); LTV = loan / price.
@@ -97,7 +97,9 @@ function evalConventional(loan: number, ltv: number, credit: number, firstTime: 
   return { family: "conventional", eligible: true, tier: "Conforming" };
 }
 
-function evalFha(loan: number, ltv: number, credit: number): FamilyEligibility {
+function evalFha(loan: number, ltv: number, credit: number, occupancy: Occupancy): FamilyEligibility {
+  if (occupancy === "Investment")
+    return no("fha", "FHA loans aren't available for investment properties — they require the home to be your primary residence.");
   if (loan > LIMITS.fhaMax)
     return no("fha", `FHA isn't available above ${money(LIMITS.fhaMax)} in this area.`);
   if (credit < LIMITS.minCredit)
@@ -108,7 +110,9 @@ function evalFha(loan: number, ltv: number, credit: number): FamilyEligibility {
 }
 
 // VA — shown only when Veteran is checked; 100% LTV (no down required).
-function evalVa(loan: number, credit: number, veteran: boolean): FamilyEligibility {
+function evalVa(loan: number, credit: number, veteran: boolean, occupancy: Occupancy): FamilyEligibility {
+  if (occupancy === "Investment")
+    return no("va", "VA loans aren't available for investment properties — they require the home to be your primary residence.");
   if (!veteran)
     return no("va", "VA loans require military/veteran eligibility.");
   if (loan > LIMITS.vaJumboTier2Max)
@@ -130,8 +134,8 @@ export function evaluateEligibility(input: PricingInput): Eligibility {
   const credit = BAND_FLOOR[input.creditBand] ?? 0;
 
   const conventional = evalConventional(loan, ltv, credit, input.firstTime);
-  const fha = evalFha(loan, ltv, credit);
-  const va = evalVa(loan, credit, input.veteran);
+  const fha = evalFha(loan, ltv, credit, input.occupancy);
+  const va = evalVa(loan, credit, input.veteran, input.occupancy);
 
   // routeMessage is a fallback for the case where no card can be shown at all
   // (e.g. nothing returned). With greyed-out cards we normally show the cards
