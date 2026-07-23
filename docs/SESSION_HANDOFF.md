@@ -1,17 +1,21 @@
 # Session Handoff — Start Here
 
-**Purpose:** the single "pick up where we left off" doc. Read this first when starting a new session. Last updated **2026-07-08** (domain/email go-live + closed-funded metrics + workbook decode).
+**Purpose:** the single "pick up where we left off" doc. Read this first when starting a new session. Last updated **2026-07-22** (Phase II multi-LO, buyer referral/share system, buyer-form + eligibility polish).
+
+> **Branch model (current):** `rel` (Phase II dev) → `test` (QA → `test--earnedhome.netlify.app`) → `main` (Prod → `home.rparryfinancial.com`). The older "`dev`" references below are historical.
 
 ---
 
 ## 1. Where things stand right now
 
+**As of 2026-07-22:** `rel` = `origin/rel` = `origin/test` = **`41b8416`** (QA, working tree clean). Prod `main` = **`32ef248`** — intentionally held behind QA. Migration **0019** (`share_links` + `leads.referred_by`) applied to **QA only** — must be applied to the Prod DB before promoting. `LEAD_NOTIFY_OVERRIDE` must be **unset** on the Prod context before real buyers.
+
 | Environment | Branch | State |
 |---|---|---|
-| **Production** | `main` (connect flow + rparry sender) | The **tested connect flow** with the **rparry email sender live** (rebuilt for `RESEND_FROM`). **No agent feature / no closed-funded metrics yet.** Live pricing (`graph`/`grid`). At **`home.rparryfinancial.com`** (SSL) + `earnedhome.netlify.app`. |
-| **QA** | `dev` (latest) | Everything in Production **plus** the full Phase 1A agent attribution feature, buyer self-correct, and the **closed/funded production metrics**. At `dev--earnedhome.netlify.app`. |
+| **Production** | `main` @ `32ef248` | The tested connect flow + rparry sender + Phase II baseline. **Does NOT yet have** the share/referral system or today's buyer-form + eligibility polish. Live pricing. At **`home.rparryfinancial.com`** (SSL). |
+| **QA** | `rel`/`test` @ `41b8416` | Everything in Production **plus** Phase II (multi-LO + role-aware per-LO RLS, LO management, agent status portal, DashHeader), the **buyer referral/share system** (Flow A agent-invite + Flow B share-with-a-friend), and today's polish (invited-buyer email line, centered share button, named-sender referral email, **FHA/VA = primary-residence only**, Military/Veteran ↔ occupancy lock). At `test--earnedhome.netlify.app`. |
 
-**Live URLs:** Prod = **https://home.rparryfinancial.com** (branded, SSL). QA = **https://dev--earnedhome.netlify.app**.
+**Live URLs:** Prod = **https://home.rparryfinancial.com** (branded, SSL). QA = **https://test--earnedhome.netlify.app**.
 
 **One shared Supabase project** (`azfesppisxniclnntrmc`) and **one Netlify site** serve both QA and Prod. So DB rows, migrations, and `notify_email` are shared across environments; only the **code** differs by branch.
 

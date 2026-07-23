@@ -1,7 +1,11 @@
 # Release Manifest — QA → Production
 
-**What is on QA (`dev`) and promotes to Production on the next `dev → main` merge.**
-_As of July 6, 2026. This is the approval + go-live checklist for the next production release._
+**What is on QA and promotes to Production on the next `test → main` merge.**
+_As of July 6, 2026 (see the 2026-07-22 update below). This is the approval + go-live checklist for the next production release._
+
+> **Update (2026-07-22).** Branch model is now **`rel` → `test` (QA) → `main` (Prod)**. QA (`test`) = **`41b8416`**; Prod (`main`) = **`32ef248`** (held behind). Newly on QA and awaiting promotion, on top of everything below: **Phase II** (multi-LO + role-aware per-LO RLS, LO management, agent status portal, DashHeader); the **buyer referral / share system** (Flow A agent-invite with off/on + Email-link; Flow B share-with-a-friend → upline attribution; `share_links` migration **0019**); and today's **buyer-form + email polish** (invited-buyer email line, centered share button, named-sender referral email, **FHA/VA = primary-residence only**, Military/Veteran ↔ occupancy lock). See [`CHANGE_SIGNOFF_LOG.md`](CHANGE_SIGNOFF_LOG.md) #16–18.
+>
+> **Extra pre-promotion gates for this batch:** (1) apply migration **0019** to the **Prod DB** before promoting; (2) **unset `LEAD_NOTIFY_OVERRIDE`** on the Prod context; (3) **counsel** to confirm the referral-email "Financing by…" footer + buyer-initiated RESPA posture; (4) **Richard** to confirm **FHA/VA = primary-only** matches his lending matrix.
 
 > **Note (2026-07-06):** the **connect flow + emails** (buyer estimate, LO alert, Calendly, serverless fix) were **already promoted to Production** on July 6 (`main` @ `b0350d0`). What remains on QA-only below is the **Phase 1A agent attribution feature** and this session's buyer-connect UX polish.
 
