@@ -143,9 +143,9 @@ export function evaluateEligibility(input: PricingInput): Eligibility {
   let routeMessage: string | undefined;
   if (!conventional.eligible && !fha.eligible && !va.eligible) {
     if (loan > LIMITS.jumboTier2Max)
-      routeMessage = "This loan is above our standard limits — let's talk through your options. Use “Connect with a loan officer” below.";
+      routeMessage = "This loan is above our standard limits — let's talk through your options. Use “Connect me with my mortgage advisor” below.";
     else
-      routeMessage = "Let's talk through your options to find the right program for you. Use “Connect with a loan officer” below.";
+      routeMessage = "Let's talk through your options to find the right program for you. Use “Connect me with my mortgage advisor” below.";
   }
   return { conventional, fha, va, routeMessage };
 }
