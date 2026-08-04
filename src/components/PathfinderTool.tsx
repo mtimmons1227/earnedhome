@@ -43,7 +43,7 @@ interface Props {
   shareToken?: string | null;
 }
 
-export function PathfinderTool({ tenantId, loName, loNmls, companyName, nmls, applyUrl, loPhone, bookingUrl, agentId, agentName, shareToken }: Props) {
+export function PathfinderTool({ tenantId, loName, loNmls, companyName, applyUrl, loPhone, bookingUrl, agentId, agentName, shareToken }: Props) {
   // form state (display strings for currency fields)
   const [homePrice, setHomePrice] = useState("0");
   const [downAmt, setDownAmt] = useState("0");
@@ -532,7 +532,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, companyName, nmls, ap
                 {quote.disclosures.map((d, i) => <p key={i}>{d}</p>)}
               </details>
               <div className="eho">
-                Equal Housing Opportunity{nmls ? ` · NMLS ${nmls}` : ""} · Estimates
+                Equal Housing Opportunity · Estimates
                 only, not a commitment to lend.
               </div>
             </div>
