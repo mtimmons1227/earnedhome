@@ -8,6 +8,7 @@
 export interface EstimateEmailProduct {
   name: string;          // displayName, e.g. "30 Year Fixed"
   rate: number;          // percent, e.g. 6.125
+  apr?: number;          // annual percentage rate, percent
   totalPayment: number;  // monthly total
   cashToClose: number;   // estimated cash to close for THIS product
 }
@@ -617,6 +618,7 @@ function renderHtml(d: BuyerEstimateEmail): string {
   const scen: string[] = [];
   if (d.homePrice != null) scen.push(`<strong>Home price:</strong> ${money(d.homePrice)}`);
   if (d.downAmount != null) scen.push(`<strong>Down payment:</strong> ${money(d.downAmount)}${d.downPct != null ? ` (${d.downPct}%)` : ""}`);
+  if (d.homePrice != null && d.downAmount != null) scen.push(`<strong>Loan amount:</strong> ${money(Math.max(0, d.homePrice - d.downAmount))}`);
   if (d.creditBand) scen.push(`<strong>Credit score:</strong> ${escapeHtml(d.creditBand)}`);
   const use = [d.occupancy, d.propertyType].filter(Boolean).map((x) => escapeHtml(x as string));
   if (use.length) scen.push(`<strong>Use:</strong> ${use.join(" · ")}`);
@@ -627,7 +629,7 @@ function renderHtml(d: BuyerEstimateEmail): string {
   const rows = d.products.map((p) => `
     <tr>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(p.name)}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">${p.rate.toFixed(3)}%</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">${p.rate.toFixed(3)}%${p.apr != null ? ` / ${p.apr.toFixed(3)}%` : ""}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${money(p.totalPayment)}/mo</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">${money(p.cashToClose)}</td>
     </tr>`).join("");
@@ -656,13 +658,13 @@ function renderHtml(d: BuyerEstimateEmail): string {
     <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
       <thead><tr>
         <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #1F3864;">Loan</th>
-        <th style="text-align:right;padding:8px 12px;border-bottom:2px solid #1F3864;">Rate</th>
-        <th style="text-align:right;padding:8px 12px;border-bottom:2px solid #1F3864;">Total payment</th>
-        <th style="text-align:right;padding:8px 12px;border-bottom:2px solid #1F3864;">Cash to close</th>
+        <th style="text-align:right;padding:8px 12px;border-bottom:2px solid #1F3864;">Rate / APR</th>
+        <th style="text-align:right;padding:8px 12px;border-bottom:2px solid #1F3864;">Estimated Payment</th>
+        <th style="text-align:right;padding:8px 12px;border-bottom:2px solid #1F3864;">Estimated Cash to Close</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <p style="font-size:12px;color:#6b7280;margin:0 0 4px;">Cash to close and payment are estimates per loan option above.</p>
+    <p style="font-size:12px;color:#6b7280;margin:0 0 4px;">Estimated payment and cash to close are per loan option above.</p>
     ${ctaHtml}
     ${shareSection(d.shareUrl)}
     <div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#6b7280;line-height:1.5;">

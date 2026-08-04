@@ -194,7 +194,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, companyName, applyUrl
       const summaryProducts = (quote?.products ?? [])
         .filter((p) => p.totalPayment > 0 && (p.isVa ? veteran : true)
           && (!emailElig || emailElig[famOf(p)].eligible))
-        .map((p) => ({ name: p.displayName, rate: p.rate, totalPayment: p.totalPayment, cashToClose: p.cashToClose }));
+        .map((p) => ({ name: p.displayName, rate: p.rate, apr: p.apr, totalPayment: p.totalPayment, cashToClose: p.cashToClose }));
       const res = await fetch("/api/lead", {
         method: "POST",
         headers: { "content-type": "application/json" },
