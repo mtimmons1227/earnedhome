@@ -54,7 +54,7 @@ export default function ConfirmPage({
         <h2 style={{ marginTop: 0 }}>Confirm it&apos;s you</h2>
         <p className="hint">
           For your security, click Continue to set your password and sign in to
-          your EarnedHome dashboard.
+          your BuyerBridge dashboard.
         </p>
         <form method="post" action="/auth/confirm/verify" style={{ marginTop: 16 }}>
           <input type="hidden" name="token_hash" value={tokenHash} />

@@ -8,7 +8,7 @@ export default function WizardPreviewPage() {
       <header className="eh-header">
         <div className="eh-badge">EH</div>
         <div>
-          <div className="eh-brand">EarnedHome</div>
+          <div className="eh-brand">BuyerBridge</div>
           <div className="eh-tag">Guided journey — preview</div>
         </div>
       </header>

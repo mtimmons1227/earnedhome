@@ -80,7 +80,7 @@ export default function LoginPage() {
         {mode === "signin" ? (
           <>
             <h2 style={{ marginTop: 0 }}>Mortgage Advisor sign in</h2>
-            <p className="hint">EarnedHome — Pathfinder back office.</p>
+            <p className="hint">BuyerBridge — Pathfinder back office.</p>
             <form onSubmit={signIn}>
               <label>Email</label>
               <input type="email" inputMode="email" value={email} autoComplete="username"

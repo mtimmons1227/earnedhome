@@ -3,7 +3,7 @@ import "./globals.css";
 import { IdleSignout } from "./IdleSignout";
 
 export const metadata: Metadata = {
-  title: "EarnedHome Pathfinder — Get Payments",
+  title: "BuyerBridge Pathfinder — Get Payments",
   description:
     "See affordable payment scenarios, cash-to-close, and your path to mortgage-ready.",
 };

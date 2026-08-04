@@ -137,12 +137,12 @@ export async function sendLoLeadAlert(d: LoLeadAlert): Promise<{ sent: boolean; 
 
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
-    <h2 style="color:#1F3864;margin:0 0 8px;">New buyer lead — EarnedHome</h2>
+    <h2 style="color:#1F3864;margin:0 0 8px;">New buyer lead — BuyerBridge</h2>
     <p><strong>${name}</strong>${d.agentName ? ` (via ${escapeHtml(d.agentName)})` : ""} just ran the numbers and chose to <strong>${actionLabel}</strong>.</p>
     <div style="background:#f3f4f6;border-radius:8px;padding:12px 14px;margin:8px 0;font-size:14px;line-height:1.7;">
       ${rows.map((r) => `<div>${r}</div>`).join("")}
     </div>
-    <p style="font-size:12px;color:#6b7280;">Captured with TCPA consent via your EarnedHome page${d.leadId ? ` (lead ${escapeHtml(d.leadId)})` : ""}.</p>
+    <p style="font-size:12px;color:#6b7280;">Captured with TCPA consent via your BuyerBridge page${d.leadId ? ` (lead ${escapeHtml(d.leadId)})` : ""}.</p>
   </div>`;
 
   try {
@@ -182,7 +182,7 @@ export async function sendAgentLeadAlert(d: AgentLeadAlert): Promise<{ sent: boo
   const isReferral = !!d.rootClientName;
   const root = d.rootClientName ? escapeHtml(d.rootClientName) : "";
   const immediate = d.referredByName ? escapeHtml(d.referredByName) : "";
-  const heading = isReferral ? "A referral in your network — EarnedHome" : "Your buyer just signed up — EarnedHome";
+  const heading = isReferral ? "A referral in your network — BuyerBridge" : "Your buyer just signed up — BuyerBridge";
   const leadLine = isReferral
     ? `<p><strong>${name}</strong> just ran the numbers and connected with <strong>${escapeHtml(d.loName)}</strong>.</p>
        <p style="background:#eef3fb;border:1px solid #d6e2f3;border-radius:8px;padding:10px 12px;">This came from your client <strong>${root}</strong>'s referral network${immediate && immediate !== root ? ` — shared to them by <strong>${immediate}</strong>` : ""}.</p>`
@@ -195,7 +195,7 @@ export async function sendAgentLeadAlert(d: AgentLeadAlert): Promise<{ sent: boo
     <div style="background:#f3f4f6;border-radius:8px;padding:12px 14px;margin:8px 0;font-size:14px;line-height:1.7;">
       ${rows.map((r) => `<div>${r}</div>`).join("")}
     </div>
-    <p style="font-size:12px;color:#6b7280;">Captured with TCPA consent via your EarnedHome link${d.leadId ? ` (lead ${escapeHtml(d.leadId)})` : ""}.</p>
+    <p style="font-size:12px;color:#6b7280;">Captured with TCPA consent via your BuyerBridge link${d.leadId ? ` (lead ${escapeHtml(d.leadId)})` : ""}.</p>
   </div>`;
 
   try {
@@ -211,7 +211,7 @@ export async function sendAgentLeadAlert(d: AgentLeadAlert): Promise<{ sent: boo
   }
 }
 
-// "Here's your EarnedHome link" — emailed to a realtor agent so they can start
+// "Here's your BuyerBridge link" — emailed to a realtor agent so they can start
 // sharing it with buyers. Same safe-by-design no-op if Resend / email unset.
 export interface AgentLinkInvite {
   to: string;            // agent.email
@@ -255,9 +255,9 @@ export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: b
     : "";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
-    <h2 style="color:#1F3864;margin:0 0 8px;">Your EarnedHome links</h2>
+    <h2 style="color:#1F3864;margin:0 0 8px;">Your BuyerBridge links</h2>
     <p>${hi}</p>
-    <p><strong>Bookmark both links below</strong> — they're how you'll use EarnedHome (no login needed).</p>
+    <p><strong>Bookmark both links below</strong> — they're how you'll use BuyerBridge (no login needed).</p>
     <h3 style="color:#1F3864;margin:18px 0 6px;font-size:16px;">1) Run buyers' numbers</h3>
     <p style="margin:0 0 12px;">Keep this link handy on your phone or tablet when you're out showing homes —
        you and your buyer can run real monthly-payment numbers together at the property. Every buyer who
@@ -275,7 +275,7 @@ export async function sendAgentLinkInvite(d: AgentLinkInvite): Promise<{ sent: b
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ from, to: d.to, subject: "Your EarnedHome estimate link", html }),
+      body: JSON.stringify({ from, to: d.to, subject: "Your BuyerBridge estimate link", html }),
     });
     if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
     return { sent: true };
@@ -379,7 +379,7 @@ export async function sendReferralToFriendEmail(d: ReferralToFriendEmail): Promi
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
     <h2 style="color:#1F3864;margin:0 0 8px;">${headline}</h2>
     <p>${hi}</p>
-    <p>Someone you know just used EarnedHome to see what they can afford — and thought you might
+    <p>Someone you know just used BuyerBridge to see what they can afford — and thought you might
        want to run your own numbers too. It takes about a minute — no credit pull, no obligation.</p>
     <p style="margin:16px 0 8px;">
       <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">See what I can afford</a>
@@ -402,7 +402,7 @@ export async function sendReferralToFriendEmail(d: ReferralToFriendEmail): Promi
   }
 }
 
-// "Set up your EarnedHome sign-in" — emailed to a mortgage advisor so they can set
+// "Set up your BuyerBridge sign-in" — emailed to a mortgage advisor so they can set
 // their password and access their dashboard. Same safe-by-design no-op if unset.
 export interface LoLoginInvite {
   to: string;            // the LO's email
@@ -425,20 +425,20 @@ export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boole
   const safeLogin = escapeHtml(d.loginLink);
   const company = d.companyName ? escapeHtml(d.companyName) : "your team";
   const safeGuide = d.guideUrl ? escapeHtml(d.guideUrl) : null;
-  const guideLabel = d.guideLabel ? escapeHtml(d.guideLabel) : "your EarnedHome guide";
+  const guideLabel = d.guideLabel ? escapeHtml(d.guideLabel) : "your BuyerBridge guide";
   const guideBlock = safeGuide
     ? `
     <div style="margin:22px 0 4px;border:1px solid #FCE8A6;background:#FFF8E1;border-radius:8px;padding:14px 16px;">
-      <p style="margin:0 0 6px;font-weight:700;color:#8a5a00;font-size:15px;">📘 Your EarnedHome guide — save it for later</p>
+      <p style="margin:0 0 6px;font-weight:700;color:#8a5a00;font-size:15px;">📘 Your BuyerBridge guide — save it for later</p>
       <p style="margin:0 0 12px;font-size:14px;color:#374151;">We've included ${guideLabel} (PDF). It walks you through everything step by step — <strong>download and save it now</strong> so you can review it whenever you like.</p>
       <a href="${safeGuide}" style="background:#1F3864;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-weight:700;display:inline-block;">⬇&nbsp; Download the guide (PDF)</a>
     </div>`
     : "";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
-    <h2 style="color:#1F3864;margin:0 0 8px;">Set up your EarnedHome sign-in</h2>
+    <h2 style="color:#1F3864;margin:0 0 8px;">Set up your BuyerBridge sign-in</h2>
     <p>${hi}</p>
-    <p>You've been added as a mortgage advisor on <strong>${company}</strong>'s EarnedHome dashboard —
+    <p>You've been added as a mortgage advisor on <strong>${company}</strong>'s BuyerBridge dashboard —
        you'll see your own leads, agents, and pipeline. There are two links below; here's what each does.</p>
 
     <h3 style="color:#1F3864;margin:20px 0 4px;font-size:15px;">1. First time only — set your password</h3>
@@ -465,7 +465,7 @@ export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boole
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ from, to: d.to, subject: "Set up your EarnedHome sign-in", html }),
+      body: JSON.stringify({ from, to: d.to, subject: "Set up your BuyerBridge sign-in", html }),
     });
     if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
     return { sent: true };
@@ -474,7 +474,7 @@ export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boole
   }
 }
 
-// "Reset your EarnedHome password" — emailed when someone uses "Forgot password?".
+// "Reset your BuyerBridge password" — emailed when someone uses "Forgot password?".
 // Uses the same own-domain /auth/confirm flow as the LO invite (beats Safe Links,
 // sends from the verified domain, respects the Supabase redirect allow-list).
 export interface PasswordResetEmail {
@@ -492,12 +492,12 @@ export async function sendPasswordResetEmail(d: PasswordResetEmail): Promise<{ s
 
   const hi = d.loName ? `Hi ${escapeHtml(d.loName.split(" ")[0])},` : "Hi,";
   const safeLink = escapeHtml(d.link);
-  const company = d.companyName ? escapeHtml(d.companyName) : "EarnedHome";
+  const company = d.companyName ? escapeHtml(d.companyName) : "BuyerBridge";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
-    <h2 style="color:#1F3864;margin:0 0 8px;">Reset your EarnedHome password</h2>
+    <h2 style="color:#1F3864;margin:0 0 8px;">Reset your BuyerBridge password</h2>
     <p>${hi}</p>
-    <p>We received a request to reset the password for your <strong>${company}</strong> EarnedHome sign-in.
+    <p>We received a request to reset the password for your <strong>${company}</strong> BuyerBridge sign-in.
        Click below to choose a new password.</p>
     <p style="margin:16px 0;">
       <a href="${safeLink}" style="background:#1F3864;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block;">Reset password</a>
@@ -511,7 +511,7 @@ export async function sendPasswordResetEmail(d: PasswordResetEmail): Promise<{ s
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ from, to: d.to, subject: "Reset your EarnedHome password", html }),
+      body: JSON.stringify({ from, to: d.to, subject: "Reset your BuyerBridge password", html }),
     });
     if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
     return { sent: true };
@@ -520,7 +520,7 @@ export async function sendPasswordResetEmail(d: PasswordResetEmail): Promise<{ s
   }
 }
 
-// "Your EarnedHome password was changed" — a security notice sent right after a
+// "Your BuyerBridge password was changed" — a security notice sent right after a
 // successful password reset. Acts as a tripwire: if it wasn't the owner, they
 // find out and can act. Best-effort (a send failure never blocks the reset).
 export interface PasswordChangedEmail {
@@ -536,12 +536,12 @@ export async function sendPasswordChangedEmail(d: PasswordChangedEmail): Promise
   if (!d.to) return { sent: false, reason: "no email" };
 
   const hi = d.loName ? `Hi ${escapeHtml(d.loName.split(" ")[0])},` : "Hi,";
-  const company = d.companyName ? escapeHtml(d.companyName) : "EarnedHome";
+  const company = d.companyName ? escapeHtml(d.companyName) : "BuyerBridge";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
-    <h2 style="color:#1F3864;margin:0 0 8px;">Your EarnedHome password was changed</h2>
+    <h2 style="color:#1F3864;margin:0 0 8px;">Your BuyerBridge password was changed</h2>
     <p>${hi}</p>
-    <p>The password for your <strong>${company}</strong> EarnedHome sign-in was just changed. If this was you, no action is needed.</p>
+    <p>The password for your <strong>${company}</strong> BuyerBridge sign-in was just changed. If this was you, no action is needed.</p>
     <p style="background:#FFF8E1;border:1px solid #FCE8A6;border-radius:6px;padding:10px 12px;font-size:14px;">
       <strong>If this wasn't you</strong>, contact your broker administrator right away, then use
       <strong>Forgot password?</strong> on the sign-in page to reset it and lock the account back down.</p>
@@ -551,7 +551,7 @@ export async function sendPasswordChangedEmail(d: PasswordChangedEmail): Promise
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ from, to: d.to, subject: "Your EarnedHome password was changed", html }),
+      body: JSON.stringify({ from, to: d.to, subject: "Your BuyerBridge password was changed", html }),
     });
     if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
     return { sent: true };

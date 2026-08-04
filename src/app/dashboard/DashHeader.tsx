@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-// Shared internal (staff) page header: the EarnedHome logo, a page title/subtitle,
+// Shared internal (staff) page header: the BuyerBridge logo, a page title/subtitle,
 // and a right-hand slot for navigation (e.g. a consistent "← Dashboard" button).
 // Used across /dashboard, /dashboard/agents, /dashboard/los, /dashboard/workbook.
 export function DashHeader({
@@ -18,7 +18,7 @@ export function DashHeader({
     <header className="eh-header" style={{ justifyContent: "space-between" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/earnedhome-logo-white.png" alt="EarnedHome" style={{ height: 34, width: "auto" }} />
+        <img src="/brand/buyerbridge-logo-white.png" alt="BuyerBridge" style={{ height: 34, width: "auto" }} />
         <div style={{ minWidth: 0 }}>
           <div className="eh-brand">{title}</div>
           {subtitle && <div className="eh-tag">{subtitle}</div>}

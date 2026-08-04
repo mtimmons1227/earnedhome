@@ -276,7 +276,7 @@ export async function POST(req: Request) {
           crm: {
             type: crmType,
             apiKey: iRes.data?.crm_api_key ?? null,
-            source: "EarnedHome",
+            source: "BuyerBridge",
             config: iRes.data?.crm_config ?? null,
           },
           buyer: { fullName: fullName ?? null, email: email ?? null, phone: phone ?? null, consentTcpa: true },

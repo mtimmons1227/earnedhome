@@ -539,7 +539,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, companyName, applyUrl
           )}
           {quote && (
             <footer>
-              {quote.engine === "stub" ? "Demo / stub engine" : "Live engine"} · EarnedHome Pathfinder 1A
+              {quote.engine === "stub" ? "Demo / stub engine" : "Live engine"} · BuyerBridge Pathfinder 1A
             </footer>
           )}
         </div>
