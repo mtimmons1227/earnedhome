@@ -78,6 +78,7 @@ export default async function Page() {
         tenantId={tenant.id}
         loName={identity.loName}
         loNmls={identity.loNmls}
+        companyName={tenant.lo_name}
         nmls={identity.companyNmls}
         applyUrl={tenant.apply_url}
         loPhone={tenant.lo_phone}

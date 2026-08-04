@@ -33,6 +33,7 @@ interface Props {
   tenantId: string;
   loName: string;
   loNmls?: string | null;
+  companyName?: string | null;
   nmls: string | null;
   applyUrl?: string | null;
   loPhone?: string | null;
@@ -42,7 +43,7 @@ interface Props {
   shareToken?: string | null;
 }
 
-export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPhone, bookingUrl, agentId, agentName, shareToken }: Props) {
+export function PathfinderTool({ tenantId, loName, loNmls, companyName, nmls, applyUrl, loPhone, bookingUrl, agentId, agentName, shareToken }: Props) {
   // form state (display strings for currency fields)
   const [homePrice, setHomePrice] = useState("0");
   const [downAmt, setDownAmt] = useState("0");
@@ -494,16 +495,13 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
                     justifyContent: "center", fontWeight: 700 }}>✓</div>
                   <div>
                     <div style={{ fontWeight: 700, color: "var(--primary)" }}>
-                      You&apos;re connected with {loName}{loPhone ? ` ${formatPhoneUS(loPhone)}` : ""}
+                      You&apos;re all set{leadName ? `, ${leadName.split(" ")[0]}` : ""}
                     </div>
                     <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
-                      {leadName ? `Thanks, ${leadName.split(" ")[0]}. ` : "Thanks. "}
-                      A loan officer will reach out shortly about your{" "}
-                      {money(quote.cashToClose)} cash-to-close scenario.
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
-                      If you booked a meeting, you can reschedule or cancel anytime using the
-                      Calendly confirmation email that was sent to you.
+                      {loName.split(" ")[0]}{companyName ? ` with ${companyName}` : ""}
+                      {loPhone ? ` ${formatPhoneUS(loPhone)}` : ""} will contact you shortly to
+                      review the personalized home financing estimate you created and answer any
+                      questions you may have.
                     </div>
                     <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                       {leadId && (
