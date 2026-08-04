@@ -503,6 +503,9 @@ export function PathfinderTool({ tenantId, loName, loNmls, companyName, nmls, ap
                       review the personalized home financing estimate you created and answer any
                       questions you may have.
                     </div>
+                    <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>
+                      Our goal is simple: to provide clear answers so you can move forward with confidence.
+                    </div>
                     <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                       {leadId && (
                         <button onClick={() => { setEditingContact(true); setLeadMsg(null); setShowLeadModal(true); }}
