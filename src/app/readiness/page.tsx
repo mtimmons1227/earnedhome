@@ -6,9 +6,9 @@ export default function ReadinessPreviewPage() {
   return (
     <div>
       <header className="eh-header">
-        <div className="eh-badge">EH</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/buyerbridge-logo.png" alt="BuyerBridge" />
         <div>
-          <div className="eh-brand">BuyerBridge</div>
           <div className="eh-tag">Hybrid journey — preview</div>
         </div>
       </header>

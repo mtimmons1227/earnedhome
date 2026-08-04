@@ -18,7 +18,7 @@ export function DashHeader({
     <header className="eh-header" style={{ justifyContent: "space-between" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/buyerbridge-logo-white.png" alt="BuyerBridge" style={{ height: 34, width: "auto" }} />
+        <img src="/brand/buyerbridge-logo.png" alt="BuyerBridge" style={{ height: 44, width: "auto" }} />
         <div style={{ minWidth: 0 }}>
           <div className="eh-brand">{title}</div>
           {subtitle && <div className="eh-tag">{subtitle}</div>}
@@ -26,8 +26,8 @@ export function DashHeader({
       </div>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         {user && (
-          <span style={{ color: "#dbe4f0", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
-            marginRight: 4, opacity: 0.95 }}>
+          <span style={{ color: "#5b6b80", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+            marginRight: 4 }}>
             Signed in: {user.name} · {user.role}
           </span>
         )}

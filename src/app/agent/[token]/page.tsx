@@ -128,9 +128,11 @@ export default async function AgentStatusPage({ params }: { params: { token: str
     <div style={themeVars}>
       <AutoRefresh seconds={30} />
       <header className="eh-header">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/buyerbridge-logo.png" alt="BuyerBridge" />
         <div>
           <div className="eh-brand">Your referred buyers</div>
-          <div className="eh-tag">{agent.name} · powered by {company}</div>
+          <div className="eh-tag">{agent.name}</div>
         </div>
       </header>
 
