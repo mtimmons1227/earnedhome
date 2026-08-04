@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     to: email,
     friendName: name,
     referrerName,
-    loName: lo?.full_name ?? "a loan officer",
+    loName: lo?.full_name ?? "a mortgage advisor",
     loNmls: lo?.nmls ?? null,
     companyName: ident.companyName,
     companyNmls: ident.companyNmls,

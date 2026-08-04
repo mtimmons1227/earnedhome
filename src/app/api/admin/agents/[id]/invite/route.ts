@@ -26,7 +26,7 @@ export async function POST(
   if (!origin) return NextResponse.json({ error: "Missing origin" }, { status: 400 });
 
   const admin = createSupabaseAdmin();
-  // A loan officer can only email links for agents they own; admins, any agent.
+  // A mortgage advisor can only email links for agents they own; admins, any agent.
   let aq = admin
     .from("agents")
     .select("name, email, slug, status_token")
@@ -45,7 +45,7 @@ export async function POST(
   const r = await sendAgentLinkInvite({
     to: agent.email,
     agentName: agent.name,
-    loName: (tenant?.lo_name as string | null) ?? "your loan officer",
+    loName: (tenant?.lo_name as string | null) ?? "your mortgage advisor",
     link: `${origin}/a/${agent.slug}`,
     statusLink: agent.status_token ? `${origin}/agent/${agent.status_token}` : null,
     guideUrl: `${origin}/manuals/EarnedHome-Referral-Partner-Guide.pdf`,

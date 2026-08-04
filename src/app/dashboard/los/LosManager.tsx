@@ -102,7 +102,7 @@ export function LosManager() {
         body: JSON.stringify({ fullName: name, email, nmls, phone }),
       });
       const j = await res.json();
-      if (!res.ok) throw new Error(j.error || "Could not add loan officer");
+      if (!res.ok) throw new Error(j.error || "Could not add mortgage advisor");
       setName("");
       setEmail("");
       setNmls("");
@@ -150,7 +150,7 @@ export function LosManager() {
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div className="panel">
-        <h3 style={{ marginTop: 0 }}>Add a loan officer</h3>
+        <h3 style={{ marginTop: 0 }}>Add a mortgage advisor</h3>
         <p className="hint" style={{ marginTop: 0 }}>
           Each LO gets their own login and sees their own leads and agents. New LOs are added as a
           record + login (no email yet) — set their password from Supabase or a reset to activate.
@@ -175,19 +175,19 @@ export function LosManager() {
               placeholder="(555) 555-1234" style={input} />
           </label>
           <button className="leadbtn" type="submit" disabled={adding || !name.trim() || !email.trim()}
-            style={{ height: 40 }}>{adding ? "Adding…" : "Add loan officer"}</button>
+            style={{ height: 40 }}>{adding ? "Adding…" : "Add mortgage advisor"}</button>
         </form>
         {err && <div style={{ color: "#b91c1c", marginTop: 10, fontSize: 13 }}>{err}</div>}
       </div>
 
       <div className="panel">
         <h3 style={{ marginTop: 0 }}>
-          Loan officers ({activeCount} active · {los.length} total)
+          Mortgage Advisors ({activeCount} active · {los.length} total)
         </h3>
         {loading ? (
           <div className="hint">Loading…</div>
         ) : los.length === 0 ? (
-          <div className="hint">No loan officers yet.</div>
+          <div className="hint">No mortgage advisors yet.</div>
         ) : (
           <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
             {los.map((lo) => (
@@ -212,7 +212,7 @@ export function LosManager() {
                     </div>
                     <p style={{ fontSize: 12, color: "#8a5a00", background: "#FFF8E1",
                       border: "1px solid #FCE8A6", borderRadius: 6, padding: "6px 10px", margin: "8px 0 0" }}>
-                      Heads up: changing the email also changes this loan officer’s <strong>sign‑in (login) email</strong>.
+                      Heads up: changing the email also changes this mortgage advisor’s <strong>sign‑in (login) email</strong>.
                       They’ll use the new address to log in and to reset their password. Their leads and history are unaffected.
                     </p>
                     <div style={{ display: "flex", gap: 8 }}>

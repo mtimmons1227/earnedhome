@@ -70,7 +70,7 @@ const no = (family: Family, reason: string, tier?: string): FamilyEligibility =>
 // Conventional + Jumbo is one continuum, selected by loan size.
 function evalConventional(loan: number, ltv: number, credit: number, firstTime: boolean): FamilyEligibility {
   if (loan > LIMITS.jumboTier2Max)
-    return no("conventional", `Above our jumbo limit (${money(LIMITS.jumboTier2Max)}) — a loan officer can discuss options.`, "Jumbo");
+    return no("conventional", `Above our jumbo limit (${money(LIMITS.jumboTier2Max)}) — a mortgage advisor can discuss options.`, "Jumbo");
 
   if (loan > LIMITS.jumboTier1Max) { // Jumbo Tier 2
     if (credit < LIMITS.jumboTier2MinCredit)
@@ -116,7 +116,7 @@ function evalVa(loan: number, credit: number, veteran: boolean, occupancy: Occup
   if (!veteran)
     return no("va", "VA loans require military/veteran eligibility.");
   if (loan > LIMITS.vaJumboTier2Max)
-    return no("va", `Above the VA jumbo limit (${money(LIMITS.vaJumboTier2Max)}) — a loan officer can discuss options.`, "VA Jumbo");
+    return no("va", `Above the VA jumbo limit (${money(LIMITS.vaJumboTier2Max)}) — a mortgage advisor can discuss options.`, "VA Jumbo");
 
   let minCredit = LIMITS.vaStandardMinCredit;
   let tier = "VA";

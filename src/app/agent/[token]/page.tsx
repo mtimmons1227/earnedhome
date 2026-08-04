@@ -44,7 +44,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
         <div className="panel">
           <h2 style={{ marginTop: 0 }}>This status link isn’t active</h2>
           <p className="hint">
-            This link may have been turned off. Please contact your loan officer for an updated link.
+            This link may have been turned off. Please contact your mortgage advisor for an updated link.
           </p>
         </div>
       </main>
@@ -116,7 +116,7 @@ export default async function AgentStatusPage({ params }: { params: { token: str
     .filter((s) => !s.lead_id && s.kind === "agent_invite")
     .map((s) => ({ id: s.id, name: s.recipient_name ?? "", email: s.recipient_email, active: s.active }));
 
-  const company = (tenant?.lo_name as string | null) ?? (tenant?.name as string | null) ?? "your loan officer";
+  const company = (tenant?.lo_name as string | null) ?? (tenant?.name as string | null) ?? "your mortgage advisor";
   const b = (tenant?.branding ?? {}) as Branding;
   const themeVars = {
     ["--primary" as string]: b.primary ?? "#1F3864",

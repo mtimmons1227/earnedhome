@@ -79,7 +79,7 @@ export default function LoginPage() {
       <div className="panel">
         {mode === "signin" ? (
           <>
-            <h2 style={{ marginTop: 0 }}>Loan officer sign in</h2>
+            <h2 style={{ marginTop: 0 }}>Mortgage Advisor sign in</h2>
             <p className="hint">EarnedHome — Pathfinder back office.</p>
             <form onSubmit={signIn}>
               <label>Email</label>

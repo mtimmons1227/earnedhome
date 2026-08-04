@@ -99,7 +99,7 @@ export default async function DashboardPage() {
       <DashHeader title="Leads" subtitle={`${appUser.full_name ?? user.email} · ${roleLabel(appUser.role)}`}>
         <a href="/" target="_blank" rel="noreferrer" className="navbtn">View site</a>
         <a href="/dashboard/agents" className="navbtn">Agents</a>
-        {appUser.role === "admin" && <a href="/dashboard/los" className="navbtn">Loan officers</a>}
+        {appUser.role === "admin" && <a href="/dashboard/los" className="navbtn">Mortgage Advisors</a>}
         {appUser.role === "admin" && <a href="/dashboard/workbook" className="navbtn">Update rates</a>}
         <form action="/auth/signout" method="post">
           <button type="submit" className="navbtn">Sign out</button>

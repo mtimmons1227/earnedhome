@@ -26,7 +26,7 @@ export default async function LosPage() {
 
   return (
     <div>
-      <DashHeader title="Loan Officers" subtitle="Add & manage LOs under this broker"
+      <DashHeader title="Mortgage Advisors" subtitle="Add & manage Mortgage Advisors under this broker"
         user={{ name: appUser.full_name ?? user.email ?? "", role: roleLabel(appUser.role) }}>
         <BackToDashboard />
       </DashHeader>

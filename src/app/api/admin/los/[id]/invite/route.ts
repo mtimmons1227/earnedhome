@@ -58,12 +58,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     .from("tenants").select("lo_name").eq("id", gate.tenantId).maybeSingle();
 
   // Attach the role-appropriate manual: a broker admin gets the Broker manual,
-  // a regular loan officer gets the LO manual.
+  // a regular mortgage advisor gets the LO manual.
   const isAdmin = (lo as { role?: string }).role === "admin";
   const guideUrl = isAdmin
     ? `${origin}/manuals/EarnedHome-Broker-Administrator-Manual.pdf`
     : `${origin}/manuals/EarnedHome-Loan-Officer-Manual.pdf`;
-  const guideLabel = isAdmin ? "the Broker Administrator Manual" : "the Loan Officer Manual";
+  const guideLabel = isAdmin ? "the Broker Administrator Manual" : "the Mortgage Advisor Manual";
 
   const r = await sendLoLoginInvite({
     to: lo.email,

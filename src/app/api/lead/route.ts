@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "TCPA consent required" }, { status: 422 });
   }
 
-  // Resolve which loan officer this lead belongs to (Phase II). If the buyer came
+  // Resolve which mortgage advisor this lead belongs to (Phase II). If the buyer came
   // through an agent link, the lead is routed to that agent's LO; otherwise to the
   // tenant's default (primary) LO. Stored as assigned_lo_id (routed_to unchanged).
   const resolvedLO = await getResolvedLOForLead(tenantId, agentId);
@@ -146,7 +146,7 @@ export async function POST(req: Request) {
       sendBuyerEstimateEmail({
         to: email,
         buyerName: fullName ?? null,
-        loName: loName ?? "your loan officer",
+        loName: loName ?? "your mortgage advisor",
         loPhone: loPhone ?? null,
         bookingUrl: bookingUrl ?? null,
         ratesAsOf: quoteSummary.ratesAsOf,
@@ -188,8 +188,8 @@ export async function POST(req: Request) {
         const tRes = await (supabase.from("tenants") as unknown as {
           select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { notify_email?: string | null; lo_name?: string | null } | null }> } };
         }).select("notify_email, lo_name").eq("id", tenantId).maybeSingle();
-        const loDisplay = resolvedLO?.full_name ?? tRes.data?.lo_name ?? loName ?? "your loan officer";
-        // Phase II — route the alert to the ASSIGNED loan officer's own inbox.
+        const loDisplay = resolvedLO?.full_name ?? tRes.data?.lo_name ?? loName ?? "your mortgage advisor";
+        // Phase II — route the alert to the ASSIGNED mortgage advisor's own inbox.
         // The lead belongs to a specific LO (the agent's LO for an agent lead,
         // otherwise the tenant's primary LO), so that LO — not the broker-level
         // notify_email — should get the alert. Fall back to the tenant notify_email
@@ -200,7 +200,7 @@ export async function POST(req: Request) {
         const notify =
           process.env.LEAD_NOTIFY_OVERRIDE || resolvedLO?.email || tRes.data?.notify_email || null;
 
-        // The loan officer's alert (names the agent it came through).
+        // The mortgage advisor's alert (names the agent it came through).
         if (notify) {
           const r = await sendLoLeadAlert({
             to: notify,

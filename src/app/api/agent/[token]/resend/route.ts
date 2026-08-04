@@ -38,7 +38,7 @@ export async function POST(req: Request, { params }: { params: { token: string }
     to: share.recipient_email,
     buyerName: share.recipient_name,
     agentName: agent.name,
-    loName: lo?.full_name ?? "your loan officer",
+    loName: lo?.full_name ?? "your mortgage advisor",
     loNmls: lo?.nmls ?? null,
     companyName: ident.companyName,
     companyNmls: ident.companyNmls,

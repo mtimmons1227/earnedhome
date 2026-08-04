@@ -32,7 +32,7 @@ export interface BuyerEstimateEmail {
   shareUrl?: string | null; // Flow B: the buyer's own "share with a friend" /r link
 }
 
-// Alert emailed to the loan officer the moment a buyer connects.
+// Alert emailed to the mortgage advisor the moment a buyer connects.
 export interface LoLeadAlert {
   to: string;            // tenant.notify_email
   loName: string;
@@ -306,7 +306,7 @@ export interface BuyerInviteEmail {
   to: string;                 // buyer email
   buyerName?: string | null;
   agentName?: string | null;  // the referring agent
-  loName: string;             // the loan officer (person)
+  loName: string;             // the mortgage advisor (person)
   loNmls?: string | null;     // the LO's individual NMLS
   companyName?: string | null; // the broker/company, e.g. "R Parry Financial LLC"
   companyNmls?: string | null; // the company NMLS
@@ -355,7 +355,7 @@ export interface ReferralToFriendEmail {
   to: string;                // the friend's email
   friendName?: string | null;
   referrerName?: string | null; // the buyer who shared it (the sender)
-  loName: string;            // the loan officer (person)
+  loName: string;            // the mortgage advisor (person)
   loNmls?: string | null;
   companyName?: string | null;
   companyNmls?: string | null;
@@ -401,7 +401,7 @@ export async function sendReferralToFriendEmail(d: ReferralToFriendEmail): Promi
   }
 }
 
-// "Set up your EarnedHome sign-in" — emailed to a loan officer so they can set
+// "Set up your EarnedHome sign-in" — emailed to a mortgage advisor so they can set
 // their password and access their dashboard. Same safe-by-design no-op if unset.
 export interface LoLoginInvite {
   to: string;            // the LO's email
@@ -437,7 +437,7 @@ export async function sendLoLoginInvite(d: LoLoginInvite): Promise<{ sent: boole
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
     <h2 style="color:#1F3864;margin:0 0 8px;">Set up your EarnedHome sign-in</h2>
     <p>${hi}</p>
-    <p>You've been added as a loan officer on <strong>${company}</strong>'s EarnedHome dashboard —
+    <p>You've been added as a mortgage advisor on <strong>${company}</strong>'s EarnedHome dashboard —
        you'll see your own leads, agents, and pipeline. There are two links below; here's what each does.</p>
 
     <h3 style="color:#1F3864;margin:20px 0 4px;font-size:15px;">1. First time only — set your password</h3>
@@ -578,7 +578,7 @@ export async function sendBuyerConsentRequest(d: BuyerConsentRequest): Promise<{
 
   const hi = d.buyerName ? `Hi ${escapeHtml(d.buyerName.split(" ")[0])},` : "Hi,";
   const agent = d.agentName ? escapeHtml(d.agentName) : "your agent";
-  const company = d.companyName ? escapeHtml(d.companyName) : "your loan officer";
+  const company = d.companyName ? escapeHtml(d.companyName) : "your mortgage advisor";
   const safeLink = escapeHtml(d.link);
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
@@ -633,7 +633,7 @@ function renderHtml(d: BuyerEstimateEmail): string {
     </tr>`).join("");
   const disc = d.disclosures.map((x) => `<p style="margin:0 0 8px;">${escapeHtml(x)}</p>`).join("");
 
-  // "Get back to your loan officer" CTA — a booking button and/or phone number so
+  // "Get back to your mortgage advisor" CTA — a booking button and/or phone number so
   // the buyer can always reconnect with the LO directly from the email.
   const ctaParts: string[] = [];
   if (d.bookingUrl) {
@@ -651,7 +651,7 @@ function renderHtml(d: BuyerEstimateEmail): string {
     <h2 style="color:#1F3864;margin:0 0 4px;">Your home payment estimate</h2>
     <p style="color:#6b7280;margin:0 0 16px;font-size:13px;">Rates as of ${escapeHtml(d.ratesAsOf)}</p>
     <p>${greeting}</p>
-    <p>Here's the estimate you ran. No pressure — your loan officer, <strong>${escapeHtml(d.loName)}</strong>, will reach out to talk through your options.</p>
+    <p>Here's the estimate you ran. No pressure — your mortgage advisor, <strong>${escapeHtml(d.loName)}</strong>, will reach out to talk through your options.</p>
     ${scenarioHtml}
     <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
       <thead><tr>

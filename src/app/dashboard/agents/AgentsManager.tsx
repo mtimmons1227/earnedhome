@@ -54,7 +54,7 @@ export function AgentsManager() {
   const [editPhone, setEditPhone] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // Reassign an agent to a different loan officer (broker-admin only).
+  // Reassign an agent to a different mortgage advisor (broker-admin only).
   const [los, setLos] = useState<LoOption[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [editLoId, setEditLoId] = useState<string>("");
@@ -165,7 +165,7 @@ export function AgentsManager() {
       if (!res.ok) throw new Error(data.error ?? "Could not save changes");
       setEditingId(null);
       if (reassigning) {
-        const loName = los.find((l) => l.id === editLoId)?.full_name ?? "the new loan officer";
+        const loName = los.find((l) => l.id === editLoId)?.full_name ?? "the new mortgage advisor";
         setReassignMsg(
           `Reassigned to ${loName}` +
           (moveOpenLeads ? ` · moved ${data.movedLeads ?? 0} open lead${(data.movedLeads ?? 0) === 1 ? "" : "s"}` : ""),
@@ -308,7 +308,7 @@ export function AgentsManager() {
                             <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={input} />
                           </label>
                           {isAdmin && (
-                            <label style={fieldLabel}>Loan officer
+                            <label style={fieldLabel}>Mortgage Advisor
                               <select value={editLoId} onChange={(e) => setEditLoId(e.target.value)} style={input}>
                                 <option value="">— select —</option>
                                 {los.filter((l) => l.active).map((l) => (
@@ -323,7 +323,7 @@ export function AgentsManager() {
                             color: "var(--muted)", marginTop: 8 }}>
                             <input type="checkbox" checked={moveOpenLeads}
                               onChange={(e) => setMoveOpenLeads(e.target.checked)} />
-                            Also move this agent&apos;s open (active) leads to the new loan officer — closed leads stay put
+                            Also move this agent&apos;s open (active) leads to the new mortgage advisor — closed leads stay put
                           </label>
                         )}
                       </div>
@@ -347,7 +347,7 @@ export function AgentsManager() {
                         </div>
                         {a.lo_name && (
                           <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                            Loan officer: <strong style={{ fontWeight: 600 }}>{a.lo_name}</strong>
+                            Mortgage Advisor: <strong style={{ fontWeight: 600 }}>{a.lo_name}</strong>
                           </div>
                         )}
                         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4,

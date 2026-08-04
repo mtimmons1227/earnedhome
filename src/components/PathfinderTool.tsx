@@ -481,7 +481,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, companyName, nmls, ap
                 ))}</div>
               )}
               {agentName && <div className="route">Your agent: {agentName}</div>}
-              <div className="route">Your loan officer: {loName}{loNmls ? ` · NMLS ${loNmls}` : ""}</div>
+              <div className="route">Your mortgage advisor: {loName}{loNmls ? ` · NMLS ${loNmls}` : ""}</div>
               {!leadDone ? (
                 <button className="leadbtn" onClick={() => setShowLeadModal(true)}
                   style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -652,7 +652,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, companyName, nmls, ap
               Understanding your estimate
             </div>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, lineHeight: 1.5 }}>
-              Plain-language definitions of the numbers on each card. These are estimates — your loan officer can
+              Plain-language definitions of the numbers on each card. These are estimates — your mortgage advisor can
               walk through the specifics for your situation.
             </div>
             <InfoTerm t="Principal & Interest" d="The core of your monthly payment — principal pays down what you owe; interest is the cost of borrowing." />
@@ -664,7 +664,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, companyName, nmls, ap
                 <li>On conforming conventional loans, MI is typically required when your Loan-to-Value (LTV) ratio is greater than 80%.</li>
                 <li>The monthly MI payment depends on your credit score and LTV ratio.</li>
                 <li>FHA loans include an Upfront Mortgage Insurance Premium (which can often be financed into the loan) plus ongoing monthly MIP.</li>
-                <li>VA loans have an Upfront Funding Fee (which can be financed). The fee varies based on first-time or subsequent use of your VA benefit. Veterans with a service-connected disability may qualify for a waiver — consult your licensed loan officer.</li>
+                <li>VA loans have an Upfront Funding Fee (which can be financed). The fee varies based on first-time or subsequent use of your VA benefit. Veterans with a service-connected disability may qualify for a waiver — consult your licensed mortgage advisor.</li>
               </ul>
             </>} />
             <InfoTerm t="Total Monthly Payment" d="Your estimated total monthly payment — principal, interest, taxes, insurance, and any mortgage insurance." />
@@ -672,14 +672,14 @@ export function PathfinderTool({ tenantId, loName, loNmls, companyName, nmls, ap
             <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, margin: "0 0 10px" }}>
               This is <strong>not</strong> a Loan Estimate (LE) as defined by RESPA or TILA — a formal Loan Estimate will only be provided after you submit a complete, official mortgage application and your credit and property details are verified.
             </div>
-            <InfoTerm t="Loan Fees" d="The costs to set up your loan — origination, underwriting, processing, and similar. Your loan officer can walk through which apply to you." />
+            <InfoTerm t="Loan Fees" d="The costs to set up your loan — origination, underwriting, processing, and similar. Your mortgage advisor can walk through which apply to you." />
             <InfoTerm t="Prepaids" d="Amounts collected upfront to start your escrow account and cover the first stretch of property taxes, homeowner's insurance, and prepaid interest." />
             <InfoTerm t="Down Payment" d="The part of the purchase price you pay out of pocket; the rest is covered by the loan." />
-            <InfoTerm t="Less Seller Contribution" d="Money the seller agrees to put toward your closing costs, which lowers the cash you bring. Limits apply by loan type. Consult with your licensed Loan Officer." />
-            <InfoTerm t="Estimated Total" d="The estimated cash you'd bring to closing — down payment plus loan fees and prepaids, minus any seller contribution. These are general explanations. Always consult with your licensed loan officer for details specific to your loan program, credit, and situation." />
+            <InfoTerm t="Less Seller Contribution" d="Money the seller agrees to put toward your closing costs, which lowers the cash you bring. Limits apply by loan type. Consult with your licensed Mortgage Advisor." />
+            <InfoTerm t="Estimated Total" d="The estimated cash you'd bring to closing — down payment plus loan fees and prepaids, minus any seller contribution. These are general explanations. Always consult with your licensed mortgage advisor for details specific to your loan program, credit, and situation." />
             <div style={{ marginTop: 14, padding: "12px 14px", background: "#eef7f0", border: "1px solid #bfe3c9",
               borderRadius: 10, fontSize: 13, color: "var(--primary)", lineHeight: 1.5 }}>
-              Wondering if your payment could be lower? Your loan officer can talk through options for your situation —
+              Wondering if your payment could be lower? Your mortgage advisor can talk through options for your situation —
               no pressure.
             </div>
           </div>

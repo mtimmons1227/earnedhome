@@ -28,7 +28,7 @@ export default async function ConsentPage({
       <main style={wrap}>
         <div className="panel" style={{ textAlign: "center" }}>
           <h2 style={{ marginTop: 0, color: "var(--primary)" }}>This link isn&apos;t valid</h2>
-          <p className="hint">Please use the most recent link from your loan officer or agent.</p>
+          <p className="hint">Please use the most recent link from your mortgage advisor or agent.</p>
         </div>
       </main>
     );
@@ -40,7 +40,7 @@ export default async function ConsentPage({
   const company: string | null = Array.isArray(row.tenants) ? (row.tenants[0]?.lo_name ?? null) : (row.tenants?.lo_name ?? null);
   const firstName = (row.full_name ?? "").split(" ")[0] || "there";
   const agent = agentName ?? "your agent";
-  const lender = company ?? "your loan officer";
+  const lender = company ?? "your mortgage advisor";
   const sharing = !!row.agent_status_consent;
 
   if (!row.agent_id) {

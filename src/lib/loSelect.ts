@@ -20,10 +20,10 @@ export interface LORow {
   created_at: string;
 }
 
-// Default routing strategy: among a tenant's users, choose the loan officer a
+// Default routing strategy: among a tenant's users, choose the mortgage advisor a
 // buyer is routed to — the flagged primary if there is one, otherwise the oldest
 // active LO/admin (covers a broker-and-LO shop like R Parry, where the one admin
-// IS the loan officer). Only 'lo' and 'admin' roles are eligible; 'staff' never
+// IS the mortgage advisor). Only 'lo' and 'admin' roles are eligible; 'staff' never
 // receives leads. Returns null when no eligible LO exists (the caller then falls
 // back to the tenant's lo_name display string, preserving Phase 1A behavior).
 export function pickLO(rows: LORow[]): ResolvedLO | null {
@@ -88,7 +88,7 @@ export function displayIdentity(args: {
   companyNmls: string | null;
 }): DisplayIdentity {
   return {
-    loName: args.resolved?.full_name ?? args.tenantLoName ?? "your loan officer",
+    loName: args.resolved?.full_name ?? args.tenantLoName ?? "your mortgage advisor",
     loNmls: args.resolved?.nmls ?? null,
     companyNmls: args.companyNmls ?? args.tenantNmls ?? null,
   };

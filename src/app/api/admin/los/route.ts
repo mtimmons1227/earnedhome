@@ -5,7 +5,7 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-// GET — list the broker's loan officers (primary first). Admin-only.
+// GET — list the broker's mortgage advisors (primary first). Admin-only.
 export async function GET() {
   const gate = await requireTenantAdmin();
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     .eq("email", email)
     .maybeSingle();
   if (dupe) {
-    return NextResponse.json({ error: "A loan officer with that email already exists" }, { status: 409 });
+    return NextResponse.json({ error: "A mortgage advisor with that email already exists" }, { status: 409 });
   }
 
   // Create the login. email_confirm:true so no confirmation email is sent; the LO

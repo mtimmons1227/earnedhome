@@ -29,21 +29,21 @@ export async function PATCH(
   if (body.phone !== undefined) patch.phone = body.phone?.toString().trim() || null;
   if (typeof body.active === "boolean") patch.active = body.active;
 
-  // Reassign the owning loan officer (broker-admin only). Buyers who use this
+  // Reassign the owning mortgage advisor (broker-admin only). Buyers who use this
   // agent's link from now on route to the new LO. Past leads keep their LO unless
   // moveOpenLeads is set, in which case the agent's OPEN (active) leads move too;
   // closed/lost leads always stay put as the original LO's record.
   if (body.loId !== undefined) {
     if (gate.role !== "admin") {
-      return NextResponse.json({ error: "Only a broker admin can reassign an agent's loan officer" }, { status: 403 });
+      return NextResponse.json({ error: "Only a broker admin can reassign an agent's mortgage advisor" }, { status: 403 });
     }
     const { data: targetLo } = await admin
       .from("app_users").select("id, active, role").eq("id", body.loId).eq("tenant_id", gate.tenantId).maybeSingle();
     if (!targetLo || (targetLo.role !== "lo" && targetLo.role !== "admin")) {
-      return NextResponse.json({ error: "Pick a valid loan officer" }, { status: 400 });
+      return NextResponse.json({ error: "Pick a valid mortgage advisor" }, { status: 400 });
     }
     if (targetLo.active === false) {
-      return NextResponse.json({ error: "That loan officer is turned off — turn them on first" }, { status: 400 });
+      return NextResponse.json({ error: "That mortgage advisor is turned off — turn them on first" }, { status: 400 });
     }
     patch.lo_id = body.loId;
   }
