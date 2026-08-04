@@ -318,7 +318,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
   const routeMsg =
     quote && cards.length === 0
       ? eligibility?.routeMessage ??
-        "Let’s talk through your options to find the right program for you. Use “Connect me with a loan officer” below."
+        "Let’s talk through your options to find the right program for you. Use “Connect with a loan officer” below."
       : undefined;
 
   return (
@@ -484,7 +484,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
               {!leadDone ? (
                 <button className="leadbtn" onClick={() => setShowLeadModal(true)}
                   style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <StepBadge label="2" />Connect me with a loan officer
+                  <StepBadge label="2" />Connect with a loan officer
                 </button>
               ) : (
                 <div style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: 16,
@@ -556,7 +556,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, nmls, applyUrl, loPho
         ) : (
           <>
             <div className="ctahint">
-              Changed a number? Recalculate. To finish, use “Connect me with a loan officer” above.
+              Changed a number? Recalculate. To finish, use “Connect with a loan officer” above.
             </div>
             <button onClick={getPayments} disabled={loading || !formValid}
               style={{ background: "transparent", color: "var(--primary)", border: "2px solid var(--primary)", opacity: loading || !formValid ? 0.55 : 1 }}>
