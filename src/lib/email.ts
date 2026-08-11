@@ -325,7 +325,7 @@ export async function sendBuyerInviteEmail(d: BuyerInviteEmail): Promise<{ sent:
   const who = d.agentName ? escapeHtml(d.agentName) : "Your agent";
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:560px;">
-    <h2 style="color:#1F3864;margin:0 0 8px;">See what you can afford</h2>
+    <h2 style="color:#1F3864;margin:0 0 8px;">Your path to home starts here</h2>
     <p>${hi}</p>
     <p>${who} put together a quick way for you to see real monthly-payment and
        cash-to-close estimates — no credit pull, no obligation. It takes about a minute.</p>
@@ -340,7 +340,7 @@ export async function sendBuyerInviteEmail(d: BuyerInviteEmail): Promise<{ sent:
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ from, to: d.to, subject: "See what you can afford — a quick estimate", html }),
+      body: JSON.stringify({ from, to: d.to, subject: "Your path to home — a quick estimate", html }),
     });
     if (!res.ok) return { sent: false, reason: `resend ${res.status}: ${(await res.text()).slice(0, 140)}` };
     return { sent: true };
