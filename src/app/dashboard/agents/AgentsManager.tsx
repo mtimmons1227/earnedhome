@@ -221,6 +221,31 @@ export function AgentsManager() {
     }
   }
 
+  // Build the agent roster as a CSV (opens in Excel): name split into first/last,
+  // the /a/<slug> referral link, and the /agent/<token> status-portal link.
+  function downloadCsv() {
+    const esc = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
+    const headers = ["FNAME", "LNAME", "EMAIL", "PHONE", "Link", "Portal"];
+    const lines = agents.map((a) => {
+      const parts = (a.name ?? "").trim().split(/\s+/);
+      const fname = parts.shift() ?? "";
+      const lname = parts.join(" ");
+      const link = `${origin}/a/${a.slug}`;
+      const portal = a.status_token ? `${origin}/agent/${a.status_token}` : "";
+      return [fname, lname, a.email ?? "", formatPhone(a.phone), link, portal].map(esc).join(",");
+    });
+    const csv = [headers.map(esc).join(","), ...lines].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const el = document.createElement("a");
+    el.href = url;
+    el.download = `buyerbridge-agents-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(el);
+    el.click();
+    document.body.removeChild(el);
+    URL.revokeObjectURL(url);
+  }
+
   const activeCount = agents.filter((a) => a.active).length;
   const visible =
     filter === "active" ? agents.filter((a) => a.active)
@@ -259,15 +284,19 @@ export function AgentsManager() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
           gap: 8, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0 }}>Agents ({activeCount} active · {agents.length} total)</h3>
-          <label style={{ fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
-            Show:
-            <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)}
-              style={{ padding: "6px 8px", fontSize: 13 }}>
-              <option value="all">All</option>
-              <option value="active">Active only</option>
-              <option value="off">Turned off</option>
-            </select>
-          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <button type="button" onClick={downloadCsv} disabled={agents.length === 0}
+              className="navbtn" style={{ fontSize: 13 }}>Download list (CSV)</button>
+            <label style={{ fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+              Show:
+              <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)}
+                style={{ padding: "6px 8px", fontSize: 13 }}>
+                <option value="all">All</option>
+                <option value="active">Active only</option>
+                <option value="off">Turned off</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         {reassignMsg && (
