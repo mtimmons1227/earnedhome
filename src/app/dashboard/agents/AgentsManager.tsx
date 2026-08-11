@@ -168,6 +168,11 @@ export function AgentsManager() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save changes");
+      // Reflect the saved values on the row immediately (don't wait on the reload).
+      setAgents((prev) => prev.map((x) => (x.id === a.id
+        ? { ...x, name: editName.trim(), email: editEmail.trim() || null,
+            phone: editPhone.trim() || null, firm: editFirm.trim() || null }
+        : x)));
       setEditingId(null);
       if (reassigning) {
         const loName = los.find((l) => l.id === editLoId)?.full_name ?? "the new mortgage advisor";

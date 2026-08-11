@@ -58,7 +58,7 @@ export async function PATCH(
     .eq("tenant_id", gate.tenantId);
   if (gate.role !== "admin") upd = upd.eq("lo_id", gate.userId);
   const { data, error } = await upd
-    .select("id, name, email, phone, slug, active, lo_id")
+    .select("id, name, email, phone, firm, slug, active, lo_id")
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
