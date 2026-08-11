@@ -14,7 +14,7 @@ export async function PATCH(
   const gate = await requireTenantAdmin();
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
 
-  let body: { name?: string; email?: string | null; phone?: string | null; active?: boolean; loId?: string; moveOpenLeads?: boolean };
+  let body: { name?: string; email?: string | null; phone?: string | null; firm?: string | null; active?: boolean; loId?: string; moveOpenLeads?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -27,6 +27,7 @@ export async function PATCH(
   if (typeof body.name === "string") patch.name = body.name.trim();
   if (body.email !== undefined) patch.email = body.email?.toString().trim() || null;
   if (body.phone !== undefined) patch.phone = body.phone?.toString().trim() || null;
+  if (body.firm !== undefined) patch.firm = body.firm?.toString().trim() || null;
   if (typeof body.active === "boolean") patch.active = body.active;
 
   // Reassign the owning mortgage advisor (broker-admin only). Buyers who use this

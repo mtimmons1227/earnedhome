@@ -18,6 +18,7 @@ export interface AgentRow {
   name: string;
   email: string | null;
   phone: string | null;
+  firm: string | null;
   slug: string;
   active: boolean;
 }
@@ -33,7 +34,7 @@ export async function getAgentBySlug(
   const admin = createSupabaseAdmin();
   const { data } = await admin
     .from("agents")
-    .select("id, tenant_id, name, email, phone, slug, active")
+    .select("id, tenant_id, name, email, phone, firm, slug, active")
     .eq("tenant_id", tenantId)
     .eq("slug", slug)
     .maybeSingle();

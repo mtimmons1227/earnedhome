@@ -16,7 +16,7 @@ export async function GET() {
   // per-LO scope must be applied here in code.)
   let q = admin
     .from("agents")
-    .select("id, name, email, phone, slug, active, status_token, invite_sent_at, created_at, lo_id, lo:app_users!lo_id ( full_name )")
+    .select("id, name, email, phone, firm, slug, active, status_token, invite_sent_at, created_at, lo_id, lo:app_users!lo_id ( full_name )")
     .eq("tenant_id", gate.tenantId);
   if (gate.role !== "admin") q = q.eq("lo_id", gate.userId);
   const { data, error } = await q.order("created_at", { ascending: false });
@@ -25,7 +25,7 @@ export async function GET() {
   // Flatten the owning-LO name so the UI can show/reassign it.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const agents = ((data ?? []) as any[]).map((a) => ({
-    id: a.id, name: a.name, email: a.email, phone: a.phone, slug: a.slug, active: a.active,
+    id: a.id, name: a.name, email: a.email, phone: a.phone, firm: a.firm ?? null, slug: a.slug, active: a.active,
     status_token: a.status_token, invite_sent_at: a.invite_sent_at, created_at: a.created_at,
     lo_id: a.lo_id ?? null,
     lo_name: Array.isArray(a.lo) ? (a.lo[0]?.full_name ?? null) : (a.lo?.full_name ?? null),
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   const gate = await requireTenantAdmin();
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
 
-  let body: { name?: string; email?: string; phone?: string };
+  let body: { name?: string; email?: string; phone?: string; firm?: string };
   try {
     body = await req.json();
   } catch {
@@ -74,10 +74,11 @@ export async function POST(req: Request) {
       name,
       email: body.email?.trim() || null,
       phone: body.phone?.trim() || null,
+      firm: body.firm?.trim() || null,
       slug,
       active: true,
     })
-    .select("id, name, email, phone, slug, active, status_token, created_at")
+    .select("id, name, email, phone, firm, slug, active, status_token, created_at")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

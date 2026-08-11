@@ -7,6 +7,7 @@ interface Agent {
   name: string;
   email: string | null;
   phone: string | null;
+  firm?: string | null;
   slug: string;
   active: boolean;
   status_token?: string | null;
@@ -37,6 +38,7 @@ export function AgentsManager() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [firm, setFirm] = useState("");
   const [adding, setAdding] = useState(false);
 
   const [origin, setOrigin] = useState("");
@@ -52,6 +54,7 @@ export function AgentsManager() {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editFirm, setEditFirm] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Reassign an agent to a different mortgage advisor (broker-admin only).
@@ -96,12 +99,12 @@ export function AgentsManager() {
       const res = await fetch("/api/admin/agents", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim() || undefined, phone: phone.trim() || undefined }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim() || undefined, phone: phone.trim() || undefined, firm: firm.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not add agent");
       setAgents((prev) => [data.agent, ...prev]);
-      setName(""); setEmail(""); setPhone("");
+      setName(""); setEmail(""); setPhone(""); setFirm("");
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -133,6 +136,7 @@ export function AgentsManager() {
     setEditName(a.name);
     setEditEmail(a.email ?? "");
     setEditPhone(a.phone ?? "");
+    setEditFirm(a.firm ?? "");
     setEditLoId(a.lo_id ?? "");
     setMoveOpenLeads(false);
     setErr(null);
@@ -152,6 +156,7 @@ export function AgentsManager() {
         name: editName.trim(),
         email: editEmail.trim() || null,
         phone: editPhone.trim() || null,
+        firm: editFirm.trim() || null,
       };
       const reassigning = isAdmin && !!editLoId && editLoId !== (a.lo_id ?? "");
       if (reassigning) { payload.loId = editLoId; payload.moveOpenLeads = moveOpenLeads; }
@@ -225,14 +230,14 @@ export function AgentsManager() {
   // the /a/<slug> referral link, and the /agent/<token> status-portal link.
   function downloadCsv() {
     const esc = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
-    const headers = ["FNAME", "LNAME", "EMAIL", "PHONE", "Link", "Portal"];
+    const headers = ["FNAME", "LNAME", "FIRM", "EMAIL", "PHONE", "Link", "Portal"];
     const lines = agents.map((a) => {
       const parts = (a.name ?? "").trim().split(/\s+/);
       const fname = parts.shift() ?? "";
       const lname = parts.join(" ");
       const link = `${origin}/a/${a.slug}`;
       const portal = a.status_token ? `${origin}/agent/${a.status_token}` : "";
-      return [fname, lname, a.email ?? "", formatPhone(a.phone), link, portal].map(esc).join(",");
+      return [fname, lname, a.firm ?? "", a.email ?? "", formatPhone(a.phone), link, portal].map(esc).join(",");
     });
     const csv = [headers.map(esc).join(","), ...lines].join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -273,6 +278,10 @@ export function AgentsManager() {
           <label style={fieldLabel}>Phone
             <input value={phone} onChange={(e) => setPhone(e.target.value)}
               placeholder="(555) 555-1234" style={input} />
+          </label>
+          <label style={fieldLabel}>Firm / Brokerage
+            <input value={firm} onChange={(e) => setFirm(e.target.value)}
+              placeholder="Keller Williams" style={input} />
           </label>
           <button className="leadbtn" type="submit" disabled={adding || !name.trim()}
             style={{ height: 40 }}>{adding ? "Adding…" : "Add agent"}</button>
@@ -336,6 +345,9 @@ export function AgentsManager() {
                           <label style={fieldLabel}>Phone
                             <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={input} />
                           </label>
+                          <label style={fieldLabel}>Firm / Brokerage
+                            <input value={editFirm} onChange={(e) => setEditFirm(e.target.value)} style={input} />
+                          </label>
                           {isAdmin && (
                             <label style={fieldLabel}>Mortgage Advisor
                               <select value={editLoId} onChange={(e) => setEditLoId(e.target.value)} style={input}>
@@ -374,6 +386,7 @@ export function AgentsManager() {
                         <div style={{ fontSize: 12, color: "var(--muted)" }}>
                           {[a.email, formatPhone(a.phone)].filter(Boolean).join(" · ") || "No contact info"}
                         </div>
+                        {a.firm && <div style={{ fontSize: 12, color: "var(--muted)" }}>{a.firm}</div>}
                         {a.lo_name && (
                           <div style={{ fontSize: 12, color: "var(--muted)" }}>
                             Mortgage Advisor: <strong style={{ fontWeight: 600 }}>{a.lo_name}</strong>

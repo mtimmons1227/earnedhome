@@ -40,10 +40,11 @@ interface Props {
   bookingUrl?: string | null;
   agentId?: string | null;
   agentName?: string | null;
+  agentFirm?: string | null;
   shareToken?: string | null;
 }
 
-export function PathfinderTool({ tenantId, loName, loNmls, companyName, applyUrl, loPhone, bookingUrl, agentId, agentName, shareToken }: Props) {
+export function PathfinderTool({ tenantId, loName, loNmls, companyName, applyUrl, loPhone, bookingUrl, agentId, agentName, agentFirm, shareToken }: Props) {
   // form state (display strings for currency fields)
   const [homePrice, setHomePrice] = useState("0");
   const [downAmt, setDownAmt] = useState("0");
@@ -480,7 +481,7 @@ export function PathfinderTool({ tenantId, loName, loNmls, companyName, applyUrl
                   <Card key={p.product} p={p} reason={elig.eligible ? undefined : elig.reason} />
                 ))}</div>
               )}
-              {agentName && <div className="route">Your agent: {agentName}</div>}
+              {agentName && <div className="route">Your agent: {agentName}{agentFirm ? ` with ${agentFirm}` : ""}</div>}
               <div className="route">Your mortgage advisor: {loName}{loNmls ? ` · NMLS ${loNmls}` : ""}</div>
               {!leadDone ? (
                 <button className="leadbtn" onClick={() => setShowLeadModal(true)}

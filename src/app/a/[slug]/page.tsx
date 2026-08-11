@@ -93,6 +93,7 @@ export default async function AgentPage({
         bookingUrl={tenant.booking_url}
         agentId={agent?.id ?? null}
         agentName={agent?.name ?? null}
+        agentFirm={agent?.firm ?? null}
         shareToken={shareToken}
       />
     </div>
