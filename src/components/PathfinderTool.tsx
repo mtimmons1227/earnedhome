@@ -336,6 +336,12 @@ export function PathfinderTool({ tenantId, loName, loNmls, companyName, applyUrl
               </span>
             )}
           </div>
+          {agentName && (
+            <div style={{ margin: "2px 0 12px", fontSize: 13, fontWeight: 600, color: "var(--primary)",
+              background: "#eef2fb", border: "1px solid #d5e0f2", borderRadius: 8, padding: "8px 10px" }}>
+              Your agent: {agentName}{agentFirm ? ` with ${agentFirm}` : ""}
+            </div>
+          )}
           <label>Home Price</label>
           <div className="inwrap">
             <span className="pre">$</span>
