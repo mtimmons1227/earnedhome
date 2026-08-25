@@ -1,6 +1,6 @@
 # Session Handoff — Start Here
 
-**Purpose:** the single "pick up where we left off" doc. Read this first when starting a new session. Last updated **2026-07-22** (Phase II multi-LO, buyer referral/share system, buyer-form + eligibility polish).
+**Purpose:** the single "pick up where we left off" doc. Read this first when starting a new session. Last updated **2026-08-25** (Mortgage Advisor + BuyerBridge rebrand, agent firm field, Daily Broadcast Stage 1).
 
 > **Branch model (current):** `rel` (Phase II dev) → `test` (QA → `test--earnedhome.netlify.app`) → `main` (Prod → `home.rparryfinancial.com`). The older "`dev`" references below are historical.
 
@@ -8,16 +8,24 @@
 
 ## 1. Where things stand right now
 
-**As of 2026-07-22:** `rel` = `origin/rel` = `origin/test` = **`41b8416`** (QA, working tree clean). Prod `main` = **`32ef248`** — intentionally held behind QA. Migration **0019** (`share_links` + `leads.referred_by`) applied to **QA only** — must be applied to the Prod DB before promoting. `LEAD_NOTIFY_OVERRIDE` must be **unset** on the Prod context before real buyers.
+**As of 2026-08-25:** all three remotes track together — `origin/rel` = `origin/test` = `origin/main` = **`c77b4e9`** (working tree clean). **Prod is no longer held behind** — this session promoted straight through `rel → test → main` on every change, so QA and Prod run the **same code**. Live pricing.
 
 | Environment | Branch | State |
 |---|---|---|
-| **Production** | `main` @ `32ef248` | The tested connect flow + rparry sender + Phase II baseline. **Does NOT yet have** the share/referral system or today's buyer-form + eligibility polish. Live pricing. At **`home.rparryfinancial.com`** (SSL). |
-| **QA** | `rel`/`test` @ `41b8416` | Everything in Production **plus** Phase II (multi-LO + role-aware per-LO RLS, LO management, agent status portal, DashHeader), the **buyer referral/share system** (Flow A agent-invite + Flow B share-with-a-friend), and today's polish (invited-buyer email line, centered share button, named-sender referral email, **FHA/VA = primary-residence only**, Military/Veteran ↔ occupancy lock). At `test--earnedhome.netlify.app`. |
+| **Production** | `main` @ `c77b4e9` | Fully caught up to QA. Has Phase II, the buyer referral/share system, the buyer-form + eligibility polish, **and** this session's work: **Mortgage Advisor** rebrand, **BuyerBridge** rebrand (logos + white header/blue rule/nav pills, no "Powered by"), CTA/confirmation copy, EHO-footer NMLS drop, buyer-email detail (APR/Loan amount), the **agent firm field + CSV export**, and **Daily Broadcast Stage 1** (Contacts). At **`home.rparryfinancial.com`** (SSL). |
+| **QA** | `rel`/`test` @ `c77b4e9` | Identical code to Prod. At `test--earnedhome.netlify.app`. |
 
 **Live URLs:** Prod = **https://home.rparryfinancial.com** (branded, SSL). QA = **https://test--earnedhome.netlify.app**.
 
-**One shared Supabase project** (`azfesppisxniclnntrmc`) and **one Netlify site** serve both QA and Prod. So DB rows, migrations, and `notify_email` are shared across environments; only the **code** differs by branch.
+### ⏳ Pending DB migration + a topology question to confirm
+- **Migration `0021_broadcasts.sql` is NOT yet applied.** Until it runs, `/dashboard/contacts` errors (no `contacts` table). **`0020_agents_firm.sql` IS applied** (the firm field saves/displays). `0019` applied.
+- **CONFIRM: one shared DB or two?** The last doc state (07-22, below) shows **one shared Supabase project** (`azfesppisxniclnntrmc`) for QA+Prod, and the split ([`QA_PROD_DB_SPLIT.md`](QA_PROD_DB_SPLIT.md)) is a runbook with no recorded execution. If **still shared** → run `0021` **once**. If the **split was executed** → run `0021` on **QA first, then Prod**. Resolve this before running 0021 (and reconcile this doc once known).
+
+### 🚩 Open compliance / launch gates
+- **Trademark (CR-001):** "BUYERBRIDGE" is a **live US mark** (Reg. 6003449, Dealers United, LLC) — counsel to clear the name + secure a domain before external launch.
+- **CR-004:** Richard to confirm his state permits **"licensed Mortgage Advisor"** in disclosures ("loan officer" is the NMLS-licensed title).
+- **Referral-email footer + RESPA posture** (#17) — counsel confirm before real referral buyers.
+- **FHA/VA = primary-only** (#18) — Richard confirm vs. the lending matrix.
 
 ### Email / domain — LIVE (2026-07-08)
 - **`rparryfinancial.com` is a verified Resend sending domain** (DKIM/SPF/MX green). `thetimmonsfoundation.org` was removed (free tier = 1 domain).
@@ -98,6 +106,6 @@
 - Onboarding: `docs/TENANT_ONBOARDING.md` (run script).
 
 ## 8. First moves in a new session
-1. `git checkout dev && git pull` — confirm you're on the latest QA.
-2. Skim §2 and §5 above for state + next steps.
-3. If continuing the build, the next high-value work is **per-tenant pricing** (§5.3, spec ready).
+1. `git checkout rel && git pull` — confirm you're on the latest (`rel` is the working branch; the old `dev` refs below are historical). All three remotes are at `c77b4e9`.
+2. Skim §1 (state + pending 0021 migration + open gates) before building.
+3. **Next high-value work: Daily Broadcast Stage 2** — the composer page (`/dashboard/broadcasts`) with the two audiences (agents / contacts) + adaptive merge tokens + test/send, the create+send API with Resend batching + CAN-SPAM footer, and `/unsubscribe/[token]` + suppression. (Stage 1 = Contacts store, shipped.) Also still open: **per-tenant pricing** (spec ready), agent login (password) for self-serve portal access.

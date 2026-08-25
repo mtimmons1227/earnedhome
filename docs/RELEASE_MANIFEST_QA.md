@@ -3,9 +3,15 @@
 **What is on QA and promotes to Production on the next `test → main` merge.**
 _As of July 6, 2026 (see the 2026-07-22 update below). This is the approval + go-live checklist for the next production release._
 
-> **Update (2026-07-22).** Branch model is now **`rel` → `test` (QA) → `main` (Prod)**. QA (`test`) = **`41b8416`**; Prod (`main`) = **`32ef248`** (held behind). Newly on QA and awaiting promotion, on top of everything below: **Phase II** (multi-LO + role-aware per-LO RLS, LO management, agent status portal, DashHeader); the **buyer referral / share system** (Flow A agent-invite with off/on + Email-link; Flow B share-with-a-friend → upline attribution; `share_links` migration **0019**); and today's **buyer-form + email polish** (invited-buyer email line, centered share button, named-sender referral email, **FHA/VA = primary-residence only**, Military/Veteran ↔ occupancy lock). See [`CHANGE_SIGNOFF_LOG.md`](CHANGE_SIGNOFF_LOG.md) #16–18.
+> **Update (2026-08-25).** All three branches now track together: **`rel` = `test` = `main` = `c77b4e9`** — Prod is **no longer held behind** (the whole session was promoted straight through `rel → test → main`). So everything in #16–26 of [`CHANGE_SIGNOFF_LOG.md`](CHANGE_SIGNOFF_LOG.md) is now **on Production code** at `home.rparryfinancial.com`. New since the 07-22 batch: the **Mortgage Advisor** rebrand (#20), the **BuyerBridge** rebrand + logos/header (#23), CTA/confirmation copy (#19), EHO-footer NMLS drop (#21), buyer-email detail (#22), the **agent firm field + CSV export** (#24, migration **0020**), the invite-email reword (#25), and **Daily Broadcast Stage 1** (#26, migration **0021**).
 >
-> **Extra pre-promotion gates for this batch:** (1) apply migration **0019** to the **Prod DB** before promoting; (2) **unset `LEAD_NOTIFY_OVERRIDE`** on the Prod context; (3) **counsel** to confirm the referral-email "Financing by…" footer + buyer-initiated RESPA posture; (4) **Richard** to confirm **FHA/VA = primary-only** matches his lending matrix.
+> **Open pre-/post-promotion gates (carry-over + new):**
+> 1. **Migration `0021` (broadcasts) is NOT yet applied** — the `/dashboard/contacts` page errors until it runs. **`0020` (agents.firm) is applied** (firm saves/displays). **`0019` applied.**
+> 2. **CONFIRM DB topology.** The split runbook ([`QA_PROD_DB_SPLIT.md`](QA_PROD_DB_SPLIT.md)) exists but the last doc state (07-22) still shows **one shared project** (`azfesppisxniclnntrmc`). If still shared → run `0021` **once**. If the split was executed → run `0021` on **QA first, then Prod**. Resolve before running.
+> 3. **Counsel:** confirm the referral-email "Financing by…" footer + buyer-initiated RESPA posture (#17).
+> 4. **Richard:** confirm **FHA/VA = primary-only** matches the lending matrix (#18), and that his state permits **"licensed Mortgage Advisor"** in disclosures (#20, CR-004).
+> 5. **🛑 Counsel — trademark:** "BUYERBRIDGE" is a **live US mark** (Reg. 6003449) — clear the name + secure a domain before external launch (#23, CR-001).
+> 6. **Broadcast Stage 2 (not built):** composer + batched send + `/unsubscribe/<token>`; at send-time needs **Resend Pro** + a **`news.` sending subdomain** + a **CAN-SPAM footer** (unsubscribe + physical address + suppression).
 
 > **Note (2026-07-06):** the **connect flow + emails** (buyer estimate, LO alert, Calendly, serverless fix) were **already promoted to Production** on July 6 (`main` @ `b0350d0`). What remains on QA-only below is the **Phase 1A agent attribution feature** and this session's buyer-connect UX polish.
 
