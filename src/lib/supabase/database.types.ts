@@ -50,6 +50,30 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["agents"]["Insert"]>;
         Relationships: [];
       };
+      contacts: {
+        Row: { id: string; tenant_id: string; email: string; first_name: string | null; last_name: string | null; fields: Record<string, unknown>; status: string; source: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; tenant_id: string; email: string; first_name?: string | null; last_name?: string | null; fields?: Record<string, unknown>; status?: string; source?: string | null; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["contacts"]["Insert"]>;
+        Relationships: [];
+      };
+      broadcasts: {
+        Row: { id: string; tenant_id: string; created_by: string | null; audience: string; subject: string; body_html: string; status: string; total: number; sent_count: number; scheduled_for: string | null; sent_at: string | null; created_at: string };
+        Insert: { id?: string; tenant_id: string; created_by?: string | null; audience: string; subject: string; body_html: string; status?: string; total?: number; sent_count?: number; scheduled_for?: string | null; sent_at?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["broadcasts"]["Insert"]>;
+        Relationships: [];
+      };
+      broadcast_recipients: {
+        Row: { id: string; broadcast_id: string; tenant_id: string; email: string; first_name: string | null; status: string; unsub_token: string; error: string | null; sent_at: string | null; created_at: string };
+        Insert: { id?: string; broadcast_id: string; tenant_id: string; email: string; first_name?: string | null; status?: string; unsub_token?: string; error?: string | null; sent_at?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["broadcast_recipients"]["Insert"]>;
+        Relationships: [];
+      };
+      email_unsubscribes: {
+        Row: { id: string; tenant_id: string; email: string; reason: string | null; created_at: string };
+        Insert: { id?: string; tenant_id: string; email: string; reason?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["email_unsubscribes"]["Insert"]>;
+        Relationships: [];
+      };
       share_links: {
         Row: { id: string; tenant_id: string; agent_id: string | null; lo_id: string | null; kind: string; recipient_name: string | null; recipient_email: string | null; token: string; active: boolean; referrer_lead_id: string | null; lead_id: string | null; suggested_agent_name: string | null; suggested_agent_email: string | null; created_at: string; sent_at: string | null };
         Insert: { id?: string; tenant_id: string; agent_id?: string | null; lo_id?: string | null; kind: string; recipient_name?: string | null; recipient_email?: string | null; token?: string; active?: boolean; referrer_lead_id?: string | null; lead_id?: string | null; suggested_agent_name?: string | null; suggested_agent_email?: string | null; created_at?: string; sent_at?: string | null };
