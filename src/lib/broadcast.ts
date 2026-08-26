@@ -134,8 +134,12 @@ export async function resolveAudience(
         values: {
           first_name: first,
           firm: a.firm ?? "",
+          // Canonical names + short aliases that match the legacy Word mail-merge
+          // fields (FNAME / Link / Portal) so Richard's existing letter drops in.
           portal_link: `${origin}/agent/${a.status_token}`,
           buyer_link: `${origin}/a/${a.slug}`,
+          portal: `${origin}/agent/${a.status_token}`,
+          link: `${origin}/a/${a.slug}`,
         },
       });
     }
@@ -154,10 +158,23 @@ export async function resolveAudience(
 }
 
 // The tokens available for each audience, for the composer's "Insert field" menu.
+// (For contacts, the page merges in any custom fields via discoverContactFields.)
 export function audienceTokens(audience: "agents" | "contacts"): string[] {
   return audience === "agents"
-    ? ["first_name", "firm", "portal_link", "buyer_link"]
+    ? ["first_name", "firm", "link", "portal"]
     : ["first_name", "last_name"];
+}
+
+// The distinct custom merge fields present across a tenant's active contacts, so
+// the composer can offer them as insertable {tokens} (e.g. city, loan_type).
+export async function discoverContactFields(tenantId: string): Promise<string[]> {
+  const admin = createSupabaseAdmin();
+  const { data } = await admin.from("contacts").select("fields")
+    .eq("tenant_id", tenantId).eq("status", "active").limit(2000);
+  const keys = new Set<string>();
+  for (const r of (data as { fields: Record<string, unknown> }[] | null) ?? [])
+    for (const k of Object.keys(r.fields ?? {})) keys.add(k);
+  return [...keys].sort();
 }
 
 // ---- Merge rendering ----
@@ -189,4 +206,160 @@ export async function unsubscribeByToken(token: string): Promise<{ ok: boolean; 
   await admin.from("contacts").update({ status: "unsubscribed" })
     .eq("tenant_id", r.tenant_id).ilike("email", r.email);
   return { ok: true, email: r.email };
+}
+
+// ---- Sending (Stage 2) ----
+//
+// DORMANT BY DESIGN. Broadcasts send only when BROADCAST_FROM is set — a sender on
+// a DEDICATED `news.` subdomain, deliberately separate from RESEND_FROM (the
+// transactional sender) so a marketing complaint never damages the deliverability
+// of the app's important transactional email (buyer estimates, LO alerts). Because
+// RESEND_FROM is already live in production, we gate on BROADCAST_FROM specifically:
+// until Richard sets up the news. subdomain + that env var, NOTHING here sends.
+
+export function broadcastFrom(): string | null {
+  return process.env.BROADCAST_FROM || null;
+}
+
+// Whether the bulk-send path is live (needs both the Resend key and a news. sender).
+export function sendingEnabled(): boolean {
+  return !!(process.env.RESEND_API_KEY && broadcastFrom());
+}
+
+export interface BroadcastFooterInfo { company: string; address: string; }
+
+function bcEscapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+}
+
+// Escape HTML, then turn any http(s) URL into a clickable link. This is what makes
+// {link}/{portal} render as real buttons/links (like «Link»/«Portal» in the Word doc).
+function escapeAndLink(s: string): string {
+  return bcEscapeHtml(s).replace(/(https?:\/\/[^\s<]+)/g,
+    (u) => `<a href="${u}" style="color:#1F3864;font-weight:600;">${u}</a>`);
+}
+
+// Compose the plain-text body (with {tokens} + blank-line paragraphs) into HTML,
+// merged for one recipient, wrapped with the CAN-SPAM footer.
+export function renderBroadcastHtml(bodyTemplate: string, values: Record<string, string>, footerHtml: string): string {
+  const merged = renderMerge(bodyTemplate, values);
+  const paras = merged.split(/\n{2,}/).map((block) =>
+    `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#1f2937;">${escapeAndLink(block).replace(/\n/g, "<br/>")}</p>`,
+  ).join("");
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;padding:8px;">${paras}${footerHtml}</div>`;
+}
+
+// CAN-SPAM footer: physical mailing address + one-click unsubscribe (required on
+// every bulk email).
+function complianceFooter(o: { company: string; address: string; unsubUrl: string }): string {
+  return `
+  <div style="margin-top:28px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;line-height:1.6;">
+    <p style="margin:0 0 4px;">${bcEscapeHtml(o.company)} · ${bcEscapeHtml(o.address)}</p>
+    <p style="margin:0;">You're receiving this because you're a contact of ${bcEscapeHtml(o.company)}.
+      <a href="${bcEscapeHtml(o.unsubUrl)}" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>.</p>
+  </div>`;
+}
+
+async function resendBatch(from: string, items: { to: string; subject: string; html: string }[]): Promise<{ ok: boolean; error?: string }> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return { ok: false, error: "RESEND_API_KEY not set" };
+  try {
+    const res = await fetch("https://api.resend.com/emails/batch", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify(items.map((i) => ({ from, to: i.to, subject: i.subject, html: i.html }))),
+    });
+    if (!res.ok) return { ok: false, error: `resend ${res.status}: ${(await res.text()).slice(0, 160)}` };
+    return { ok: true };
+  } catch (e) { return { ok: false, error: (e as Error).message }; }
+}
+
+function sampleValues(audience: "agents" | "contacts", origin: string): Record<string, string> {
+  return audience === "agents"
+    ? { first_name: "Alex", firm: "Keller Williams", link: `${origin}/a/sample`, portal: `${origin}/agent/sample` }
+    : { first_name: "Alex", last_name: "Sample", city: "Austin" };
+}
+
+// Send ONE test email of the composed broadcast to a single address (the admin),
+// using the first real recipient's merge values (or a sample if the list is empty).
+// Dormant unless sending is enabled.
+export async function sendBroadcastTest(opts: {
+  tenantId: string; audience: "agents" | "contacts"; subject: string; body: string;
+  to: string; origin: string; footer: BroadcastFooterInfo;
+}): Promise<{ ok: boolean; error?: string }> {
+  const from = broadcastFrom();
+  if (!from) return { ok: false, error: "Sending isn't enabled yet — set BROADCAST_FROM (your news. subdomain sender) first." };
+  if (!opts.to) return { ok: false, error: "No address to send the test to." };
+  const recips = await resolveAudience(opts.tenantId, opts.audience, opts.origin);
+  const values = recips[0]?.values ?? sampleValues(opts.audience, opts.origin);
+  const footerHtml = complianceFooter({ company: opts.footer.company, address: opts.footer.address, unsubUrl: `${opts.origin}/unsubscribe/test` });
+  const html = renderBroadcastHtml(opts.body, values, footerHtml);
+  const subject = `[TEST] ${renderMerge(opts.subject, values)}`;
+  return resendBatch(from, [{ to: opts.to, subject, html }]);
+}
+
+// Create a broadcast + its per-recipient rows, then send to the whole audience in
+// batches (Resend batch endpoint, ≤100 per call). Dormant unless sending is enabled.
+export async function createAndSendBroadcast(opts: {
+  tenantId: string; createdBy: string; audience: "agents" | "contacts";
+  subject: string; body: string; origin: string; footer: BroadcastFooterInfo;
+}): Promise<{ ok: boolean; error?: string; sent?: number; total?: number; broadcastId?: string }> {
+  const from = broadcastFrom();
+  if (!from) return { ok: false, error: "Sending isn't enabled yet — set BROADCAST_FROM (your news. subdomain sender) first." };
+  const admin = createSupabaseAdmin();
+  const recips = await resolveAudience(opts.tenantId, opts.audience, opts.origin);
+  if (!recips.length) return { ok: false, error: "No active recipients in this audience (after removing unsubscribes)." };
+
+  const { data: bRow, error: bErr } = await admin.from("broadcasts").insert({
+    tenant_id: opts.tenantId, created_by: opts.createdBy, audience: opts.audience,
+    subject: opts.subject, body_html: opts.body, status: "sending", total: recips.length,
+  }).select("id").single();
+  if (bErr || !bRow) return { ok: false, error: bErr?.message ?? "Could not create the broadcast." };
+  const broadcastId = (bRow as { id: string }).id;
+
+  // Pre-create recipient rows; each row's default generates its unsubscribe token.
+  // Store emails lower-cased so status updates (matched by `.in`) line up regardless
+  // of the source casing (agent emails aren't normalized on entry).
+  const { data: inserted } = await admin.from("broadcast_recipients")
+    .insert(recips.map((r) => ({ broadcast_id: broadcastId, tenant_id: opts.tenantId, email: r.email.toLowerCase(), first_name: r.firstName, status: "queued" })))
+    .select("email, unsub_token");
+  const tokenByEmail = new Map<string, string>();
+  for (const r of (inserted as { email: string; unsub_token: string }[] | null) ?? [])
+    tokenByEmail.set(r.email.toLowerCase(), r.unsub_token);
+
+  // Build every personalized message, then send in chunks of 100.
+  const messages = recips.map((r) => {
+    const token = tokenByEmail.get(r.email.toLowerCase()) ?? "";
+    const footerHtml = complianceFooter({ company: opts.footer.company, address: opts.footer.address, unsubUrl: `${opts.origin}/unsubscribe/${token}` });
+    return { email: r.email, to: r.email, subject: renderMerge(opts.subject, r.values), html: renderBroadcastHtml(opts.body, r.values, footerHtml) };
+  });
+
+  let sent = 0;
+  for (let i = 0; i < messages.length; i += 100) {
+    const chunk = messages.slice(i, i + 100);
+    const res = await resendBatch(from, chunk);
+    const emails = chunk.map((c) => c.email.toLowerCase());
+    await admin.from("broadcast_recipients")
+      .update({ status: res.ok ? "sent" : "failed", error: res.ok ? null : (res.error ?? "send failed"), sent_at: new Date().toISOString() })
+      .eq("broadcast_id", broadcastId).in("email", emails);
+    if (res.ok) sent += chunk.length;
+  }
+
+  await admin.from("broadcasts")
+    .update({ status: sent > 0 ? "sent" : "failed", sent_count: sent, sent_at: new Date().toISOString() })
+    .eq("id", broadcastId);
+  return { ok: true, sent, total: recips.length, broadcastId };
+}
+
+// Past broadcasts for the tenant (for the composer's history panel).
+export interface BroadcastSummary {
+  id: string; audience: string; subject: string; status: string;
+  total: number; sent_count: number; created_at: string; sent_at: string | null;
+}
+export async function listBroadcasts(tenantId: string): Promise<BroadcastSummary[]> {
+  const admin = createSupabaseAdmin();
+  const { data } = await admin.from("broadcasts")
+    .select("id, audience, subject, status, total, sent_count, created_at, sent_at")
+    .eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(50);
+  return (data as BroadcastSummary[] | null) ?? [];
 }
