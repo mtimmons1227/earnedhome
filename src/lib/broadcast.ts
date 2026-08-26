@@ -152,7 +152,9 @@ export async function resolveAudience(
       .eq("tenant_id", tenantId).eq("status", "active");
     for (const c of (data as { email: string; first_name: string | null; last_name: string | null; fields: Record<string, unknown> }[] | null) ?? []) {
       if (!c.email || suppressed.has(c.email.toLowerCase())) continue;
-      const values: Record<string, string> = { first_name: c.first_name ?? "", last_name: c.last_name ?? "", date: today };
+      // Contacts always get the tenant's BuyerBridge buyer link as {link} so the LO
+      // can drop it into any email (it routes to the primary mortgage advisor).
+      const values: Record<string, string> = { first_name: c.first_name ?? "", last_name: c.last_name ?? "", date: today, link: origin };
       for (const [k, v] of Object.entries(c.fields ?? {})) values[k] = v == null ? "" : String(v);
       out.push({ email: c.email, firstName: c.first_name, values });
     }
@@ -165,7 +167,7 @@ export async function resolveAudience(
 export function audienceTokens(audience: "agents" | "contacts"): string[] {
   return audience === "agents"
     ? ["date", "first_name", "firm", "link", "portal"]
-    : ["date", "first_name", "last_name"];
+    : ["date", "first_name", "last_name", "link"];
 }
 
 // The distinct custom merge fields present across a tenant's active contacts, so
@@ -327,7 +329,7 @@ function sampleValues(audience: "agents" | "contacts", origin: string): Record<s
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   return audience === "agents"
     ? { first_name: "Alex", firm: "Keller Williams", date, link: `${origin}/a/sample`, portal: `${origin}/agent/sample` }
-    : { first_name: "Alex", last_name: "Sample", date, city: "Austin" };
+    : { first_name: "Alex", last_name: "Sample", date, link: origin, city: "Austin" };
 }
 
 // Send ONE test email of the composed broadcast to a single address (the admin),

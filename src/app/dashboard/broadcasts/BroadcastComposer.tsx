@@ -105,7 +105,7 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
   const tokens = useMemo(() => (
     audience === "agents"
       ? ["date", "first_name", "firm", "link", "portal"]
-      : ["date", "first_name", "last_name", ...contactFields]
+      : ["date", "first_name", "last_name", "link", ...contactFields]
   ), [audience, contactFields]);
 
   const recipientCount = audience === "agents" ? agentCount : contactCount;
@@ -116,7 +116,7 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
     if (audience === "agents") {
       return { first_name: "Alex", firm: "Keller Williams", date: today, link: `${origin}/a/sample`, portal: `${origin}/agent/sample` };
     }
-    const v: Record<string, string> = { first_name: "Alex", last_name: "Sample", date: today };
+    const v: Record<string, string> = { first_name: "Alex", last_name: "Sample", date: today, link: `${origin}/` };
     for (const f of contactFields) v[f] = `[${f}]`;
     return v;
   }, [audience, contactFields, origin, today]);
