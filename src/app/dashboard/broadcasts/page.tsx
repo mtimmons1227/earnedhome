@@ -26,13 +26,18 @@ export default async function BroadcastsPage() {
     countActiveContacts(appUser.tenant_id),
     discoverContactFields(appUser.tenant_id),
     listBroadcasts(appUser.tenant_id),
-    admin.from("tenants").select("name").eq("id", appUser.tenant_id).maybeSingle(),
+    admin.from("tenants").select("name, nmls").eq("id", appUser.tenant_id).maybeSingle(),
   ]);
 
   // Footer identity for the live preview (mirrors what the send code stamps).
-  const company = (tenant as { name: string } | null)?.name ?? "R Parry Financial LLC";
+  const t = tenant as { name: string; nmls: string | null } | null;
+  const company = t?.name ?? "R Parry Financial LLC";
   const address = process.env.BROADCAST_ADDRESS || "PO Box 100184, Fort Worth, TX 76185-0184";
-  const footerLogoUrl = process.env.BROADCAST_FOOTER_LOGO || null;
+  const website = process.env.BROADCAST_WEBSITE || "www.rparryfinancial.com";
+  const phone = process.env.BROADCAST_PHONE || "682-250-7649";
+  const nmls = t?.nmls ?? "1924318";
+  const privacyUrl = process.env.BROADCAST_PRIVACY_URL || "https://rparryfinancial.com/wp-content/uploads/2025/08/Privacy-Notice.pdf";
+  const footerLogoUrl = process.env.BROADCAST_FOOTER_LOGO || "/brand/rparry-logo.png";
 
   return (
     <div>
@@ -49,6 +54,10 @@ export default async function BroadcastsPage() {
           initialBroadcasts={broadcasts}
           company={company}
           address={address}
+          website={website}
+          phone={phone}
+          nmls={nmls}
+          privacyUrl={privacyUrl}
           footerLogoUrl={footerLogoUrl}
         />
       </main>

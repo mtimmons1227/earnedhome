@@ -121,6 +121,8 @@ export async function resolveAudience(
   const admin = createSupabaseAdmin();
   const suppressed = await getSuppressed(tenantId);
   const out: AudienceRecipient[] = [];
+  // Send date, available as {date} — e.g. "August 26, 2026" (matches the Word letter).
+  const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 
   if (audience === "agents") {
     const { data } = await admin.from("agents")
@@ -134,6 +136,7 @@ export async function resolveAudience(
         values: {
           first_name: first,
           firm: a.firm ?? "",
+          date: today,
           // Canonical names + short aliases that match the legacy Word mail-merge
           // fields (FNAME / Link / Portal) so Richard's existing letter drops in.
           portal_link: `${origin}/agent/${a.status_token}`,
@@ -149,7 +152,7 @@ export async function resolveAudience(
       .eq("tenant_id", tenantId).eq("status", "active");
     for (const c of (data as { email: string; first_name: string | null; last_name: string | null; fields: Record<string, unknown> }[] | null) ?? []) {
       if (!c.email || suppressed.has(c.email.toLowerCase())) continue;
-      const values: Record<string, string> = { first_name: c.first_name ?? "", last_name: c.last_name ?? "" };
+      const values: Record<string, string> = { first_name: c.first_name ?? "", last_name: c.last_name ?? "", date: today };
       for (const [k, v] of Object.entries(c.fields ?? {})) values[k] = v == null ? "" : String(v);
       out.push({ email: c.email, firstName: c.first_name, values });
     }
@@ -161,8 +164,8 @@ export async function resolveAudience(
 // (For contacts, the page merges in any custom fields via discoverContactFields.)
 export function audienceTokens(audience: "agents" | "contacts"): string[] {
   return audience === "agents"
-    ? ["first_name", "firm", "link", "portal"]
-    : ["first_name", "last_name"];
+    ? ["date", "first_name", "firm", "link", "portal"]
+    : ["date", "first_name", "last_name"];
 }
 
 // The distinct custom merge fields present across a tenant's active contacts, so
@@ -226,7 +229,14 @@ export function sendingEnabled(): boolean {
   return !!(process.env.RESEND_API_KEY && broadcastFrom());
 }
 
-export interface BroadcastFooterInfo { company: string; address: string; }
+export interface BroadcastFooterInfo {
+  company: string;
+  address: string;
+  website?: string | null;
+  phone?: string | null;
+  nmls?: string | null;
+  privacyUrl?: string | null;
+}
 
 function bcEscapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
@@ -242,6 +252,10 @@ function escapeAndLink(s: string): string {
 export interface BroadcastRenderFooter {
   company: string;
   address: string;
+  website?: string | null;
+  phone?: string | null;
+  nmls?: string | null;
+  privacyUrl?: string | null;
   unsubUrl: string;
   headerLogoUrl?: string | null; // top-of-email logo (BuyerBridge)
   footerLogoUrl?: string | null; // above-signature logo (e.g. R Parry Financial)
@@ -262,7 +276,7 @@ export function renderBroadcastHtml(bodyTemplate: string, values: Record<string,
   const footerLogo = f.footerLogoUrl
     ? `<div style="margin:24px 0 6px;"><img src="${f.footerLogoUrl}" alt="${bcEscapeHtml(f.company)}" width="260" style="height:auto;width:260px;max-width:80%;" /></div>`
     : "";
-  const compliance = complianceFooter({ company: f.company, address: f.address, unsubUrl: f.unsubUrl });
+  const compliance = complianceFooter(f);
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;padding:8px;">${header}${paras}${footerLogo}${compliance}</div>`;
 }
 
@@ -271,19 +285,27 @@ export function renderBroadcastHtml(bodyTemplate: string, values: Record<string,
 // opt-in via BROADCAST_FOOTER_LOGO (path like "/brand/rparry-logo.png" or a full
 // URL) so it only appears once that image is actually in place — no broken images.
 export function brandLogos(origin: string): { headerLogoUrl: string; footerLogoUrl: string | null } {
-  const fl = process.env.BROADCAST_FOOTER_LOGO || "";
-  const footerLogoUrl = fl ? (fl.startsWith("http") ? fl : `${origin}${fl.startsWith("/") ? "" : "/"}${fl}`) : null;
+  const fl = process.env.BROADCAST_FOOTER_LOGO || "/brand/rparry-logo.png";
+  const footerLogoUrl = fl.startsWith("http") ? fl : `${origin}${fl.startsWith("/") ? "" : "/"}${fl}`;
   return { headerLogoUrl: `${origin}/brand/buyerbridge-logo.png`, footerLogoUrl };
 }
 
-// CAN-SPAM footer: physical mailing address + one-click unsubscribe (required on
-// every bulk email).
-function complianceFooter(o: { company: string; address: string; unsubUrl: string }): string {
+// Footer that mirrors the legacy Word mail-merge: Privacy Notice link, then the
+// address · website · phone · NMLS line, plus the CAN-SPAM one-click unsubscribe
+// (required on every bulk email).
+function complianceFooter(f: BroadcastRenderFooter): string {
+  const link = (url: string, text: string) => `<a href="${bcEscapeHtml(url)}" style="color:#6b7280;text-decoration:underline;">${bcEscapeHtml(text)}</a>`;
+  const privacy = f.privacyUrl ? `<p style="margin:0 0 6px;">Please review our ${link(f.privacyUrl, "Privacy Notice")}.</p>` : "";
+  const parts: string[] = [bcEscapeHtml(f.address)];
+  if (f.website) parts.push(link(f.website.startsWith("http") ? f.website : `https://${f.website}`, f.website.replace(/^https?:\/\//, "")));
+  if (f.phone) parts.push(bcEscapeHtml(f.phone));
+  if (f.nmls) parts.push(`NMLS ${bcEscapeHtml(f.nmls)}`);
   return `
-  <div style="margin-top:28px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;line-height:1.6;">
-    <p style="margin:0 0 4px;">${bcEscapeHtml(o.company)} · ${bcEscapeHtml(o.address)}</p>
-    <p style="margin:0;">You're receiving this because you're a contact of ${bcEscapeHtml(o.company)}.
-      <a href="${bcEscapeHtml(o.unsubUrl)}" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>.</p>
+  <div style="margin-top:22px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;line-height:1.6;">
+    ${privacy}
+    <p style="margin:0 0 4px;">${parts.join(" · ")}</p>
+    <p style="margin:0;">You're receiving this because you're a contact of ${bcEscapeHtml(f.company)}.
+      <a href="${bcEscapeHtml(f.unsubUrl)}" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>.</p>
   </div>`;
 }
 
@@ -302,9 +324,10 @@ async function resendBatch(from: string, items: { to: string; subject: string; h
 }
 
 function sampleValues(audience: "agents" | "contacts", origin: string): Record<string, string> {
+  const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   return audience === "agents"
-    ? { first_name: "Alex", firm: "Keller Williams", link: `${origin}/a/sample`, portal: `${origin}/agent/sample` }
-    : { first_name: "Alex", last_name: "Sample", city: "Austin" };
+    ? { first_name: "Alex", firm: "Keller Williams", date, link: `${origin}/a/sample`, portal: `${origin}/agent/sample` }
+    : { first_name: "Alex", last_name: "Sample", date, city: "Austin" };
 }
 
 // Send ONE test email of the composed broadcast to a single address (the admin),
@@ -320,8 +343,7 @@ export async function sendBroadcastTest(opts: {
   const recips = await resolveAudience(opts.tenantId, opts.audience, opts.origin);
   const values = recips[0]?.values ?? sampleValues(opts.audience, opts.origin);
   const html = renderBroadcastHtml(opts.body, values, {
-    company: opts.footer.company, address: opts.footer.address,
-    unsubUrl: `${opts.origin}/unsubscribe/test`, ...brandLogos(opts.origin),
+    ...opts.footer, unsubUrl: `${opts.origin}/unsubscribe/test`, ...brandLogos(opts.origin),
   });
   const subject = `[TEST] ${renderMerge(opts.subject, values)}`;
   return resendBatch(from, [{ to: opts.to, subject, html }]);
@@ -363,8 +385,7 @@ export async function createAndSendBroadcast(opts: {
     return {
       email: r.email, to: r.email, subject: renderMerge(opts.subject, r.values),
       html: renderBroadcastHtml(opts.body, r.values, {
-        company: opts.footer.company, address: opts.footer.address,
-        unsubUrl: `${opts.origin}/unsubscribe/${token}`, ...logos,
+        ...opts.footer, unsubUrl: `${opts.origin}/unsubscribe/${token}`, ...logos,
       }),
     };
   });

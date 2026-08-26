@@ -15,6 +15,10 @@ interface Props {
   initialBroadcasts: BroadcastSummary[];
   company: string;
   address: string;
+  website: string;
+  phone: string;
+  nmls: string;
+  privacyUrl: string;
   footerLogoUrl: string | null;
 }
 
@@ -23,7 +27,9 @@ type Audience = "agents" | "contacts";
 // The current "Eye on the Ball" letter, as an editable template with merge tokens.
 // {portal} = the agent's private portal link; {link} = the agent's buyer/referral link.
 const AGENT_TEMPLATE_SUBJECT = "The Best Time to Introduce BuyerBridge";
-const AGENT_TEMPLATE_BODY = `Hi {first_name}!
+const AGENT_TEMPLATE_BODY = `{date}
+
+Hi {first_name}!
 
 The best time to introduce BuyerBridge is when someone is thinking about moving — before they know where they want to move, before they know what they can afford, before they're ready to buy.
 
@@ -52,7 +58,9 @@ Office: (682) 250-7649 · Mobile: (817) 905-8660
 richard@rparryfinancial.com · www.rparryfinancial.com`;
 
 const CONTACT_TEMPLATE_SUBJECT = "A quick way to see what you can afford";
-const CONTACT_TEMPLATE_BODY = `Hi {first_name},
+const CONTACT_TEMPLATE_BODY = `{date}
+
+Hi {first_name},
 
 Thinking about a move — or just curious what your numbers look like? BuyerBridge lets you see real monthly-payment and cash-to-close estimates in about a minute. No credit pull, no obligation.
 
@@ -81,7 +89,7 @@ function previewHtml(body: string, values: Record<string, string>): string {
     `<p style="margin:0 0 12px;">${escapeAndLink(b).replace(/\n/g, "<br/>")}</p>`).join("");
 }
 
-export function BroadcastComposer({ agentCount, contactCount, contactFields, sendingEnabled, initialBroadcasts, company, address, footerLogoUrl }: Props) {
+export function BroadcastComposer({ agentCount, contactCount, contactFields, sendingEnabled, initialBroadcasts, company, address, website, phone, nmls, privacyUrl, footerLogoUrl }: Props) {
   const [audience, setAudience] = useState<Audience>("agents");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -96,20 +104,22 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
 
   const tokens = useMemo(() => (
     audience === "agents"
-      ? ["first_name", "firm", "link", "portal"]
-      : ["first_name", "last_name", ...contactFields]
+      ? ["date", "first_name", "firm", "link", "portal"]
+      : ["date", "first_name", "last_name", ...contactFields]
   ), [audience, contactFields]);
 
   const recipientCount = audience === "agents" ? agentCount : contactCount;
 
+  const today = useMemo(() => new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), []);
+
   const sample: Record<string, string> = useMemo(() => {
     if (audience === "agents") {
-      return { first_name: "Alex", firm: "Keller Williams", link: `${origin}/a/sample`, portal: `${origin}/agent/sample` };
+      return { first_name: "Alex", firm: "Keller Williams", date: today, link: `${origin}/a/sample`, portal: `${origin}/agent/sample` };
     }
-    const v: Record<string, string> = { first_name: "Alex", last_name: "Sample" };
+    const v: Record<string, string> = { first_name: "Alex", last_name: "Sample", date: today };
     for (const f of contactFields) v[f] = `[${f}]`;
     return v;
-  }, [audience, contactFields, origin]);
+  }, [audience, contactFields, origin, today]);
 
   function insertToken(tok: string) {
     const ta = bodyRef.current;
@@ -232,13 +242,14 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
             ? <div style={{ fontSize: 14, color: "#1f2937" }} dangerouslySetInnerHTML={{ __html: previewHtml(body, sample) }} />
             : <div className="hint">Your email preview will appear here.</div>}
 
-          {/* Footer — logo (when set) + CAN-SPAM block, exactly as recipients get it */}
+          {/* Footer — logo + Privacy Notice + address·website·phone·NMLS + unsubscribe, exactly as recipients get it */}
           {footerLogoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <div style={{ marginTop: 18 }}><img src={footerLogoUrl} alt={company} style={{ maxWidth: 240, height: "auto" }} /></div>
+            <div style={{ marginTop: 20 }}><img src={footerLogoUrl} alt={company} style={{ maxWidth: 260, height: "auto" }} /></div>
           )}
-          <div style={{ marginTop: 18, paddingTop: 12, borderTop: "1px solid #e5e7eb", fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
-            <div>{company} · {address}</div>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #e5e7eb", fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>
+            <div>Please review our <a href={privacyUrl} target="_blank" rel="noreferrer" style={{ color: "#6b7280", textDecoration: "underline" }}>Privacy Notice</a>.</div>
+            <div>{address} · {website} · {phone} · NMLS {nmls}</div>
             <div>You&apos;re receiving this because you&apos;re a contact of {company}. <span style={{ textDecoration: "underline" }}>Unsubscribe</span>.</div>
           </div>
         </div>

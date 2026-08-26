@@ -6,15 +6,20 @@ import { sendBroadcastTest, createAndSendBroadcast, sendingEnabled } from "@/lib
 
 export const dynamic = "force-dynamic";
 
-// CAN-SPAM physical address for the footer. Defaults to R Parry's (from the current
-// mail-merge letter); override per environment with BROADCAST_ADDRESS.
-const DEFAULT_ADDRESS = "PO Box 100184, Fort Worth, TX 76185-0184";
-
-async function footerInfo(tenantId: string): Promise<{ company: string; address: string }> {
+// Footer identity, matching the legacy Word mail-merge. Defaults are R Parry's (from
+// the current letter); each is overridable per environment.
+async function footerInfo(tenantId: string) {
   const admin = createSupabaseAdmin();
-  const { data } = await admin.from("tenants").select("name").eq("id", tenantId).maybeSingle();
-  const company = (data as { name: string } | null)?.name ?? "R Parry Financial LLC";
-  return { company, address: process.env.BROADCAST_ADDRESS || DEFAULT_ADDRESS };
+  const { data } = await admin.from("tenants").select("name, nmls").eq("id", tenantId).maybeSingle();
+  const t = data as { name: string; nmls: string | null } | null;
+  return {
+    company: t?.name ?? "R Parry Financial LLC",
+    address: process.env.BROADCAST_ADDRESS || "PO Box 100184, Fort Worth, TX 76185-0184",
+    website: process.env.BROADCAST_WEBSITE || "www.rparryfinancial.com",
+    phone: process.env.BROADCAST_PHONE || "682-250-7649",
+    nmls: t?.nmls ?? "1924318",
+    privacyUrl: process.env.BROADCAST_PRIVACY_URL || "https://rparryfinancial.com/wp-content/uploads/2025/08/Privacy-Notice.pdf",
+  };
 }
 
 // GET — whether the bulk-send path is live (client disables Send buttons if not).
