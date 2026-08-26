@@ -20,13 +20,19 @@ export default async function BroadcastsPage() {
   if (!appUser || appUser.role !== "admin") redirect("/dashboard");
 
   const admin = createSupabaseAdmin();
-  const [{ count: agentCount }, contactCount, contactFields, broadcasts] = await Promise.all([
+  const [{ count: agentCount }, contactCount, contactFields, broadcasts, { data: tenant }] = await Promise.all([
     admin.from("agents").select("id", { count: "exact", head: true })
       .eq("tenant_id", appUser.tenant_id).eq("active", true),
     countActiveContacts(appUser.tenant_id),
     discoverContactFields(appUser.tenant_id),
     listBroadcasts(appUser.tenant_id),
+    admin.from("tenants").select("name").eq("id", appUser.tenant_id).maybeSingle(),
   ]);
+
+  // Footer identity for the live preview (mirrors what the send code stamps).
+  const company = (tenant as { name: string } | null)?.name ?? "R Parry Financial LLC";
+  const address = process.env.BROADCAST_ADDRESS || "PO Box 100184, Fort Worth, TX 76185-0184";
+  const footerLogoUrl = process.env.BROADCAST_FOOTER_LOGO || null;
 
   return (
     <div>
@@ -41,6 +47,9 @@ export default async function BroadcastsPage() {
           contactFields={contactFields}
           sendingEnabled={sendingEnabled()}
           initialBroadcasts={broadcasts}
+          company={company}
+          address={address}
+          footerLogoUrl={footerLogoUrl}
         />
       </main>
     </div>

@@ -13,6 +13,9 @@ interface Props {
   contactFields: string[];
   sendingEnabled: boolean;
   initialBroadcasts: BroadcastSummary[];
+  company: string;
+  address: string;
+  footerLogoUrl: string | null;
 }
 
 type Audience = "agents" | "contacts";
@@ -78,7 +81,7 @@ function previewHtml(body: string, values: Record<string, string>): string {
     `<p style="margin:0 0 12px;">${escapeAndLink(b).replace(/\n/g, "<br/>")}</p>`).join("");
 }
 
-export function BroadcastComposer({ agentCount, contactCount, contactFields, sendingEnabled, initialBroadcasts }: Props) {
+export function BroadcastComposer({ agentCount, contactCount, contactFields, sendingEnabled, initialBroadcasts, company, address, footerLogoUrl }: Props) {
   const [audience, setAudience] = useState<Audience>("agents");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -228,6 +231,16 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
           {body.trim()
             ? <div style={{ fontSize: 14, color: "#1f2937" }} dangerouslySetInnerHTML={{ __html: previewHtml(body, sample) }} />
             : <div className="hint">Your email preview will appear here.</div>}
+
+          {/* Footer — logo (when set) + CAN-SPAM block, exactly as recipients get it */}
+          {footerLogoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <div style={{ marginTop: 18 }}><img src={footerLogoUrl} alt={company} style={{ maxWidth: 240, height: "auto" }} /></div>
+          )}
+          <div style={{ marginTop: 18, paddingTop: 12, borderTop: "1px solid #e5e7eb", fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
+            <div>{company} · {address}</div>
+            <div>You&apos;re receiving this because you&apos;re a contact of {company}. <span style={{ textDecoration: "underline" }}>Unsubscribe</span>.</div>
+          </div>
         </div>
       </div>
 
