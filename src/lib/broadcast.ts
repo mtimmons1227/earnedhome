@@ -239,14 +239,41 @@ function escapeAndLink(s: string): string {
     (u) => `<a href="${u}" style="color:#1F3864;font-weight:600;">${u}</a>`);
 }
 
+export interface BroadcastRenderFooter {
+  company: string;
+  address: string;
+  unsubUrl: string;
+  headerLogoUrl?: string | null; // top-of-email logo (BuyerBridge)
+  footerLogoUrl?: string | null; // above-signature logo (e.g. R Parry Financial)
+}
+
 // Compose the plain-text body (with {tokens} + blank-line paragraphs) into HTML,
-// merged for one recipient, wrapped with the CAN-SPAM footer.
-export function renderBroadcastHtml(bodyTemplate: string, values: Record<string, string>, footerHtml: string): string {
+// merged for one recipient, with an optional header logo and the CAN-SPAM footer
+// (optional footer logo + physical address + unsubscribe). Mirrors the look of the
+// legacy Word mail-merge (header image, letter, footer image, disclosures).
+export function renderBroadcastHtml(bodyTemplate: string, values: Record<string, string>, f: BroadcastRenderFooter): string {
   const merged = renderMerge(bodyTemplate, values);
   const paras = merged.split(/\n{2,}/).map((block) =>
     `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#1f2937;">${escapeAndLink(block).replace(/\n/g, "<br/>")}</p>`,
   ).join("");
-  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;padding:8px;">${paras}${footerHtml}</div>`;
+  const header = f.headerLogoUrl
+    ? `<div style="text-align:center;margin:0 0 20px;"><img src="${f.headerLogoUrl}" alt="BuyerBridge" width="220" style="height:auto;width:220px;max-width:80%;" /></div>`
+    : "";
+  const footerLogo = f.footerLogoUrl
+    ? `<div style="margin:24px 0 6px;"><img src="${f.footerLogoUrl}" alt="${bcEscapeHtml(f.company)}" width="260" style="height:auto;width:260px;max-width:80%;" /></div>`
+    : "";
+  const compliance = complianceFooter({ company: f.company, address: f.address, unsubUrl: f.unsubUrl });
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;padding:8px;">${header}${paras}${footerLogo}${compliance}</div>`;
+}
+
+// Brand images for the email header/footer, as absolute URLs (email clients need
+// absolute https URLs). Header = BuyerBridge (shipped in /brand). Footer logo is
+// opt-in via BROADCAST_FOOTER_LOGO (path like "/brand/rparry-logo.png" or a full
+// URL) so it only appears once that image is actually in place — no broken images.
+export function brandLogos(origin: string): { headerLogoUrl: string; footerLogoUrl: string | null } {
+  const fl = process.env.BROADCAST_FOOTER_LOGO || "";
+  const footerLogoUrl = fl ? (fl.startsWith("http") ? fl : `${origin}${fl.startsWith("/") ? "" : "/"}${fl}`) : null;
+  return { headerLogoUrl: `${origin}/brand/buyerbridge-logo.png`, footerLogoUrl };
 }
 
 // CAN-SPAM footer: physical mailing address + one-click unsubscribe (required on
@@ -292,8 +319,10 @@ export async function sendBroadcastTest(opts: {
   if (!opts.to) return { ok: false, error: "No address to send the test to." };
   const recips = await resolveAudience(opts.tenantId, opts.audience, opts.origin);
   const values = recips[0]?.values ?? sampleValues(opts.audience, opts.origin);
-  const footerHtml = complianceFooter({ company: opts.footer.company, address: opts.footer.address, unsubUrl: `${opts.origin}/unsubscribe/test` });
-  const html = renderBroadcastHtml(opts.body, values, footerHtml);
+  const html = renderBroadcastHtml(opts.body, values, {
+    company: opts.footer.company, address: opts.footer.address,
+    unsubUrl: `${opts.origin}/unsubscribe/test`, ...brandLogos(opts.origin),
+  });
   const subject = `[TEST] ${renderMerge(opts.subject, values)}`;
   return resendBatch(from, [{ to: opts.to, subject, html }]);
 }
@@ -328,10 +357,16 @@ export async function createAndSendBroadcast(opts: {
     tokenByEmail.set(r.email.toLowerCase(), r.unsub_token);
 
   // Build every personalized message, then send in chunks of 100.
+  const logos = brandLogos(opts.origin);
   const messages = recips.map((r) => {
     const token = tokenByEmail.get(r.email.toLowerCase()) ?? "";
-    const footerHtml = complianceFooter({ company: opts.footer.company, address: opts.footer.address, unsubUrl: `${opts.origin}/unsubscribe/${token}` });
-    return { email: r.email, to: r.email, subject: renderMerge(opts.subject, r.values), html: renderBroadcastHtml(opts.body, r.values, footerHtml) };
+    return {
+      email: r.email, to: r.email, subject: renderMerge(opts.subject, r.values),
+      html: renderBroadcastHtml(opts.body, r.values, {
+        company: opts.footer.company, address: opts.footer.address,
+        unsubUrl: `${opts.origin}/unsubscribe/${token}`, ...logos,
+      }),
+    };
   });
 
   let sent = 0;

@@ -218,7 +218,13 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
       <div className="panel">
         <h3 style={{ margin: "0 0 10px" }}>3 · Preview <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>(sample values)</span></h3>
         <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 16, background: "#fff", maxWidth: 620 }}>
-          <div style={{ fontWeight: 700, color: "#1F3864", marginBottom: 8 }}>{renderMerge(subject, sample) || <span style={{ color: "#9aa7b6" }}>Subject preview…</span>}</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
+            <b>Subject:</b> {renderMerge(subject, sample) || <span style={{ color: "#9aa7b6" }}>(subject)</span>}
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
+            <img src="/brand/buyerbridge-logo.png" alt="BuyerBridge" style={{ height: 44, width: "auto" }} />
+          </div>
           {body.trim()
             ? <div style={{ fontSize: 14, color: "#1f2937" }} dangerouslySetInnerHTML={{ __html: previewHtml(body, sample) }} />
             : <div className="hint">Your email preview will appear here.</div>}
