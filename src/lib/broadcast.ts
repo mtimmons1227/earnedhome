@@ -369,12 +369,17 @@ export async function sendBroadcastTest(opts: {
 export async function createAndSendBroadcast(opts: {
   tenantId: string; createdBy: string; audience: "agents" | "contacts";
   subject: string; body: string; origin: string; footer: BroadcastFooterInfo; isHtml?: boolean;
+  onlyEmails?: string[]; // if set, send only to these selected recipients
 }): Promise<{ ok: boolean; error?: string; sent?: number; total?: number; broadcastId?: string }> {
   const from = broadcastFrom();
   if (!from) return { ok: false, error: "Sending isn't enabled yet — set BROADCAST_FROM (your news. subdomain sender) first." };
   const admin = createSupabaseAdmin();
-  const recips = await resolveAudience(opts.tenantId, opts.audience, opts.origin);
-  if (!recips.length) return { ok: false, error: "No active recipients in this audience (after removing unsubscribes)." };
+  let recips = await resolveAudience(opts.tenantId, opts.audience, opts.origin);
+  if (opts.onlyEmails && opts.onlyEmails.length) {
+    const pick = new Set(opts.onlyEmails.map((e) => e.toLowerCase()));
+    recips = recips.filter((r) => pick.has(r.email.toLowerCase()));
+  }
+  if (!recips.length) return { ok: false, error: "No recipients selected (after removing unsubscribes)." };
 
   const { data: bRow, error: bErr } = await admin.from("broadcasts").insert({
     tenant_id: opts.tenantId, created_by: opts.createdBy, audience: opts.audience,

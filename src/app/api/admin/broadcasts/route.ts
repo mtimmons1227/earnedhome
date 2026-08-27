@@ -39,14 +39,21 @@ export async function POST(req: Request) {
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
   if (gate.role !== "admin") return NextResponse.json({ error: "Admins only" }, { status: 403 });
 
-  let body: { audience?: string; subject?: string; body?: string; mode?: string; isHtml?: boolean };
+  let body: { audience?: string; subject?: string; body?: string; mode?: string; isHtml?: boolean; recipients?: string[] };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
   const audience = body.audience === "contacts" ? "contacts" : body.audience === "agents" ? "agents" : null;
   const subject = (body.subject ?? "").trim();
   const bodyText = (body.body ?? "").trim();
   const isHtml = body.isHtml === true;
+  const recipients = Array.isArray(body.recipients) ? body.recipients.filter((e) => typeof e === "string") : undefined;
   const mode = body.mode === "send" ? "send" : "test";
+
+  // Daily-send cap (Resend free plan = 100/day). Override with BROADCAST_DAILY_CAP.
+  const dailyCap = Number(process.env.BROADCAST_DAILY_CAP || 100);
+  if (mode === "send" && recipients && recipients.length > dailyCap) {
+    return NextResponse.json({ error: `You selected ${recipients.length}. The current daily limit is ${dailyCap} — select ${dailyCap} or fewer.` }, { status: 422 });
+  }
   if (!audience) return NextResponse.json({ error: "Pick an audience (Agents or Contacts)." }, { status: 422 });
   if (!subject) return NextResponse.json({ error: "Subject is required." }, { status: 422 });
   if (!bodyText) return NextResponse.json({ error: "Email body is required." }, { status: 422 });
@@ -65,7 +72,7 @@ export async function POST(req: Request) {
 
   const r = await createAndSendBroadcast({
     tenantId: gate.tenantId, createdBy: gate.userId, audience,
-    subject, body: bodyText, origin, footer, isHtml,
+    subject, body: bodyText, origin, footer, isHtml, onlyEmails: recipients,
   });
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: 422 });
   return NextResponse.json({ ok: true, sent: r.sent, total: r.total });

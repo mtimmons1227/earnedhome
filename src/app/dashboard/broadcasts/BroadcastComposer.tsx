@@ -55,6 +55,7 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
   const [origin, setOrigin] = useState("https://home.rparryfinancial.com");
   const [previewRecipients, setPreviewRecipients] = useState<{ label: string; email: string; values: Record<string, string> }[]>([]);
   const [previewIdx, setPreviewIdx] = useState(0);
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [docName, setDocName] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
@@ -66,8 +67,6 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
       ? ["date", "first_name", "firm", "link", "portal"]
       : ["date", "first_name", "last_name", "link", ...contactFields]
   ), [audience, contactFields]);
-
-  const recipientCount = audience === "agents" ? agentCount : contactCount;
 
   const today = useMemo(() => new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), []);
 
@@ -96,6 +95,22 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
 
   // The values used in the preview: the selected real recipient, else sample.
   const previewValues = previewRecipients[previewIdx]?.values ?? sample;
+
+  // Default to everyone selected whenever the recipient list (re)loads.
+  useEffect(() => {
+    setSelectedEmails(new Set(previewRecipients.map((r) => r.email.toLowerCase())));
+  }, [previewRecipients]);
+
+  const DAILY_CAP = 100; // Resend free plan sends up to 100/day
+  const selectedCount = selectedEmails.size;
+  const overCap = selectedCount > DAILY_CAP;
+
+  function toggleRecipient(email: string) {
+    const e = email.toLowerCase();
+    setSelectedEmails((prev) => { const n = new Set(prev); if (n.has(e)) n.delete(e); else n.add(e); return n; });
+  }
+  function selectAllRecipients() { setSelectedEmails(new Set(previewRecipients.map((r) => r.email.toLowerCase()))); }
+  function selectNoRecipients() { setSelectedEmails(new Set()); }
 
   // Write HTML into the editor imperatively (and sync state). We never re-write the
   // editor on every keystroke (that fights the cursor) — onInput reads back out.
@@ -142,7 +157,7 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
     try {
       const res = await fetch("/api/admin/broadcasts", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ audience, subject, body, mode, isHtml: true }),
+        body: JSON.stringify({ audience, subject, body, mode, isHtml: true, recipients: [...selectedEmails] }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Something went wrong");
@@ -159,12 +174,12 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
   }
 
   function onSendAll() {
-    if (!confirm(`Send this to all ${recipientCount} ${audience}? This emails real people.`)) return;
+    if (!confirm(`Send this to ${selectedCount} selected ${audience}? This emails real people.`)) return;
     void post("send");
   }
 
   const input: React.CSSProperties = { width: "100%", padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8, fontSize: 14, boxSizing: "border-box" };
-  const canSend = sendingEnabled && !busy && recipientCount > 0 && subject.trim() !== "" && !isBlank(body);
+  const canSend = sendingEnabled && !busy && selectedCount > 0 && !overCap && subject.trim() !== "" && !isBlank(body);
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -285,9 +300,40 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
         </div>
       </div>
 
+      {/* Recipients */}
+      <div className="panel">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+          <h3 style={{ margin: 0 }}>4 · Recipients <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>({selectedCount} of {previewRecipients.length} selected)</span></h3>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" onClick={selectAllRecipients} style={{ fontSize: 12, fontWeight: 600, border: "1px solid var(--line)", background: "#fff", borderRadius: 6, padding: "5px 12px", cursor: "pointer" }}>Select all</button>
+            <button type="button" onClick={selectNoRecipients} style={{ fontSize: 12, fontWeight: 600, border: "1px solid var(--line)", background: "#fff", borderRadius: 6, padding: "5px 12px", cursor: "pointer" }}>None</button>
+          </div>
+        </div>
+        <p className="hint" style={{ marginTop: 0 }}>Pick exactly who this goes to. Your email plan sends up to <b>{DAILY_CAP}/day</b> — select {DAILY_CAP} or fewer.</p>
+        {overCap && (
+          <div style={{ color: "#b91c1c", background: "#fbe6e6", border: "1px solid #e6a1a1", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 8 }}>
+            You&apos;ve selected {selectedCount}. Deselect {selectedCount - DAILY_CAP} to stay within the {DAILY_CAP}/day limit (or raise the limit later with a paid plan).
+          </div>
+        )}
+        {previewRecipients.length === 0 ? (
+          <div className="hint">No active recipients in this audience yet.</div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 6, maxHeight: 260, overflowY: "auto", border: "1px solid var(--line)", borderRadius: 8, padding: 10 }}>
+            {previewRecipients.map((r) => (
+              <label key={r.email} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, cursor: "pointer", minWidth: 0 }}>
+                <input type="checkbox" checked={selectedEmails.has(r.email.toLowerCase())} onChange={() => toggleRecipient(r.email)} />
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <b>{r.label}</b> <span style={{ color: "var(--muted)" }}>{r.email}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Send */}
       <div className="panel">
-        <h3 style={{ margin: "0 0 10px" }}>4 · Send</h3>
+        <h3 style={{ margin: "0 0 10px" }}>5 · Send</h3>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <button type="button" onClick={() => void post("test")} disabled={!sendingEnabled || busy || !subject.trim() || isBlank(body)}
             style={{ border: "1px solid var(--primary)", background: "#fff", color: "var(--primary)", borderRadius: 8, padding: "11px 16px", fontWeight: 600, cursor: "pointer", height: 42, opacity: (!sendingEnabled || busy) ? 0.5 : 1 }}>
@@ -295,7 +341,7 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
           </button>
           <button type="button" onClick={onSendAll} disabled={!canSend}
             style={{ border: "none", background: "var(--primary)", color: "#fff", borderRadius: 8, padding: "11px 18px", fontWeight: 700, cursor: "pointer", height: 42, opacity: canSend ? 1 : 0.5 }}>
-            {`Send to all ${recipientCount} ${audience}`}
+            {`Send to ${selectedCount} selected`}
           </button>
           {busy && <span className="hint">Working…</span>}
         </div>
