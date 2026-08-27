@@ -77,16 +77,22 @@ function renderMerge(template: string, values: Record<string, string>): string {
     return v == null || v === "" ? (fb != null ? fb : "") : v;
   });
 }
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+// Autolink bare URLs inside HTML, skipping any already inside <a>…</a>.
+function autolinkHtml(html: string): string {
+  return html.split(/(<a\b[^>]*>.*?<\/a>)/gis).map((seg) =>
+    seg.toLowerCase().startsWith("<a")
+      ? seg
+      : seg.replace(/(https?:\/\/[^\s<"']+)/g, (u) => `<a href="${u}" style="color:#1F3864;font-weight:600;">${u}</a>`),
+  ).join("");
 }
-function escapeAndLink(s: string): string {
-  return escapeHtml(s).replace(/(https?:\/\/[^\s<]+)/g, (u) => `<a href="${u}" style="color:#1F3864;font-weight:600;">${u}</a>`);
+// Plain text (blank-line paragraphs) → simple HTML, for the built-in templates.
+function textToHtml(text: string): string {
+  const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
+  return text.split(/\n{2,}/).map((b) => `<p>${esc(b).replace(/\n/g, "<br>")}</p>`).join("");
 }
-function previewHtml(body: string, values: Record<string, string>): string {
-  const merged = renderMerge(body, values);
-  return merged.split(/\n{2,}/).map((b) =>
-    `<p style="margin:0 0 12px;">${escapeAndLink(b).replace(/\n/g, "<br/>")}</p>`).join("");
+// Strip tags to test whether the editor is effectively empty.
+function isBlank(html: string): boolean {
+  return html.replace(/<[^>]*>/g, "").replace(/ /g, " ").trim() === "";
 }
 
 export function BroadcastComposer({ agentCount, contactCount, contactFields, sendingEnabled, initialBroadcasts, company, address, website, phone, nmls, privacyUrl, footerLogoUrl }: Props) {
@@ -98,9 +104,8 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
   const [err, setErr] = useState<string | null>(null);
   const [broadcasts, setBroadcasts] = useState(initialBroadcasts);
   const [origin, setOrigin] = useState("https://home.rparryfinancial.com");
-  const [bodyIsHtml, setBodyIsHtml] = useState(false);
   const [docName, setDocName] = useState<string | null>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (typeof window !== "undefined") setOrigin(window.location.origin); }, []);
@@ -124,24 +129,36 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
     return v;
   }, [audience, contactFields, origin, today]);
 
+  // Write HTML into the editor imperatively (and sync state). We never re-write the
+  // editor on every keystroke (that fights the cursor) — onInput reads back out.
+  function setEditorHtml(html: string) {
+    if (editorRef.current) editorRef.current.innerHTML = html;
+    setBody(html);
+  }
+
+  // Insert {token} at the cursor inside the rich editor.
   function insertToken(tok: string) {
-    const ta = bodyRef.current;
-    const ins = `{${tok}}`;
-    if (!ta) { setBody((b) => b + ins); return; }
-    const start = ta.selectionStart ?? body.length;
-    const end = ta.selectionEnd ?? body.length;
-    const next = body.slice(0, start) + ins + body.slice(end);
-    setBody(next);
-    requestAnimationFrame(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = start + ins.length; });
+    const el = editorRef.current; if (!el) return;
+    el.focus();
+    const ok = document.execCommand("insertText", false, `{${tok}}`);
+    if (!ok) el.innerHTML += `{${tok}}`;
+    setBody(el.innerHTML);
+  }
+
+  // Toolbar formatting (bold / bullet list) on the current selection.
+  function fmt(cmd: "bold" | "insertUnorderedList") {
+    editorRef.current?.focus();
+    document.execCommand(cmd);
+    setBody(editorRef.current?.innerHTML ?? "");
   }
 
   function loadTemplate() {
-    if (audience === "agents") { setSubject(AGENT_TEMPLATE_SUBJECT); setBody(AGENT_TEMPLATE_BODY); }
-    else { setSubject(CONTACT_TEMPLATE_SUBJECT); setBody(CONTACT_TEMPLATE_BODY); }
-    setBodyIsHtml(false); setDocName(null); setMsg(null); setErr(null);
+    if (audience === "agents") { setSubject(AGENT_TEMPLATE_SUBJECT); setEditorHtml(textToHtml(AGENT_TEMPLATE_BODY)); }
+    else { setSubject(CONTACT_TEMPLATE_SUBJECT); setEditorHtml(textToHtml(CONTACT_TEMPLATE_BODY)); }
+    setDocName(null); setMsg(null); setErr(null);
   }
 
-  // Upload a Word .docx → convert to formatted HTML (bold/bullets/links preserved).
+  // Upload a Word .docx → convert to formatted HTML, then it's fully editable below.
   async function onWordFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
     setBusy(true); setErr(null); setMsg(null);
@@ -150,20 +167,20 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
       const res = await fetch("/api/admin/broadcasts/import-docx", { method: "POST", body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Could not read the document");
-      setBody(j.html); setBodyIsHtml(true); setDocName(j.filename ?? f.name);
-      setMsg(`Loaded "${j.filename ?? f.name}" — formatting preserved. Review the preview below.`);
+      setEditorHtml(j.html); setDocName(j.filename ?? f.name);
+      setMsg(`Loaded "${j.filename ?? f.name}" — it's editable below, and you can insert fields.`);
     } catch (e) { setErr((e as Error).message); }
     finally { setBusy(false); if (docRef.current) docRef.current.value = ""; }
   }
 
-  function clearWord() { setBody(""); setBodyIsHtml(false); setDocName(null); setMsg(null); }
+  function clearBody() { setEditorHtml(""); setDocName(null); setMsg(null); }
 
   async function post(mode: "test" | "send") {
     setBusy(true); setErr(null); setMsg(null);
     try {
       const res = await fetch("/api/admin/broadcasts", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ audience, subject, body, mode, isHtml: bodyIsHtml }),
+        body: JSON.stringify({ audience, subject, body, mode, isHtml: true }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Something went wrong");
@@ -185,7 +202,7 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
   }
 
   const input: React.CSSProperties = { width: "100%", padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8, fontSize: 14, boxSizing: "border-box" };
-  const canSend = sendingEnabled && !busy && recipientCount > 0 && subject.trim() !== "" && body.trim() !== "";
+  const canSend = sendingEnabled && !busy && recipientCount > 0 && subject.trim() !== "" && !isBlank(body);
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -239,35 +256,38 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
           <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject line" style={input} />
         </label>
 
-        {bodyIsHtml ? (
-          <div style={{ border: "1px solid #bfe3c9", background: "#f0faf3", borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ fontSize: 13, color: "#15803d" }}>
-              📄 Loaded <b>{docName}</b> — Word formatting kept. To change it, edit the file in Word and load it again. See the Preview below.
-            </div>
-            <button type="button" onClick={clearWord}
-              style={{ fontSize: 12, fontWeight: 600, border: "1px solid var(--line)", background: "#fff", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}>
-              Clear / type instead
+        {/* Toolbar: formatting + insert fields (onMouseDown preventDefault keeps the caret) */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6, alignItems: "center" }}>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("bold")} title="Bold"
+            style={{ fontSize: 13, fontWeight: 800, border: "1px solid var(--line)", background: "#fff", borderRadius: 6, padding: "4px 11px", cursor: "pointer" }}>B</button>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => fmt("insertUnorderedList")} title="Bulleted list"
+            style={{ fontSize: 13, fontWeight: 600, border: "1px solid var(--line)", background: "#fff", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>• List</button>
+          <span style={{ width: 1, height: 20, background: "var(--line)", margin: "0 4px" }} />
+          <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Insert field:</span>
+          {tokens.map((t) => (
+            <button key={t} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => insertToken(t)}
+              style={{ fontSize: 12, fontWeight: 600, border: "1px solid #cddaea", background: "#eef3fb", color: "#1F3864", borderRadius: 999, padding: "4px 10px", cursor: "pointer" }}>
+              {`{${t}}`}
             </button>
-          </div>
-        ) : (
-          <>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6, alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Insert field:</span>
-              {tokens.map((t) => (
-                <button key={t} type="button" onClick={() => insertToken(t)}
-                  style={{ fontSize: 12, fontWeight: 600, border: "1px solid #cddaea", background: "#eef3fb", color: "#1F3864", borderRadius: 999, padding: "4px 10px", cursor: "pointer" }}>
-                  {`{${t}}`}
-                </button>
-              ))}
-            </div>
-            <textarea ref={bodyRef} value={body} onChange={(e) => setBody(e.target.value)} rows={16}
-              placeholder="Write your email here, or click “Load from Word” above. Use the Insert field buttons for personalization, and leave a blank line between paragraphs."
-              style={{ ...input, fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" }} />
-            <p className="hint" style={{ margin: "6px 0 0" }}>
-              Tip: <b>{"{first_name|there}"}</b> shows a fallback (&ldquo;there&rdquo;) when the field is blank. Paste a link on its own line and it becomes clickable. To keep <b>bold/bullets</b> from a Word letter, use <b>Load from Word</b>.
-            </p>
-          </>
-        )}
+          ))}
+        </div>
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={() => setBody(editorRef.current?.innerHTML ?? "")}
+          style={{ minHeight: 320, border: "1px solid var(--line)", borderRadius: 8, padding: "12px 14px", fontSize: 14, lineHeight: 1.6, background: "#fff", overflowY: "auto" }}
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+          <p className="hint" style={{ margin: 0 }}>
+            {docName ? <>📄 From <b>{docName}</b> — fully editable here; changes don&apos;t touch the original file. </> : null}
+            Click in the letter, then <b>Insert field</b> to drop <b>{"{first_name}"}</b>, <b>{"{link}"}</b>, etc. at the cursor. <b>{"{first_name|there}"}</b> shows a fallback.
+          </p>
+          {!isBlank(body) && (
+            <button type="button" onClick={clearBody}
+              style={{ fontSize: 12, fontWeight: 600, border: "1px solid var(--line)", background: "#fff", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}>Clear</button>
+          )}
+        </div>
       </div>
 
       {/* Preview */}
@@ -281,8 +301,8 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
           <div style={{ textAlign: "center", marginBottom: 16 }}>
             <img src="/brand/buyerbridge-logo.png" alt="BuyerBridge" style={{ height: 44, width: "auto" }} />
           </div>
-          {body.trim()
-            ? <div style={{ fontSize: 14, color: "#1f2937" }} dangerouslySetInnerHTML={{ __html: bodyIsHtml ? renderMerge(body, sample) : previewHtml(body, sample) }} />
+          {!isBlank(body)
+            ? <div style={{ fontSize: 14, color: "#1f2937" }} dangerouslySetInnerHTML={{ __html: autolinkHtml(renderMerge(body, sample)) }} />
             : <div className="hint">Your email preview will appear here.</div>}
 
           {/* Footer — logo + Privacy Notice + address·website·phone·NMLS + unsubscribe, exactly as recipients get it */}
@@ -302,7 +322,7 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
       <div className="panel">
         <h3 style={{ margin: "0 0 10px" }}>4 · Send</h3>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <button type="button" onClick={() => void post("test")} disabled={!sendingEnabled || busy || !subject.trim() || !body.trim()}
+          <button type="button" onClick={() => void post("test")} disabled={!sendingEnabled || busy || !subject.trim() || isBlank(body)}
             style={{ border: "1px solid var(--primary)", background: "#fff", color: "var(--primary)", borderRadius: 8, padding: "11px 16px", fontWeight: 600, cursor: "pointer", height: 42, opacity: (!sendingEnabled || busy) ? 0.5 : 1 }}>
             Send test to me
           </button>
