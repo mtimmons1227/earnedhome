@@ -21,6 +21,7 @@ export default async function ContactsPage() {
     <div>
       <DashHeader title="Contacts" subtitle="Your broadcast recipient list — import once, manage here"
         user={{ name: appUser.full_name ?? user.email ?? "", role: roleLabel(appUser.role) }}>
+        <a href="/dashboard/broadcasts" className="navbtn">Broadcast</a>
         <BackToDashboard />
       </DashHeader>
       <main>

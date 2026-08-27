@@ -263,15 +263,28 @@ export interface BroadcastRenderFooter {
   footerLogoUrl?: string | null; // above-signature logo (e.g. R Parry Financial)
 }
 
-// Compose the plain-text body (with {tokens} + blank-line paragraphs) into HTML,
-// merged for one recipient, with an optional header logo and the CAN-SPAM footer
-// (optional footer logo + physical address + unsubscribe). Mirrors the look of the
-// legacy Word mail-merge (header image, letter, footer image, disclosures).
-export function renderBroadcastHtml(bodyTemplate: string, values: Record<string, string>, f: BroadcastRenderFooter): string {
-  const merged = renderMerge(bodyTemplate, values);
-  const paras = merged.split(/\n{2,}/).map((block) =>
-    `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#1f2937;">${escapeAndLink(block).replace(/\n/g, "<br/>")}</p>`,
+// Autolink bare URLs inside already-HTML content (a Word import), without touching
+// URLs already inside <a>…</a> — so {link}/{portal} typed as plain text in Word still
+// become clickable.
+function autolinkHtml(html: string): string {
+  return html.split(/(<a\b[^>]*>.*?<\/a>)/gis).map((seg) =>
+    seg.toLowerCase().startsWith("<a")
+      ? seg
+      : seg.replace(/(https?:\/\/[^\s<"']+)/g, (u) => `<a href="${u}" style="color:#1F3864;font-weight:600;">${u}</a>`),
   ).join("");
+}
+
+// Compose the body into HTML, merged for one recipient, with an optional header logo
+// and the CAN-SPAM footer. Mirrors the legacy Word mail-merge. `isHtml` = the body is
+// already HTML (a Word import) — keep its bold/bullets/links; otherwise it's plain
+// text and gets paragraph-wrapped.
+export function renderBroadcastHtml(bodyTemplate: string, values: Record<string, string>, f: BroadcastRenderFooter, isHtml = false): string {
+  const merged = renderMerge(bodyTemplate, values);
+  const paras = isHtml
+    ? autolinkHtml(merged)
+    : merged.split(/\n{2,}/).map((block) =>
+        `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#1f2937;">${escapeAndLink(block).replace(/\n/g, "<br/>")}</p>`,
+      ).join("");
   const header = f.headerLogoUrl
     ? `<div style="text-align:center;margin:0 0 20px;"><img src="${f.headerLogoUrl}" alt="BuyerBridge" width="220" style="height:auto;width:220px;max-width:80%;" /></div>`
     : "";
@@ -337,7 +350,7 @@ function sampleValues(audience: "agents" | "contacts", origin: string): Record<s
 // Dormant unless sending is enabled.
 export async function sendBroadcastTest(opts: {
   tenantId: string; audience: "agents" | "contacts"; subject: string; body: string;
-  to: string; origin: string; footer: BroadcastFooterInfo;
+  to: string; origin: string; footer: BroadcastFooterInfo; isHtml?: boolean;
 }): Promise<{ ok: boolean; error?: string }> {
   const from = broadcastFrom();
   if (!from) return { ok: false, error: "Sending isn't enabled yet — set BROADCAST_FROM (your news. subdomain sender) first." };
@@ -346,7 +359,7 @@ export async function sendBroadcastTest(opts: {
   const values = recips[0]?.values ?? sampleValues(opts.audience, opts.origin);
   const html = renderBroadcastHtml(opts.body, values, {
     ...opts.footer, unsubUrl: `${opts.origin}/unsubscribe/test`, ...brandLogos(opts.origin),
-  });
+  }, opts.isHtml);
   const subject = `[TEST] ${renderMerge(opts.subject, values)}`;
   return resendBatch(from, [{ to: opts.to, subject, html }]);
 }
@@ -355,7 +368,7 @@ export async function sendBroadcastTest(opts: {
 // batches (Resend batch endpoint, ≤100 per call). Dormant unless sending is enabled.
 export async function createAndSendBroadcast(opts: {
   tenantId: string; createdBy: string; audience: "agents" | "contacts";
-  subject: string; body: string; origin: string; footer: BroadcastFooterInfo;
+  subject: string; body: string; origin: string; footer: BroadcastFooterInfo; isHtml?: boolean;
 }): Promise<{ ok: boolean; error?: string; sent?: number; total?: number; broadcastId?: string }> {
   const from = broadcastFrom();
   if (!from) return { ok: false, error: "Sending isn't enabled yet — set BROADCAST_FROM (your news. subdomain sender) first." };
@@ -388,7 +401,7 @@ export async function createAndSendBroadcast(opts: {
       email: r.email, to: r.email, subject: renderMerge(opts.subject, r.values),
       html: renderBroadcastHtml(opts.body, r.values, {
         ...opts.footer, unsubUrl: `${opts.origin}/unsubscribe/${token}`, ...logos,
-      }),
+      }, opts.isHtml),
     };
   });
 

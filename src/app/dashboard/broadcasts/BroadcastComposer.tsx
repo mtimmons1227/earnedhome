@@ -98,7 +98,10 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
   const [err, setErr] = useState<string | null>(null);
   const [broadcasts, setBroadcasts] = useState(initialBroadcasts);
   const [origin, setOrigin] = useState("https://home.rparryfinancial.com");
+  const [bodyIsHtml, setBodyIsHtml] = useState(false);
+  const [docName, setDocName] = useState<string | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const docRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (typeof window !== "undefined") setOrigin(window.location.origin); }, []);
 
@@ -135,15 +138,32 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
   function loadTemplate() {
     if (audience === "agents") { setSubject(AGENT_TEMPLATE_SUBJECT); setBody(AGENT_TEMPLATE_BODY); }
     else { setSubject(CONTACT_TEMPLATE_SUBJECT); setBody(CONTACT_TEMPLATE_BODY); }
-    setMsg(null); setErr(null);
+    setBodyIsHtml(false); setDocName(null); setMsg(null); setErr(null);
   }
+
+  // Upload a Word .docx → convert to formatted HTML (bold/bullets/links preserved).
+  async function onWordFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; if (!f) return;
+    setBusy(true); setErr(null); setMsg(null);
+    try {
+      const fd = new FormData(); fd.append("file", f);
+      const res = await fetch("/api/admin/broadcasts/import-docx", { method: "POST", body: fd });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error ?? "Could not read the document");
+      setBody(j.html); setBodyIsHtml(true); setDocName(j.filename ?? f.name);
+      setMsg(`Loaded "${j.filename ?? f.name}" — formatting preserved. Review the preview below.`);
+    } catch (e) { setErr((e as Error).message); }
+    finally { setBusy(false); if (docRef.current) docRef.current.value = ""; }
+  }
+
+  function clearWord() { setBody(""); setBodyIsHtml(false); setDocName(null); setMsg(null); }
 
   async function post(mode: "test" | "send") {
     setBusy(true); setErr(null); setMsg(null);
     try {
       const res = await fetch("/api/admin/broadcasts", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ audience, subject, body, mode }),
+        body: JSON.stringify({ audience, subject, body, mode, isHtml: bodyIsHtml }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Something went wrong");
@@ -204,27 +224,50 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
 
       {/* Compose */}
       <div className="panel">
-        <h3 style={{ margin: "0 0 10px" }}>2 · Compose</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <h3 style={{ margin: "0 0 10px" }}>2 · Compose</h3>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input ref={docRef} type="file" accept=".docx" onChange={onWordFile} style={{ display: "none" }} />
+            <button type="button" onClick={() => docRef.current?.click()} disabled={busy}
+              style={{ border: "1px solid var(--primary)", background: "#fff", color: "var(--primary)", borderRadius: 8, padding: "8px 14px", fontWeight: 600, cursor: "pointer" }}>
+              ⬆ Load from Word (.docx)
+            </button>
+          </div>
+        </div>
         <label style={{ display: "grid", gap: 4, fontSize: 12, color: "var(--muted)", fontWeight: 600, marginBottom: 10 }}>
           Subject
           <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject line" style={input} />
         </label>
 
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6, alignItems: "center" }}>
-          <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Insert field:</span>
-          {tokens.map((t) => (
-            <button key={t} type="button" onClick={() => insertToken(t)}
-              style={{ fontSize: 12, fontWeight: 600, border: "1px solid #cddaea", background: "#eef3fb", color: "#1F3864", borderRadius: 999, padding: "4px 10px", cursor: "pointer" }}>
-              {`{${t}}`}
+        {bodyIsHtml ? (
+          <div style={{ border: "1px solid #bfe3c9", background: "#f0faf3", borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 13, color: "#15803d" }}>
+              📄 Loaded <b>{docName}</b> — Word formatting kept. To change it, edit the file in Word and load it again. See the Preview below.
+            </div>
+            <button type="button" onClick={clearWord}
+              style={{ fontSize: 12, fontWeight: 600, border: "1px solid var(--line)", background: "#fff", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}>
+              Clear / type instead
             </button>
-          ))}
-        </div>
-        <textarea ref={bodyRef} value={body} onChange={(e) => setBody(e.target.value)} rows={16}
-          placeholder="Write your email. Use the Insert field buttons for personalization, and leave a blank line between paragraphs."
-          style={{ ...input, fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" }} />
-        <p className="hint" style={{ margin: "6px 0 0" }}>
-          Tip: <b>{"{first_name|there}"}</b> shows a fallback (&ldquo;there&rdquo;) when the field is blank. Paste a link on its own line and it becomes clickable.
-        </p>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6, alignItems: "center" }}>
+              <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Insert field:</span>
+              {tokens.map((t) => (
+                <button key={t} type="button" onClick={() => insertToken(t)}
+                  style={{ fontSize: 12, fontWeight: 600, border: "1px solid #cddaea", background: "#eef3fb", color: "#1F3864", borderRadius: 999, padding: "4px 10px", cursor: "pointer" }}>
+                  {`{${t}}`}
+                </button>
+              ))}
+            </div>
+            <textarea ref={bodyRef} value={body} onChange={(e) => setBody(e.target.value)} rows={16}
+              placeholder="Write your email here, or click “Load from Word” above. Use the Insert field buttons for personalization, and leave a blank line between paragraphs."
+              style={{ ...input, fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" }} />
+            <p className="hint" style={{ margin: "6px 0 0" }}>
+              Tip: <b>{"{first_name|there}"}</b> shows a fallback (&ldquo;there&rdquo;) when the field is blank. Paste a link on its own line and it becomes clickable. To keep <b>bold/bullets</b> from a Word letter, use <b>Load from Word</b>.
+            </p>
+          </>
+        )}
       </div>
 
       {/* Preview */}
@@ -239,7 +282,7 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
             <img src="/brand/buyerbridge-logo.png" alt="BuyerBridge" style={{ height: 44, width: "auto" }} />
           </div>
           {body.trim()
-            ? <div style={{ fontSize: 14, color: "#1f2937" }} dangerouslySetInnerHTML={{ __html: previewHtml(body, sample) }} />
+            ? <div style={{ fontSize: 14, color: "#1f2937" }} dangerouslySetInnerHTML={{ __html: bodyIsHtml ? renderMerge(body, sample) : previewHtml(body, sample) }} />
             : <div className="hint">Your email preview will appear here.</div>}
 
           {/* Footer — logo + Privacy Notice + address·website·phone·NMLS + unsubscribe, exactly as recipients get it */}

@@ -39,12 +39,13 @@ export async function POST(req: Request) {
   if (!gate.ok) return NextResponse.json({ error: gate.error }, { status: gate.status });
   if (gate.role !== "admin") return NextResponse.json({ error: "Admins only" }, { status: 403 });
 
-  let body: { audience?: string; subject?: string; body?: string; mode?: string };
+  let body: { audience?: string; subject?: string; body?: string; mode?: string; isHtml?: boolean };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
   const audience = body.audience === "contacts" ? "contacts" : body.audience === "agents" ? "agents" : null;
   const subject = (body.subject ?? "").trim();
   const bodyText = (body.body ?? "").trim();
+  const isHtml = body.isHtml === true;
   const mode = body.mode === "send" ? "send" : "test";
   if (!audience) return NextResponse.json({ error: "Pick an audience (Agents or Contacts)." }, { status: 422 });
   if (!subject) return NextResponse.json({ error: "Subject is required." }, { status: 422 });
@@ -57,14 +58,14 @@ export async function POST(req: Request) {
     const supabase = createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
     const to = user?.email ?? "";
-    const r = await sendBroadcastTest({ tenantId: gate.tenantId, audience, subject, body: bodyText, to, origin, footer });
+    const r = await sendBroadcastTest({ tenantId: gate.tenantId, audience, subject, body: bodyText, to, origin, footer, isHtml });
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: 422 });
     return NextResponse.json({ ok: true, testedTo: to });
   }
 
   const r = await createAndSendBroadcast({
     tenantId: gate.tenantId, createdBy: gate.userId, audience,
-    subject, body: bodyText, origin, footer,
+    subject, body: bodyText, origin, footer, isHtml,
   });
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: 422 });
   return NextResponse.json({ ok: true, sent: r.sent, total: r.total });
