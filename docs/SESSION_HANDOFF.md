@@ -8,7 +8,9 @@
 
 ## 1. Where things stand right now
 
-**As of 2026-08-25:** all three remotes track together — `origin/rel` = `origin/test` = `origin/main` = **`c77b4e9`** (working tree clean). **Prod is no longer held behind** — this session promoted straight through `rel → test → main` on every change, so QA and Prod run the **same code**. Live pricing.
+**As of 2026-08-26:** all three remotes track together — `origin/rel` = `origin/test` = `origin/main` = **`59e0bd2`** (working tree clean). **Prod is no longer held behind** — every change promotes straight through `rel → test → main`, so QA and Prod run the **same code**. Live pricing.
+
+**Daily Broadcast is functionally complete and DORMANT.** The composer (audience → rich editor with Load-from-Word + insert-fields → real-recipient preview → recipient checklist with a 100/day cap → send + unsubscribe) is built and on Prod, but **cannot send** until `BROADCAST_FROM` (the `news.rparryfinancial.com` sender) is verified in Resend and set in Netlify. Free plan = 100/day, 3 domains. Turn-on steps: [`BROADCAST_SEND_SETUP.md`](BROADCAST_SEND_SETUP.md). Migrations **0020** (agents.firm) + **0021** (broadcasts) are applied. ⚠️ **Reminder:** the test contacts (jane/john/sam@example.com) are still in the live Contacts list — remove them.
 
 | Environment | Branch | State |
 |---|---|---|
@@ -108,4 +110,4 @@
 ## 8. First moves in a new session
 1. `git checkout rel && git pull` — confirm you're on the latest (`rel` is the working branch; the old `dev` refs below are historical). All three remotes are at `c77b4e9`.
 2. Skim §1 (state + pending 0021 migration + open gates) before building.
-3. **Next high-value work: Daily Broadcast Stage 2** — the composer page (`/dashboard/broadcasts`) with the two audiences (agents / contacts) + adaptive merge tokens + test/send, the create+send API with Resend batching + CAN-SPAM footer, and `/unsubscribe/[token]` + suppression. (Stage 1 = Contacts store, shipped.) Also still open: **per-tenant pricing** (spec ready), agent login (password) for self-serve portal access.
+3. **Broadcast is built — next is turning it on:** verify `news.rparryfinancial.com` in Resend + set `BROADCAST_FROM` in Netlify + redeploy ([`BROADCAST_SEND_SETUP.md`](BROADCAST_SEND_SETUP.md)); optional: swap the screenshot-cropped `public/brand/rparry-logo.png` for a hi-res original; counsel review of bulk-email copy/footer. Other open work: **per-tenant data isolation hardening** (CR-006, before a 2nd lender), agent login (password) for self-serve portal access, per-tenant pricing (spec ready).

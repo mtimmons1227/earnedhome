@@ -11,7 +11,7 @@ _As of July 6, 2026 (see the 2026-07-22 update below). This is the approval + go
 > 3. **Counsel:** confirm the referral-email "Financing by…" footer + buyer-initiated RESPA posture (#17).
 > 4. **Richard:** confirm **FHA/VA = primary-only** matches the lending matrix (#18), and that his state permits **"licensed Mortgage Advisor"** in disclosures (#20, CR-004).
 > 5. **🛑 Counsel — trademark:** "BUYERBRIDGE" is a **live US mark** (Reg. 6003449) — clear the name + secure a domain before external launch (#23, CR-001).
-> 6. **Broadcast Stage 2 (not built):** composer + batched send + `/unsubscribe/<token>`; at send-time needs **Resend Pro** + a **`news.` sending subdomain** + a **CAN-SPAM footer** (unsubscribe + physical address + suppression).
+> 6. **Daily Broadcast — BUILT, on Prod, DORMANT** (sign-off #26–28). Composer (rich editor + Load-from-Word + real-recipient preview + recipient checklist with a **100/day** cap), batched send, branded header/footer, `/unsubscribe/<token>` + suppression. **To go live:** verify **`news.rparryfinancial.com`** in Resend (free — 3-domain limit, **100/day**; Pro only for more) + set **`BROADCAST_FROM`** in Netlify + redeploy. Steps: [`BROADCAST_SEND_SETUP.md`](BROADCAST_SEND_SETUP.md). Counsel to review bulk-email copy/footer before real sends.
 
 > **Note (2026-07-06):** the **connect flow + emails** (buyer estimate, LO alert, Calendly, serverless fix) were **already promoted to Production** on July 6 (`main` @ `b0350d0`). What remains on QA-only below is the **Phase 1A agent attribution feature** and this session's buyer-connect UX polish.
 
