@@ -104,6 +104,8 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
   const [err, setErr] = useState<string | null>(null);
   const [broadcasts, setBroadcasts] = useState(initialBroadcasts);
   const [origin, setOrigin] = useState("https://home.rparryfinancial.com");
+  const [previewRecipients, setPreviewRecipients] = useState<{ label: string; email: string; values: Record<string, string> }[]>([]);
+  const [previewIdx, setPreviewIdx] = useState(0);
   const [docName, setDocName] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
@@ -128,6 +130,23 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
     for (const f of contactFields) v[f] = `[${f}]`;
     return v;
   }, [audience, contactFields, origin, today]);
+
+  // Pull real recipients (with their live links) so the preview can show an actual
+  // person instead of placeholder "sample" values.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/broadcasts/preview?audience=${audience}`);
+        const j = await res.json();
+        if (!cancelled && res.ok) { setPreviewRecipients(j.recipients ?? []); setPreviewIdx(0); }
+      } catch { /* falls back to sample values */ }
+    })();
+    return () => { cancelled = true; };
+  }, [audience]);
+
+  // The values used in the preview: the selected real recipient, else sample.
+  const previewValues = previewRecipients[previewIdx]?.values ?? sample;
 
   // Write HTML into the editor imperatively (and sync state). We never re-write the
   // editor on every keystroke (that fights the cursor) — onInput reads back out.
@@ -292,17 +311,30 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
 
       {/* Preview */}
       <div className="panel">
-        <h3 style={{ margin: "0 0 10px" }}>3 · Preview <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>(sample values)</span></h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          <h3 style={{ margin: 0 }}>3 · Preview <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>
+            {previewRecipients.length ? `— real values for ${previewRecipients[previewIdx]?.label ?? ""}` : "(sample values)"}
+          </span></h3>
+          {previewRecipients.length > 0 && (
+            <label style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, display: "flex", gap: 6, alignItems: "center" }}>
+              Preview as:
+              <select value={previewIdx} onChange={(e) => setPreviewIdx(Number(e.target.value))}
+                style={{ padding: "6px 8px", border: "1px solid var(--line)", borderRadius: 6, fontSize: 13 }}>
+                {previewRecipients.map((r, i) => <option key={r.email} value={i}>{r.label}</option>)}
+              </select>
+            </label>
+          )}
+        </div>
         <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 16, background: "#fff", maxWidth: 620 }}>
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
-            <b>Subject:</b> {renderMerge(subject, sample) || <span style={{ color: "#9aa7b6" }}>(subject)</span>}
+            <b>Subject:</b> {renderMerge(subject, previewValues) || <span style={{ color: "#9aa7b6" }}>(subject)</span>}
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <div style={{ textAlign: "center", marginBottom: 16 }}>
             <img src="/brand/buyerbridge-logo.png" alt="BuyerBridge" style={{ height: 44, width: "auto" }} />
           </div>
           {!isBlank(body)
-            ? <div style={{ fontSize: 14, color: "#1f2937" }} dangerouslySetInnerHTML={{ __html: autolinkHtml(renderMerge(body, sample)) }} />
+            ? <div style={{ fontSize: 14, color: "#1f2937" }} dangerouslySetInnerHTML={{ __html: autolinkHtml(renderMerge(body, previewValues)) }} />
             : <div className="hint">Your email preview will appear here.</div>}
 
           {/* Footer — logo + Privacy Notice + address·website·phone·NMLS + unsubscribe, exactly as recipients get it */}
