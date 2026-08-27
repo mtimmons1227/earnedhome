@@ -24,52 +24,6 @@ interface Props {
 
 type Audience = "agents" | "contacts";
 
-// The current "Eye on the Ball" letter, as an editable template with merge tokens.
-// {portal} = the agent's private portal link; {link} = the agent's buyer/referral link.
-const AGENT_TEMPLATE_SUBJECT = "The Best Time to Introduce BuyerBridge";
-const AGENT_TEMPLATE_BODY = `{date}
-
-Hi {first_name}!
-
-The best time to introduce BuyerBridge is when someone is thinking about moving — before they know where they want to move, before they know what they can afford, before they're ready to buy.
-
-That's when BuyerBridge gives you the chance to become part of their journey — and stay connected as their plans develop.
-
-If someone mentions moving, wondering what they can afford, wanting more space, downsizing, retiring, or simply "maybe someday" — send them to BuyerBridge. There's no reason to wait. It lets them explore their numbers and see what a move could look like before they're ready to decide.
-
-And because BuyerBridge keeps you connected to the people you've introduced, you don't have to guess who's still thinking about moving. When they start exploring seriously and decide they're ready to connect, you'll already be there.
-
-You're not chasing buyers after they're ready — you're building relationships with buyers before they're ready.
-
-To connect your buyers to you, use your private link below to sign up a buyer and send them their personal BuyerBridge link:
-{portal}
-
-This is what connects the buyer to you. Once they're connected, you can stay informed as they explore their options — and when they're ready to connect with a mortgage professional, you'll be the first to know.
-
-Here is your personal link to check it out — this is also what the buyer sees:
-{link}
-
-Give it a try with your next buyer. I think you'll find it a pretty powerful tool.
-
-Sincerely,
-Richard McHargue (NMLS 927662)
-Managing Member, R Parry Financial, LLC (NMLS 1924318)
-Office: (682) 250-7649 · Mobile: (817) 905-8660
-richard@rparryfinancial.com · www.rparryfinancial.com`;
-
-const CONTACT_TEMPLATE_SUBJECT = "A quick way to see what you can afford";
-const CONTACT_TEMPLATE_BODY = `{date}
-
-Hi {first_name},
-
-Thinking about a move — or just curious what your numbers look like? BuyerBridge lets you see real monthly-payment and cash-to-close estimates in about a minute. No credit pull, no obligation.
-
-Take a look whenever you're ready, and reach out with any questions.
-
-Sincerely,
-Richard McHargue
-R Parry Financial, LLC`;
-
 // Client-side mirror of the server's {token|fallback} merge, for the live preview.
 function renderMerge(template: string, values: Record<string, string>): string {
   return template.replace(/\{([a-zA-Z0-9_]+)(?:\|([^}]*))?\}/g, (_m, key: string, fb?: string) => {
@@ -84,11 +38,6 @@ function autolinkHtml(html: string): string {
       ? seg
       : seg.replace(/(https?:\/\/[^\s<"']+)/g, (u) => `<a href="${u}" style="color:#1F3864;font-weight:600;">${u}</a>`),
   ).join("");
-}
-// Plain text (blank-line paragraphs) → simple HTML, for the built-in templates.
-function textToHtml(text: string): string {
-  const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
-  return text.split(/\n{2,}/).map((b) => `<p>${esc(b).replace(/\n/g, "<br>")}</p>`).join("");
 }
 // Strip tags to test whether the editor is effectively empty.
 function isBlank(html: string): boolean {
@@ -171,12 +120,6 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
     setBody(editorRef.current?.innerHTML ?? "");
   }
 
-  function loadTemplate() {
-    if (audience === "agents") { setSubject(AGENT_TEMPLATE_SUBJECT); setEditorHtml(textToHtml(AGENT_TEMPLATE_BODY)); }
-    else { setSubject(CONTACT_TEMPLATE_SUBJECT); setEditorHtml(textToHtml(CONTACT_TEMPLATE_BODY)); }
-    setDocName(null); setMsg(null); setErr(null);
-  }
-
   // Upload a Word .docx → convert to formatted HTML, then it's fully editable below.
   async function onWordFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -236,20 +179,12 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
         </div>
       )}
 
-      {/* Audience + template */}
+      {/* Audience */}
       <div className="panel">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <div>
-            <h3 style={{ margin: "0 0 8px" }}>1 · Who gets this?</h3>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <AudienceBtn active={audience === "agents"} onClick={() => setAudience("agents")} label="My agents" count={agentCount} />
-              <AudienceBtn active={audience === "contacts"} onClick={() => setAudience("contacts")} label="My contacts" count={contactCount} />
-            </div>
-          </div>
-          <button type="button" onClick={loadTemplate}
-            style={{ border: "1px solid var(--line)", background: "#fff", borderRadius: 8, padding: "9px 14px", fontWeight: 600, cursor: "pointer", height: 40 }}>
-            Load template
-          </button>
+        <h3 style={{ margin: "0 0 8px" }}>1 · Who gets this?</h3>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <AudienceBtn active={audience === "agents"} onClick={() => setAudience("agents")} label="My agents" count={agentCount} />
+          <AudienceBtn active={audience === "contacts"} onClick={() => setAudience("contacts")} label="My contacts" count={contactCount} />
         </div>
         <p className="hint" style={{ marginBottom: 0 }}>
           {audience === "agents"
