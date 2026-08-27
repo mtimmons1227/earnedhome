@@ -326,14 +326,13 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
         </div>
         <p className="hint" style={{ marginTop: 0 }}>Pick exactly who this goes to. Your email plan sends up to <b>{DAILY_CAP}/day</b> — select {DAILY_CAP} or fewer.</p>
         {groups.length > 1 && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
-            <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Quick pick a group of {DAILY_CAP}:</span>
-            {groups.map((g, i) => (
-              <button key={i} type="button" onClick={() => selectGroup(i)}
-                style={{ fontSize: 12, fontWeight: 600, border: "1px solid #cddaea", background: "#eef3fb", color: "#1F3864", borderRadius: 999, padding: "4px 12px", cursor: "pointer" }}>
-                {g.label}
-              </button>
-            ))}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+            <label style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Quick pick a group of {DAILY_CAP}:</label>
+            <select defaultValue="" onChange={(e) => { const i = Number(e.target.value); if (!Number.isNaN(i)) selectGroup(i); }}
+              style={{ padding: "6px 10px", border: "1px solid var(--line)", borderRadius: 6, fontSize: 13, minWidth: 150 }}>
+              <option value="" disabled>Choose a group…</option>
+              {groups.map((g, i) => <option key={i} value={i}>{g.label}</option>)}
+            </select>
           </div>
         )}
         {overCap && (
