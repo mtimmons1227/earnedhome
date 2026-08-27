@@ -112,6 +112,21 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
   function selectAllRecipients() { setSelectedEmails(new Set(previewRecipients.map((r) => r.email.toLowerCase()))); }
   function selectNoRecipients() { setSelectedEmails(new Set()); }
 
+  // Ordered groups of DAILY_CAP (1–100, 101–200, …) so a big list can be sent in
+  // day-sized chunks. Clicking a group selects exactly that slice.
+  const groups = useMemo(() => {
+    const out: { start: number; end: number; label: string }[] = [];
+    for (let s = 0; s < previewRecipients.length; s += DAILY_CAP) {
+      const e = Math.min(s + DAILY_CAP, previewRecipients.length);
+      out.push({ start: s, end: e, label: `${s + 1}–${e}` });
+    }
+    return out;
+  }, [previewRecipients, DAILY_CAP]);
+  function selectGroup(i: number) {
+    const g = groups[i]; if (!g) return;
+    setSelectedEmails(new Set(previewRecipients.slice(g.start, g.end).map((r) => r.email.toLowerCase())));
+  }
+
   // Write HTML into the editor imperatively (and sync state). We never re-write the
   // editor on every keystroke (that fights the cursor) — onInput reads back out.
   function setEditorHtml(html: string) {
@@ -310,6 +325,17 @@ export function BroadcastComposer({ agentCount, contactCount, contactFields, sen
           </div>
         </div>
         <p className="hint" style={{ marginTop: 0 }}>Pick exactly who this goes to. Your email plan sends up to <b>{DAILY_CAP}/day</b> — select {DAILY_CAP} or fewer.</p>
+        {groups.length > 1 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
+            <span style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>Quick pick a group of {DAILY_CAP}:</span>
+            {groups.map((g, i) => (
+              <button key={i} type="button" onClick={() => selectGroup(i)}
+                style={{ fontSize: 12, fontWeight: 600, border: "1px solid #cddaea", background: "#eef3fb", color: "#1F3864", borderRadius: 999, padding: "4px 12px", cursor: "pointer" }}>
+                {g.label}
+              </button>
+            ))}
+          </div>
+        )}
         {overCap && (
           <div style={{ color: "#b91c1c", background: "#fbe6e6", border: "1px solid #e6a1a1", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 8 }}>
             You&apos;ve selected {selectedCount}. Deselect {selectedCount - DAILY_CAP} to stay within the {DAILY_CAP}/day limit (or raise the limit later with a paid plan).
